@@ -32,4 +32,17 @@ class MPG_Validators
             throw new Exception(__('Attribute `direction` must be used with `order-by` attribute. Exclusion: if direction is random', 'mpg'));
         }
     }
+
+	/**
+	 * Check if the given value is a valid timestamp.
+	 *
+	 * @param string $timestamp
+	 *
+	 * @return bool
+	 */
+	public static function is_timestamp( $timestamp ): bool {
+		return ( (string) (int) $timestamp === $timestamp )
+		       && ( $timestamp <= PHP_INT_MAX )
+		       && ( $timestamp >= ~PHP_INT_MAX );
+	}
 }

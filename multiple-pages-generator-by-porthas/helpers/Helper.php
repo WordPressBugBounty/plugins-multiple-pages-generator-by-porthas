@@ -127,48 +127,52 @@ class MPG_Helper
 
         // Include styles and scripts in MGP plugin pages only
         if (
-            strpos($hook_suffix, 'toplevel_page_mpg-dataset-library') !== false ||
+            strpos($hook_suffix, 'mpg_page_mpg-dataset-library') !== false ||
             strpos($hook_suffix, 'mpg_page_mpg-advanced-settings') !== false ||
             strpos($hook_suffix, 'mpg_page_mpg-search-setting') !== false ||
             ( strpos($hook_suffix, '_mpg-project-builder') !== false && ! empty( $_GET['action'] ) && in_array( $_GET['action'], array( 'edit_project', 'from_scratch' ), true ) )
         ) {
 
-            wp_enqueue_script('mpg_listFilter',                 plugins_url('frontend/libs/jquery.listfilter.min.js', __DIR__), array('jquery'));
-            wp_enqueue_script('mpg_datatable_js',               plugins_url('frontend/libs/dataTables/jquery.dataTables.min.js', __DIR__), array('jquery'));
-            wp_enqueue_script('mpg_bootstrap_js',               plugins_url('frontend/libs/bootstrap/bootstrap.min.js', __DIR__), array('jquery'));
-            wp_enqueue_script('mpg_datetime_picker',            plugins_url('frontend/libs/datetimepicker/jquery.datetimepicker.full.min.js', __DIR__), array('jquery'));
-            wp_enqueue_script('mpg_select2_js',                 plugins_url('frontend/libs/select2/select2.full.min.js', __DIR__), array('jquery'));
-            wp_enqueue_script('mpg_toast_js',                   plugins_url('frontend/libs/toast/toast.js', __DIR__), array('jquery'));
+            wp_enqueue_script('mpg_listFilter',                 plugins_url('frontend/libs/jquery.listfilter.min.js', __DIR__), array('jquery'), MPG_PLUGIN_VERSION);
+            wp_enqueue_script('mpg_datatable_js',               plugins_url('frontend/libs/dataTables/jquery.dataTables.min.js', __DIR__), array('jquery'), MPG_PLUGIN_VERSION);
+            wp_enqueue_script('mpg_bootstrap_js',               plugins_url('frontend/libs/bootstrap/bootstrap.min.js', __DIR__), array('jquery'), MPG_PLUGIN_VERSION);
+            wp_enqueue_script('mpg_datetime_picker',            plugins_url('frontend/libs/datetimepicker/jquery.datetimepicker.full.min.js', __DIR__), array('jquery'), MPG_PLUGIN_VERSION);
+            wp_enqueue_script('mpg_select2_js',                 plugins_url('frontend/libs/select2/select2.full.min.js', __DIR__), array('jquery'), MPG_PLUGIN_VERSION);
+            wp_enqueue_script('mpg_toast_js',                   plugins_url('frontend/libs/toast/toast.js', __DIR__), array('jquery'), MPG_PLUGIN_VERSION);
 
-            wp_enqueue_script('mpg_popper_1_js',                 plugins_url('frontend/libs/popper/popper.min.js', __DIR__), array('jquery'));
+            wp_enqueue_script('mpg_popper_1_js',                 plugins_url('frontend/libs/popper/popper.min.js', __DIR__), array('jquery'), MPG_PLUGIN_VERSION);
 
-            wp_enqueue_script('mpg_tippy_2_js',                 plugins_url('frontend/libs/popper/tippy-bundle.umd.min.js', __DIR__), array('jquery'));
-            wp_enqueue_script('mpg_main_js',                    plugins_url('frontend/js/app.js', __DIR__), array('jquery'));
+            wp_enqueue_script('mpg_tippy_2_js',                 plugins_url('frontend/libs/popper/tippy-bundle.umd.min.js', __DIR__), array('jquery'), MPG_PLUGIN_VERSION);
+            wp_enqueue_script('mpg_main_js',                    plugins_url('frontend/js/app.js', __DIR__), array('jquery'), MPG_PLUGIN_VERSION);
 
             wp_localize_script('mpg_main_js', 'backendData', [
-                'baseUrl'           => self::mpg_get_base_url(false),
+                'baseUrl'           => home_url('/'),
                 'lang_code'         => defined( 'ICL_LANGUAGE_CODE' ) && 'en' !== ICL_LANGUAGE_CODE ? sprintf( '/%s/', ICL_LANGUAGE_CODE ) : '',
                 'datasetLibraryUrl' => admin_url('admin.php?page=mpg-dataset-library'),
                 'projectPage'       => admin_url('admin.php?page=mpg-project-builder'),
                 'mpgAdminPageUrl'   => admin_url(),
                 'mpgUploadDir'      => MPG_CACHE_URL,
+				'version' => MPG_PLUGIN_VERSION,
                 'securityNonce'     => wp_create_nonce( MPG_BASENAME ),
                 'isPro'             => mpg_app()->is_premium(),
             ]);
 
-            wp_enqueue_style('mpg_datatable',                   plugins_url('frontend/libs/dataTables/jquery.dataTables.min.css', __DIR__));
-            wp_enqueue_style('mpg_bootstrap_css',               plugins_url('frontend/libs/bootstrap/bootstrap.min.css', __DIR__));
-            wp_enqueue_style('mpg_datetimepicker_css',          plugins_url('frontend/libs/datetimepicker/jquery.datetimepicker.full.min.css', __DIR__));
-            wp_enqueue_style('mpg_toast_css',                   plugins_url('frontend/libs/toast/toast.css', __DIR__));
-            wp_enqueue_style('mpg_select2_css',                 plugins_url('frontend/libs/select2/select2.min.css',   __DIR__));
+            wp_enqueue_style('mpg_datatable',                   plugins_url('frontend/libs/dataTables/jquery.dataTables.min.css', __DIR__) , array(), MPG_PLUGIN_VERSION);
+            wp_enqueue_style('mpg_bootstrap_css',               plugins_url('frontend/libs/bootstrap/bootstrap.min.css', __DIR__) , array(), MPG_PLUGIN_VERSION);
+            wp_enqueue_style('mpg_datetimepicker_css',          plugins_url('frontend/libs/datetimepicker/jquery.datetimepicker.full.min.css', __DIR__) , array(), MPG_PLUGIN_VERSION);
+            wp_enqueue_style('mpg_toast_css',                   plugins_url('frontend/libs/toast/toast.css', __DIR__) , array(), MPG_PLUGIN_VERSION);
+            wp_enqueue_style('mpg_select2_css',                 plugins_url('frontend/libs/select2/select2.min.css',   __DIR__) , array(), MPG_PLUGIN_VERSION);
 
-            wp_enqueue_style('mpg_font_awesome_css',            plugins_url('frontend/css/font-awesome.css',   __DIR__));
+            wp_enqueue_style('mpg_font_awesome_css',            plugins_url('frontend/css/font-awesome.css',   __DIR__) , array(), MPG_PLUGIN_VERSION);
 
-            wp_enqueue_style('mpg_main_css',                    plugins_url('frontend/css/style.css', __DIR__));
+            wp_enqueue_style('mpg_main_css',                    plugins_url('frontend/css/style.css', __DIR__) , array(), MPG_PLUGIN_VERSION);
 
             wp_add_inline_style( 'mpg_main_css', '.condition-row {display: inline-flex;}.condition-row:not(:last-child) .add-new-condition:last-child {display:none;}.condition-row select {display: inline-flex;min-width: 170px;}.condition-row:first-child .mpg_headers_condition_value_dropdown:disabled + .btn-danger:not(.mpp-remove-action) {display: none;} .condition-container + .tooltip-circle {margin-left: 45px;}' );
 
             self::register_survey();
+        } elseif ( strpos($hook_suffix, 'mpg-project-builder') !== false ) {
+            wp_enqueue_script('mpg_datatable_js',               plugins_url('frontend/libs/dataTables/jquery.dataTables.min.js', __DIR__), array('jquery') , MPG_PLUGIN_VERSION);
+            wp_enqueue_style('mpg_datatable',                   plugins_url('frontend/libs/dataTables/jquery.dataTables.min.css', __DIR__) , array(), MPG_PLUGIN_VERSION);
         }
     }
 
@@ -176,7 +180,7 @@ class MPG_Helper
     {
 
         if (is_search()) {
-            wp_enqueue_script('mpg_searchpage', plugins_url('frontend/js/mpg-front-search.js', __DIR__),  array('jquery'));
+            wp_enqueue_script('mpg_searchpage', plugins_url('frontend/js/mpg-front-search.js', __DIR__),  array('jquery'), MPG_PLUGIN_VERSION);
 
             wp_localize_script('mpg_searchpage', 'backendData', [
                 'ajaxurl'           => admin_url('admin-ajax.php'),
@@ -198,92 +202,22 @@ class MPG_Helper
         return $tag;
     }
 
-    public static function mpg_get_site_url( $skip_locale = false )
-    {
-
-        global $blog_id;
-
-        if (is_multisite()) {
-            $current_blog_details = get_blog_details(array('blog_id' => $blog_id));
-            $blog_url = str_replace( $current_blog_details->path, '', trim( get_home_url( $blog_id, '/', 'relative' ) ) );
-            $siteName = str_replace( self::mpg_get_domain(), '', $blog_url );
-        } else {
-            if ( ! $skip_locale && function_exists( 'icl_get_home_url' ) ) {
-                $siteName = str_replace(self::mpg_get_domain(), '', trim(icl_get_home_url(), '/'));
-                $siteName = ltrim( rtrim( $siteName, '/' ), '/' );
-            } else {
-                $siteName = str_replace(self::mpg_get_domain(), '', trim(home_url('/', 'relative'), '/'));
-            }
-        }
-        return trim($siteName);
-    }
-
-    // Return site URL
-    public static function mpg_get_domain()
-    {
-        if (defined('WP_HOME')) {
-            return WP_HOME;
-        } else {
-            return (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http") . "://$_SERVER[HTTP_HOST]";
-        }
-    }
 
 
-    public static function mpg_get_base_url($for_main_site, $skip_locale = false)
-    {
-        $blog_id = get_current_blog_id();
-
-        if (is_multisite()) {
-            $sites =  get_sites();
-
-            $base_url = '';
-
-            if ($for_main_site) {
-                $base_url = self::mpg_get_domain() . $sites[0]->path;
-            } else {
-
-                $site = array_filter($sites, function ($site) use ($blog_id) {
-                    return (int) $site->blog_id === $blog_id;
-                });
-
-                if (!function_exists('array_key_first')) {
-                    function array_key_first(array $arr)
-                    {
-                        foreach ($arr as $key => $unused) {
-                            return $key;
-                        }
-                        return NULL;
-                    }
-                }
-
-                $index = array_key_first($site);
-                $base_url = self::mpg_get_domain() . $site[$index]->path;
-            }
-        } else {
-            $base_url = self::mpg_get_domain() . '/' . self::mpg_get_site_url( $skip_locale );
-        }
-
-        if (substr($base_url, -1) === '/') {
-            // Обрежем слеш в конце, если есть
-            $base_url = substr($base_url, 0, -1);
-        }
-        if ( ! $skip_locale && defined( 'ICL_LANGUAGE_CODE' ) && ! in_array(ICL_LANGUAGE_CODE, [ 'en', 'all' ] ) ) {
-            $base_url = $base_url . '/' . ICL_LANGUAGE_CODE;
-            $base_url = rtrim( $base_url, '/' );
-        }
-
-        return $base_url;
-    }
 
     // Return the path of URL
-    public static function mpg_get_request_uri()
-    {
-        global $wp;
-        $full_url_path = home_url($wp->request);
-        $current_url = urldecode( str_ireplace( home_url(), '/', $full_url_path ) . '/' );
-        $current_url = preg_replace( '/(\/+)/', '/', $current_url );
-        return strtolower($current_url);
-    }
+	public static function mpg_get_request_uri() {
+		global $wp;
+		$full_url_path = home_url( $wp->request );
+		$home_url      = explode( '?', home_url() )[0];
+		$current_url   = urldecode( str_ireplace( $home_url, '/', $full_url_path ) );
+		if ( ! str_contains( $current_url, '?' ) ) {
+			$current_url = $current_url . '/';
+		}
+		$current_url = preg_replace( '/(\/+)/', '/', $current_url );
+
+		return strtolower( $current_url );
+	}
 
     public static function mpg_get_extension_by_path($path)
     {
@@ -365,6 +299,7 @@ class MPG_Helper
             throw new Exception(__('Unsupported file extension:' . ' ' . $ext, 'mpg'));
         }
 
+	    $reader->setShouldFormatDates(true);
         return $reader;
     }
 
@@ -389,39 +324,19 @@ class MPG_Helper
 
         $expiration = 0;
         if ( null === $periodicity ) {
-            $expiration = apply_filters( 'mpg_live_data_update_interval', MINUTE_IN_SECONDS * 15 );
+            $expiration = self::get_live_update_interval();
         }
 
-        $key_name = wp_hash( 'dataset_array_' . $project_id );
-        $dataset_array = get_transient( 'dataset_array_' . $project_id );
-        if ( false === $dataset_array ) {
-            $dataset_array = get_transient( $key_name );
-        }
+	    $dataset_array = MPG_DatasetModel::get_cache($project_id);
 
         if ( false === strpos( $dataset_path, 'wp-content' ) ) {
             $dataset_path = MPG_UPLOADS_DIR . $dataset_path;
         }
 
-        if (!$dataset_array) {
-            $dataset_array = [];
-            $ext = MPG_Helper::mpg_get_extension_by_path($dataset_path);
-			if ( '' !== $ext ) {
-                $reader = MPG_Helper::mpg_get_spout_reader_by_extension($ext);
-				if ( ! is_readable( $dataset_path ) ) {
-                	$dataset_path = MPG_UPLOADS_DIR . basename( $dataset_path );
-				}
-                $reader->open($dataset_path);
-                foreach ($reader->getSheetIterator() as $sheet) {
-                    foreach ($sheet->getRowIterator() as $row) {
-                        $row = $row->toArray();
-                        if ($row[0] !== NULL) {
-                            $dataset_array[] = $row;
-                        }
-                    }
-                }
-                set_transient( $key_name, wp_json_encode( $dataset_array, MPG_JSON_OPTIONS ), $expiration );
-			}
-        }
+	    if ( ! $dataset_array ) {
+		    $dataset_array = MPG_DatasetModel::read_dataset( $dataset_path );
+		    MPG_DatasetModel::set_cache( $project_id, $dataset_array, $expiration );
+	    }
         if ( ! doing_action( 'wp_ajax_mpg_get_search_results' ) ) {
             $mpg_dataset[ $project_id ] = $dataset_array;
         }
@@ -469,6 +384,19 @@ class MPG_Helper
         return array_values($unique_array);
     }
 
+	/**
+	 * Get live update interval.
+	 *
+	 * @return mixed|null
+	 */
+	public static function get_live_update_interval(){
+		/**
+		 * Filter the live data update interval.
+		 *
+		 * @param int $interval The interval in seconds. Default is 15 minutes.
+		 */
+		return apply_filters( 'mpg_live_data_update_interval', MINUTE_IN_SECONDS * 15 );
+	}
     /**
      * Live project data update.
      */
@@ -486,18 +414,14 @@ class MPG_Helper
 
         $expiration = 0;
         if ( null === $periodicity ) {
-            $expiration = apply_filters( 'mpg_live_data_update_interval', MINUTE_IN_SECONDS * 15 );
+            $expiration = self::get_live_update_interval();
         }
 
         if ( false === strpos( $dataset_path, 'wp-content' ) ) {
             $dataset_path = MPG_UPLOADS_DIR . $dataset_path;
         }
 
-        $key_name = wp_hash( 'dataset_array_' . $project_id );
-        $dataset_array = get_transient( 'dataset_array_' . $project_id );
-        if ( false === $dataset_array ) {
-            $dataset_array = get_transient( $key_name );
-        }
+        $dataset_array = MPG_DatasetModel::get_cache( $project_id );
 
         if ( empty( $mpg_urls_array[ $project_id ] ) && empty( $dataset_array ) && $expiration > 0 ) {
             if ( ! empty( $source_direct_link ) ) {
@@ -520,11 +444,22 @@ class MPG_Helper
                 $fields_array['urls_array'] = wp_json_encode( $urls_array );
                 MPG_ProjectModel::mpg_update_project_by_id( $project_id, $fields_array, true );
                 $project->urls_array = $fields_array['urls_array'];
+	            MPG_SitemapGenerator::maybe_create_sitemap( $urls_array, $project );
             }
         }
         return $project;
     }
 
+	/**
+	 * Return the webhook URL for the project.
+	 *
+	 * @param $project_id
+	 *
+	 * @return string
+	 */
+	public static function get_webhook_url( $project_id ) {
+		return rest_url( 'mpg/webhook/' . $project_id . '/?hash=' . hash_hmac( 'sha256', $project_id, SECURE_AUTH_KEY ) );
+	}
     /**
      * Filter found posts.
      *
@@ -750,4 +685,117 @@ class MPG_Helper
         wp_enqueue_script( 'mpg_survey', plugins_url('frontend/js/survey.js', __DIR__), array( $survey_handler ) );
         wp_localize_script( 'mpg_survey', 'mpgSurveyData', self::get_survey_metadata() );
 	}
+
+	/**
+	 * Check if the edited post is an MPG template.
+	 * Should be used only in admin context.
+	 * It checks for translated versions of the template as well.
+	 *
+	 * @return bool
+	 */
+	public static function is_edited_post_a_template( $post_id = null ): bool {
+		$post_id = empty( $post_id ) ? ( isset( $_GET['post'] ) ? (int) $_GET['post'] : 0 ) : $post_id;
+		if ( empty( $post_id ) ) {
+			return false;
+		}
+		global $wpdb;
+		$project_id = MPG_ProjectModel::get_project_by_template_id( $post_id );
+		if ( $project_id > 0 ) {
+			return true;
+		}
+		//we check if this is a translated version of the template.
+		if ( defined( 'POLYLANG_VERSION' ) ) {
+			$translations = pll_get_post_translations( $post_id );
+			foreach ( $translations as $lang => $translated_post_id ) {
+				$project_id = MPG_ProjectModel::get_project_by_template_id( $post_id );
+				if ( ! empty( $project_id ) ) {
+					return true;
+				}
+			}
+		}
+
+		if ( defined( 'WPML_PLUGIN_BASENAME' ) ) {
+			$trid         = apply_filters( 'wpml_element_trid', null, $post_id );
+			$translations = apply_filters( 'wpml_get_element_translations', null, $trid );
+			if ( ! empty( $translations ) ) {
+				$translations_ids   = wp_list_pluck( $translations, 'element_id' );
+				$translations_ids[] = $trid;
+				foreach ( $translations_ids as $translations_id ) {
+					$project_id = MPG_ProjectModel::get_project_by_template_id( $post_id );
+					if ( ! empty( $project_id ) ) {
+						return true;
+					}
+				}
+			}
+		}
+
+		return false;
+	}
+
+	/**
+	 * Generate various variants for path based on the environment for better matching.
+	 *
+	 * @param $base_path
+	 *
+	 * @return array
+	 */
+	public static function generate_path_variants($base_path){
+		$variants               = array();
+		$variants[ $base_path ] = true;
+		if ( defined( 'ICL_LANGUAGE_CODE' ) && 'en' !== ICL_LANGUAGE_CODE ) {
+			if ( strpos( $base_path, '/' . ICL_LANGUAGE_CODE ) === 0 ) {
+				$variants[ substr( $base_path, strlen( '/' . ICL_LANGUAGE_CODE ) ) ] = true;
+			}
+			$lang_path_without_qlang                                 = remove_query_arg( 'lang', $base_path );
+			$variants[ trailingslashit( $lang_path_without_qlang ) ] = true;
+		}
+		if ( defined( 'AMPFORWP_VERSION' ) ) {
+			$variants[ untrailingslashit( $base_path ) . '/amp' ]  = true;
+			$variants[ untrailingslashit( $base_path ) . '/amp/' ] = true;
+		}
+		return $variants;
+
+	}
+
+	/**
+	 * Check if we are in the single virtual page rendering context.
+	 *
+	 * @return bool
+	 */
+	public static function is_mpg_single() {
+		return defined( 'MPG_IS_SINGLE' ) && MPG_IS_SINGLE;
+	}
+
+    /**
+     * Enqueue block editor assers for `view sample MPG urls`.
+     */
+    public static function block_editor_assets_enqueue() {
+        global $pagenow, $post;
+        if ( 'post.php' !== $pagenow || ! $post ) {
+            return;
+        }
+        $project_id = MPG_ProjectModel::get_project_by_template_id( $post->ID );
+        if ( ! $project_id ) {
+            return;
+        }
+        $project    = \MPG_ProjectModel::get_project_by_id( $project_id );
+        $urls_array = isset( $project->urls_array ) ? json_decode( $project->urls_array ) : array();
+        $urls       = array();
+        foreach ( $urls_array as $index => $row ) {
+            if ( 'without-trailing-slash' === $project->url_mode ) {
+                $row = rtrim( $row, '/' );
+            }
+            $urls[] = MPG_CoreModel::path_to_url( $row );
+        }
+        shuffle( $urls );
+        wp_enqueue_script( 'mpg-sample-preview', plugins_url( 'frontend/js/sample-preview.js', __DIR__ ), array( 'wp-edit-post', 'wp-dom-ready', 'wp-data', 'wp-components' ), true, true );
+        wp_localize_script(
+            'mpg-sample-preview',
+            'MPGSamplePreview',
+            array(
+                'previewUrl' => reset( $urls ),
+                'buttonText' => __( 'View Sample MPG URL', 'mpg' ),
+            )
+        );
+    }
 }

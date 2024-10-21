@@ -70,14 +70,115 @@ if ( ! class_exists( 'ProjectsListManage' ) ) {
 		 * Delete record by id
 		 *
 		 * @param int $del_id Id.
-		 * @return mix.
+		 * @return true.
 		 */
-		public function delete_project( $del_id ) {
+		public function delete_project( $project_id ) {
+
+
+
+			if ( ! $project_id ) {
+				throw new Exception( __( 'Project ID is missing', 'mpg' ) );
+			}
+
+			$project = MPG_ProjectModel::get_project_by_id( $project_id );
+			if ( ! empty( $project ) && $project->source_path ) {
+				$dataset_path = $project->source_path;
+				MPG_ProjectModel::deleteFileByPath( $dataset_path );
+			}
+
+			if ( ! empty( $project->sitemap_filename ) ) {
+				foreach (
+					[
+						ABSPATH . $project->sitemap_filename . '.xml',
+						ABSPATH . $project->sitemap_filename . '-index.xml'
+					] as $path
+				) {
+					if ( file_exists( $path ) ) {
+						unlink( $path );
+					}
+				}
+
+				// Но если есть ...-index, то сделовательно, есть и дочерние файлы, которые тоже надо "подчистить"
+				$name = str_replace( '-index', '', $project->sitemap_filename );
+
+				foreach ( glob( ABSPATH . $name . '*.xml' ) as $path ) {
+					if ( file_exists( $path ) ) {
+						unlink( $path );
+					}
+				}
+			}
+
+			// Удаляем крон-задачу, если есть
+			if ( $project->schedule_source_link && $project->schedule_notificate_about && $project->schedule_periodicity && $project->schedule_notification_email ) {
+				MPG_ProjectModel::mpg_remove_cron_task_by_project_id( $project_id, [ $project ] ); // we are using [project] just to maintain compatibility with the function.
+			}
+
+			if ( $project->exclude_in_robots ) {
+				// Удаляем ссылку на страницу-шаблон, если она есть.
+				MPG_ProjectModel::mpg_processing_robots_txt( false, $project->template_id );
+			}
+
+			if ( $project->sitemap_url ) {
+				// Удалим карту сайта из robots.txt
+				MPG_ProjectModel::mpg_remove_sitemap_from_robots( $project->sitemap_url );
+			}
+
+
 			global $wpdb;
 			$table_name = $wpdb->prefix . MPG_Constant::MPG_PROJECTS_TABLE;
-			return $wpdb->delete( $table_name, array( 'id' => $del_id ) ); // phpcs:ignore
+			$wpdb->delete( $table_name, array( 'id' => $project_id ) ); // phpcs:ignore
+
+			// Удаляем все строки для текущего проекта из БД (Spintax)
+			MPG_SpintaxModel::flush_cache_by_project_id( $project_id );
+
+			// Удалим кеш для данного проекта
+			if ( $project->cache_type !== 'none' ) {
+				MPG_CacheController::mpg_flush_core( $project_id, $project->cache_type );
+			}
+			return true;
 		}
 
+		/**
+		 * Clone a project.
+		 *
+		 * @param int $project_id
+		 *
+		 * @return int
+		 */
+		public function clone_project( int $project_id ) :int {
+			global $wpdb;
+			$table = $wpdb->prefix . MPG_Constant::MPG_PROJECTS_TABLE;
+			// Get column names except for the 'id' column
+			$columns_query = $wpdb->get_results( "SHOW COLUMNS FROM {$table}" );
+
+			$columns = array();
+			foreach ( $columns_query as $column ) {
+				if ( $column->Field !== 'id' ) { // Exclude the 'id' column (auto-increment)
+					$columns[] = $column->Field;
+				}
+			}
+
+			$columns_list = implode( ', ', $columns );
+
+			$original_row = $wpdb->get_row( $wpdb->prepare( "SELECT {$columns_list} FROM {$table} WHERE id = %d", $project_id ), ARRAY_A );
+
+			if ( $original_row ) {
+				// Modify the 'name' column to add the "clone of #id" suffix
+				$original_row['name'] .= ' ' .sanitize_text_field( sprintf( __( '(clone of #%d)', 'mpg' ), $project_id ) );
+				$original_path = $original_row['source_path'];
+				$original_row['source_path'] = '';
+				// Insert the cloned row into the table
+				$wpdb->insert( $table, $original_row );
+
+				// Get the ID of the newly inserted row
+				$new_id = $wpdb->insert_id;
+				$destination = MPG_ProjectModel::clone_dataset_file( $original_path, $new_id );
+				$wpdb->update( $table, array( 'source_path' => $destination ), array( 'id' => $new_id ) );
+				return $new_id;
+			}
+
+			return 0;
+		}
 		/**
 		 * Bulk delete
 		 *
@@ -91,6 +192,158 @@ if ( ! class_exists( 'ProjectsListManage' ) ) {
 				return $wpdb->query( "DELETE FROM $table_name WHERE id IN( $ids )" ); // phpcs:ignore
 			}
 			return false;
+		}
+
+		/**
+		 * Export project.
+		 *
+		 * @param int $project_id Project IDs.
+		 */
+		public function export_projects( $project_id = 0 ) {
+			global $wpdb;
+			if ( ! $project_id ) {
+				return 0;
+			}
+			$project_data = \MPG_ProjectModel::get_project_by_id( $project_id );
+			if ( empty( $project_data ) ) {
+				return 0;
+			}
+			$upload_files   = array();
+			$exclude_fields = array(
+				'id',
+				'urls_array',
+				'sitemap_url',
+				'created_at',
+				'updated_at',
+				'headers',
+			);
+
+			foreach ( $exclude_fields as $exclude_field ) {
+				if ( isset( $project_data->$exclude_field ) ) {
+					unset( $project_data->$exclude_field );
+				}
+			}
+
+			if ( ! empty( $project_data->template_id ) ) {
+				$project_data->template_name = get_the_title( $project_data->template_id );
+				unset( $project_data->template_id );
+			}
+
+			$source_path = false;
+			if ( ! empty( $project_data->source_path ) ) {
+				$source_path = $project_data->source_path;
+				unset( $project_data->source_path );
+			}
+
+			if ( isset( $project_data->source_type ) && 'upload_file' === $project_data->source_type ) {
+				$filename = 'mpg-export-' . time() . '.zip';
+
+				// Create a new ZIP archive.
+				$zip = new ZipArchive();
+
+				// Bail if ZIP file couldn't be created.
+				if ( $zip->open( $filename, ZipArchive::CREATE ) !== true ) {
+					return 0;
+				}
+
+				$zip->addFromString( 'mpg-export.json', wp_json_encode( $project_data, JSON_PRETTY_PRINT ) );
+				if ( $source_path ) {
+					$extension      = pathinfo( $source_path, PATHINFO_EXTENSION );
+					$local_filename = isset( $project_data->name ) ? sanitize_title( $project_data->name ) : '';
+					$local_filename = $local_filename . '.' . $extension;
+					$zip->addFile( $source_path, $local_filename );
+				}
+				$zip->close();
+				// Output ZIP data, prompting the browser to auto download as a ZIP file now.
+				header( 'Content-type: application/zip' );
+				header( 'Content-Disposition: attachment; filename=' . $filename );
+				header( 'Pragma: no-cache' );
+				header( 'Expires: 0' );
+				readfile( $filename ); // phpcs:ignore WordPress.WP.AlternativeFunctions
+				unlink( $filename ); // phpcs:ignore WordPress.WP.AlternativeFunctions.unlink_unlink
+			} elseif ( isset( $project_data->source_type ) && 'direct_link' === $project_data->source_type ) {
+				$project_data = wp_json_encode( $project_data, JSON_PRETTY_PRINT );
+				$filename     = 'mpg-export-' . time() . '.json';
+				header( 'Content-Type: application/json' );
+				header( 'Content-Disposition: attachment; filename=' . $filename );
+				header( 'Content-Length: ' . strlen( $project_data ) );
+				// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+				echo $project_data;
+			}
+			exit();
+		}
+
+		/**
+		 * Import projects.
+		 */
+		public function import_projects() {
+			global $wpdb;
+
+			// phpcs:ignore WordPress.Security.NonceVerification.Missing, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+			$mpg_import = isset( $_FILES['mpg_import'] ) ? $_FILES['mpg_import'] : array();
+			if ( empty( $mpg_import['name'] ) ) {
+				return 0;
+			}
+
+			$json_file = $mpg_import['tmp_name'];
+
+			require_once ABSPATH . 'wp-admin/includes/file.php';
+			WP_Filesystem();
+			global $wp_filesystem;
+
+			$import_data = $wp_filesystem->get_contents( $json_file );
+			$import_data = $import_data ? json_decode( $import_data, true ) : array();
+			if ( empty( $import_data ) ) {
+				wp_die( __( 'Invalid Project JSON file', 'mpg' ) );
+			}
+			$template_id = 0;
+
+			if ( ! empty( $import_data['template_name'] ) ) {
+				$template_name = str_replace( '&#8217;', "'", $import_data['template_name'] );
+				$template_id   = post_exists( $template_name, '', '', $import_data['entity_type'] );
+				if ( ! $template_id ) {
+					$template_id = wp_insert_post(
+						array(
+							'post_title'  => $template_name,
+							'post_type'   => $import_data['entity_type'],
+							'post_status' => 'publish',
+						)
+					);
+				}
+				unset( $import_data['template_name'] );
+			}
+			$import_data['template_id'] = $template_id;
+
+			$table = $wpdb->prefix . MPG_Constant::MPG_PROJECTS_TABLE;
+
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+			$wpdb->insert( $table, $import_data );
+			$new_id     = $wpdb->insert_id;
+			$urls_array = array();
+
+			if ( isset( $import_data['source_type'] ) && 'direct_link' === $import_data['source_type'] ) {
+				$original_file_url = isset( $import_data['original_file_url'] ) ? $import_data['original_file_url'] : '';
+
+				$worksheet_id      = ! empty( $import_data['worksheet_id'] ) ? $import_data['worksheet_id'] : '';
+				$original_file_url = MPG_Helper::mpg_get_direct_csv_link( $original_file_url, $worksheet_id );
+				$ext               = MPG_Helper::mpg_get_extension_by_path( $original_file_url );
+				$destination       = MPG_UPLOADS_DIR . $new_id . '.' . $ext;
+				$blog_id           = get_current_blog_id();
+				if ( is_multisite() && $blog_id > 1 ) {
+					$destination = MPG_UPLOADS_DIR . $blog_id . '/' . $new_id . '.' . $ext;
+				}
+				$download_dataset = MPG_DatasetModel::download_file( $original_file_url, $destination );
+				if ( ! $download_dataset ) {
+					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_print_r
+					do_action( 'themeisle_log_event', MPG_NAME, sprintf( 'Unable to download file = %s', print_r( $destination, true ) ), 'debug', __FILE__, __LINE__ );
+				}
+				$urls_array = MPG_ProjectModel::mpg_generate_urls_from_dataset( $destination, $import_data['url_structure'], $import_data['space_replacer'] );
+
+				$update_options_array = array( 'source_path' => $destination, 'urls_array' => wp_json_encode( $urls_array ) );
+
+				MPG_ProjectModel::mpg_update_project_by_id( $new_id, $update_options_array );
+			}
+			return 1;
 		}
 	}
 }

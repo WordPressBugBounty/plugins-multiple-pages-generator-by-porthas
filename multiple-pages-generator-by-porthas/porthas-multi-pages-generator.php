@@ -3,12 +3,12 @@
 /**
  * Plugin Name: Multiple Pages Generator by Themeisle
  * Plugin URI: https://themeisle.com/plugins/multi-pages-generator/
- * Description: Plugin for generation of multiple frontend pages from CSV data file.
+ * Description: Plugin for generation of multiple frontend pages from .csv, .xlsx, .ods, or Google Sheets.
  * WordPress Available:  yes 
  *
  * Author: Themeisle
  * Author URI: https://themeisle.com
- * Version: 3.4.8
+ * Version: 4.0.0
  */
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -16,11 +16,15 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 defined( 'MPG_BASENAME' ) || define( 'MPG_BASENAME', __FILE__ );
 defined( 'MPG_MAIN_DIR' ) || define( 'MPG_MAIN_DIR', dirname( __FILE__ ) );
+defined( 'MPG_MAIN_URL' ) || define( 'MPG_MAIN_URL', plugins_url( '', __FILE__ ));
 defined( 'MPG_UPLOADS_DIR' ) || define( 'MPG_UPLOADS_DIR', WP_CONTENT_DIR . DIRECTORY_SEPARATOR . 'mpg-uploads' . DIRECTORY_SEPARATOR );
 defined( 'MPG_UPLOADS_URL' ) || define( 'MPG_UPLOADS_URL', WP_CONTENT_URL . DIRECTORY_SEPARATOR . 'mpg-uploads' . DIRECTORY_SEPARATOR );
 defined( 'MPG_CACHE_DIR' ) || define( 'MPG_CACHE_DIR', WP_CONTENT_DIR . DIRECTORY_SEPARATOR . 'mpg-cache' . DIRECTORY_SEPARATOR );
 defined( 'MPG_CACHE_URL' ) || define( 'MPG_CACHE_URL', WP_CONTENT_URL . DIRECTORY_SEPARATOR . 'mpg-cache' . DIRECTORY_SEPARATOR );
 defined( 'MPG_NAME' ) || define( 'MPG_NAME', 'Multiple Pages Generator' );
+defined( 'MPG_BASE_IMG_PATH' ) || define( 'MPG_BASE_IMG_PATH', plugin_dir_url( __FILE__ ) . 'frontend/images' );
+defined( 'MPG_DATABASE_VERSION' ) || define( 'MPG_DATABASE_VERSION', '1.0.0' );
+defined( 'MPG_PLUGIN_VERSION' ) || define( 'MPG_PLUGIN_VERSION', '4.0.0' );
 
 // to redirect all themeisle_log_event to error log.
 if ( ! defined( 'MPG_LOCAL_DEBUG' ) ) {
@@ -36,9 +40,10 @@ if ( ! defined( 'MPG_JSON_OPTIONS' ) ) {
 }
 
 add_action( 'admin_init', function () {
-	if ( is_plugin_active( 'multi-pages-plugin/porthas-multi-pages-generator.php' )
-	     && is_plugin_active( 'multi-pages-plugin-premium/porthas-multi-pages-generator.php' ) ) {
-		deactivate_plugins( [ 'multi-pages-plugin/porthas-multi-pages-generator.php' ] );
+	if ( is_plugin_active( 'multi-pages-plugin-premium/porthas-multi-pages-generator.php' ) && (
+			is_plugin_active( 'multi-pages-plugin/porthas-multi-pages-generator.php' ) || is_plugin_active( 'multiple-pages-generator-by-porthas/porthas-multi-pages-generator.php' ) ) ) {
+		is_plugin_active( 'multi-pages-plugin/porthas-multi-pages-generator.php' ) && deactivate_plugins( [ 'multi-pages-plugin/porthas-multi-pages-generator.php' ] );
+		is_plugin_active( 'multiple-pages-generator-by-porthas/porthas-multi-pages-generator.php' ) && deactivate_plugins( [ 'multiple-pages-generator-by-porthas/porthas-multi-pages-generator.php' ] );
 		add_action( 'admin_notices', function () {
 			printf(
 				'<div class="notice notice-warning"><p><strong>%s</strong><br>%s</p><p></p></div>',
@@ -59,7 +64,11 @@ if ( ! function_exists( 'mpg_run' ) ) {
 		if ( $has_run ) {
 			return;
 		}
+		$has_run = true;
 		// ... Your plugin's main file logic ...
+		if ( is_readable( MPG_MAIN_DIR . '/pro/load.php' ) ) {
+			require_once MPG_MAIN_DIR . '/pro/load.php';
+		}
 		require_once 'controllers/CoreController.php';
 		require_once 'controllers/HookController.php';
 		require_once 'controllers/MenuController.php';
@@ -83,11 +92,30 @@ if ( ! function_exists( 'mpg_run' ) ) {
 			'multiple_pages_generator_by_porthas_about_us_metadata',
 			function() {
 				return array(
-					'logo'     => plugin_dir_url( __FILE__ ) . 'frontend/images/icon-256x256.png',
-					'location' => 'mpg-dataset-library',
+					'logo'     => MPG_BASE_IMG_PATH . '/icon-256x256.png',
+					'location' => 'mpg-project-builder',
 				);
 			}
 		);
+
+		add_filter(
+			'themesle_sdk_namespace_' . md5( MPG_BASENAME ),
+			function () {
+				return 'mpg';
+			}
+		);
+
+		$option_name = basename( dirname( MPG_BASENAME ) );
+		$option_name = str_replace( '-', '_', strtolower( trim( $option_name ) ) );
+
+		add_filter(
+			$option_name . '_lc_no_valid_string',
+			function ( $message ) {
+				return str_replace( '<a href="%s">', '<a href="' . admin_url( 'admin.php?page=mpg-advanced-settings' ) . '">', $message );
+			}
+		);
+
+		add_filter( $option_name . '_hide_license_field', '__return_true' );
 
 		// Filter screen option value.
 		add_filter(
@@ -103,9 +131,6 @@ if ( ! function_exists( 'mpg_run' ) ) {
 		$vendor_file = trailingslashit( plugin_dir_path( __FILE__ ) ) . 'vendor/autoload.php';
 		if ( is_readable( $vendor_file ) ) {
 			require_once $vendor_file;
-		}
-		if ( ! $has_run ) {
-			$has_run = true;
 		}
 
 		if( ! defined( 'MPG_DISABLE_TELEMETRY' ) ) {

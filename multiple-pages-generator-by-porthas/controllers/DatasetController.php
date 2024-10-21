@@ -122,6 +122,7 @@ class MPG_DatasetController
             $insert_data['url_structure'] = $url_structure;
             $insert_data['urls_array']     = json_encode($urls_array);
             $insert_data['space_replacer'] = $space_replacer;
+            $insert_data['exclude_in_robots'] = 1;
 
 
             // Если надо - создаем карту сайта
@@ -177,22 +178,7 @@ class MPG_DatasetController
                 $path_to_dataset = MPG_UPLOADS_DIR . $path_to_dataset;
             }
 
-            $ext = MPG_Helper::mpg_get_extension_by_path($path_to_dataset);
-
-            $reader = MPG_Helper::mpg_get_spout_reader_by_extension($ext);
-            if ( ! is_readable( $path_to_dataset ) ) {
-                $path_to_dataset = MPG_UPLOADS_DIR . basename( $path_to_dataset );
-            }
-            $reader->open($path_to_dataset);
-
-            $headers = [];
-            foreach ($reader->getSheetIterator() as $sheet) {
-                foreach ($sheet->getRowIterator() as $row) {
-                    $row = $row->toArray();
-                    $headers = $row; // Берем первый ряд и выходим
-                    break 2;
-                }
-            }
+	        $headers = MPG_DatasetModel::read_dataset( $path_to_dataset, true );
         }
 
         foreach ($headers as $key => $header) {
@@ -214,43 +200,22 @@ class MPG_DatasetController
     }
 
     // возвращает массив самих данных.
-    public static function get_rows($path_to_dataset, $limit)
-    {
-        if ( false === strpos( $path_to_dataset, 'wp-content' ) ) {
-            $path_to_dataset = MPG_UPLOADS_DIR . $path_to_dataset;
-        }
-        $ext = MPG_Helper::mpg_get_extension_by_path($path_to_dataset);
-        $reader = MPG_Helper::mpg_get_spout_reader_by_extension($ext);
-        if ( ! is_readable( $path_to_dataset ) ) {
-            $path_to_dataset = MPG_UPLOADS_DIR . basename( $path_to_dataset );
-        }
-
-        if ( is_readable( $path_to_dataset ) ) {
-            $reader->open($path_to_dataset);
-
-            $dataset_array = [];
-
-            foreach ($reader->getSheetIterator() as $sheet) {
-                foreach ($sheet->getRowIterator() as $row) {
-                    $row = $row->toArray();
-                    if ($row[0] !== NULL) {
-                        $dataset_array[] = $row;
-                    }
-                }
-            }
-
-            $reader->close();
-        }
+	public static function get_rows( $path_to_dataset, $limit ) {
+		if ( false === strpos( $path_to_dataset, 'wp-content' ) ) {
+			$path_to_dataset = MPG_UPLOADS_DIR . $path_to_dataset;
+		}
 
 
-        // Срезаем N элементов с датасета, пропуская хедер.
-        $limit =  count($dataset_array) >= 5 ? $limit : count($dataset_array) - 1;
+		$dataset_array = MPG_DatasetModel::read_dataset( $path_to_dataset );
 
-        return [
-            'rows' => array_slice($dataset_array, 1, $limit),
-            'total_rows' => count($dataset_array)
-        ];
-    }
+		// Срезаем N элементов с датасета, пропуская хедер.
+		$limit = count( $dataset_array ) >= 5 ? $limit : count( $dataset_array ) - 1;
+
+		return [
+			'rows'       => array_slice( $dataset_array, 1, $limit ),
+			'total_rows' => count( $dataset_array )
+		];
+	}
 
     // Возвращает данные для модалки с превью датасета.
     public static function mpg_get_data_for_preview()
@@ -267,23 +232,7 @@ class MPG_DatasetController
 
             $path_to_dataset = MPG_DatasetModel::get_dataset_path_by_project_id($project_id);
 
-            $ext = MPG_Helper::mpg_get_extension_by_path($path_to_dataset);
-            $reader = MPG_Helper::mpg_get_spout_reader_by_extension($ext);
-            if ( ! is_readable( $path_to_dataset ) ) {
-                $path_to_dataset = MPG_UPLOADS_DIR . basename( $path_to_dataset );
-            }
-            $reader->open($path_to_dataset);
-
-
-            $dataset_array = [];
-            foreach ($reader->getSheetIterator() as $sheet) {
-                foreach ($sheet->getRowIterator() as $row) {
-                    $row = $row->toArray();
-                    if ($row[0] !== NULL) {
-                        $dataset_array[] = $row;
-                    }
-                }
-            }
+	        $dataset_array = MPG_DatasetModel::read_dataset( $path_to_dataset );
 
             $data = [];
             $search_results_length = 0;
@@ -313,7 +262,7 @@ class MPG_DatasetController
                 'draw' => $draw,
                 'recordsTotal' => count($dataset_array),
                 'recordsFiltered' => $search_value ? $search_results_length : count($dataset_array),
-                'data' => $data,
+                'data' => map_deep( $data, 'wp_strip_all_tags' ),
                 'headers' =>  MPG_DatasetController::get_headers($path_to_dataset, $dataset_array[0])
             ]);
         } catch (Exception $e) {
@@ -327,70 +276,62 @@ class MPG_DatasetController
     }
 
 
-    public static function mpg_preview_all_urls()
-    {
-        try {
+	public static function mpg_preview_all_urls() {
+		try {
 
-            $project_id = (int) $_GET['projectId'];
+			$project_id = (int) $_GET['projectId'];
 
-            $draw = isset($_POST['draw']) ? (int) $_POST['draw'] : 0;
-            $start = isset($_POST['start']) ? (int) $_POST['start'] : 1;
-            $length = isset($_POST['length']) ? (int) $_POST['length'] : 10;
-            $search_value = isset($_POST['search']['value']) ? sanitize_text_field($_POST['search']['value']) : null;
+			$draw         = isset( $_POST['draw'] ) ? (int) $_POST['draw'] : 0;
+			$start        = isset( $_POST['start'] ) ? (int) $_POST['start'] : 1;
+			$length       = isset( $_POST['length'] ) ? (int) $_POST['length'] : 10;
+			$search_value = isset( $_POST['search']['value'] ) ? sanitize_text_field( $_POST['search']['value'] ) : '';
 
-            $project = MPG_ProjectModel::mpg_get_project_by_id($project_id);
+			$project = MPG_ProjectModel::mpg_get_project_by_id( $project_id );
 
-            if (!$project[0]) {
-                throw new Exception(__('Can\'t get project', 'mpg'));
-            }
+			if ( ! $project[0] ) {
+				throw new Exception( __( 'Can\'t get project', 'mpg' ) );
+			}
 
-            $urls_array = $project[0]->urls_array ? json_decode($project[0]->urls_array) : [];
+			$urls_array    = $project[0]->urls_array ? json_decode( $project[0]->urls_array ) : [];
+			$data          = [];
+			$search_string = trim( strtolower( $search_value ) );
+			$filtered      = 0;
+			$page_results  = 0;
+			foreach ( $urls_array as $index => $row ) {
+				$filtered ++;
+				if ( $index + 1 < $start ) {
+					continue;
+				}
+				if ( ! empty( $search_string ) && ! str_contains( $row, $search_string ) ) {
+					$filtered --;
+					continue;
+				}
+				if ( $project[0]->url_mode === 'without-trailing-slash' ) {
+					$row = rtrim( $row, '/' );
+				}
+				if ( $page_results > $length ) {
+					continue;
+				}
+				$data[] = [ '<a target="_blank" href="' . MPG_CoreModel::path_to_url( $row ) . '">' . MPG_CoreModel::path_to_url( $row ) . '</a>' ];
+				$page_results ++;
+			}
 
-            $data = [];
-            $search_results_length = 0;
-            $site_url = function_exists( 'icl_get_home_url' ) ? icl_get_home_url() : home_url();
-            $site_url = rtrim( $site_url, '/' );
 
-            if ($search_value) {
-                $search_string = trim(strtolower($search_value));
+			echo json_encode( [
+				'data'            => $data,
+				'draw'            => $draw,
+				'recordsTotal'    => count( $urls_array ),
+				'recordsFiltered' => $filtered
+			] );
+		} catch ( Exception $e ) {
 
-                foreach ($urls_array as $row) {
-                    if (strpos($row, $search_string) !== false) {
-                        if($project[0]->url_mode === 'without-trailing-slash'){
-                            $row = rtrim($row, '/');
-                        }
-                        $data[] = ['<a target="_blank" href="' . $site_url .  $row . '">' . $site_url .  $row . '</a>'];
-                    }
-                }
+			do_action( 'themeisle_log_event', MPG_NAME, $e->getMessage(), 'debug', __FILE__, __LINE__ );
 
-                $search_results_length = count($data);
-                $data = array_slice($data, $start, $length);
-            } else {
-                $urls_array = array_map(function ($url) use ($site_url, $project) {
-                    if($project[0]->url_mode === 'without-trailing-slash'){
-                        $url = rtrim($url, '/');
-                    }
-                    return ['<a target="_blank" href="' . $site_url .  $url . '">' . $site_url .  $url . '</a>'];
-                }, $urls_array);
+			echo json_encode( [ 'success' => false, 'error' => $e->getMessage() ] );
+		}
 
-                $data = array_slice($urls_array, $start, $length);
-            }
-
-            echo json_encode([
-                'data' => $data,
-                'draw' => $draw,
-                'recordsTotal' => count($urls_array),
-                'recordsFiltered' => $search_value ? $search_results_length : count($urls_array)
-            ]);
-        } catch (Exception $e) {
-
-            do_action( 'themeisle_log_event', MPG_NAME, $e->getMessage(), 'debug', __FILE__, __LINE__ );
-
-            echo json_encode(['success' => false, 'error' => $e->getMessage()]);
-        }
-
-        wp_die();
-    }
+		wp_die();
+	}
 
 
 
@@ -470,28 +411,12 @@ class MPG_DatasetController
             }
 
             $choosed_culumn_number = (int) $_POST['choosedColumnNumber'];
-
-            $ext = MPG_Helper::mpg_get_extension_by_path($path_to_dataset);
-            $reader = MPG_Helper::mpg_get_spout_reader_by_extension($ext);
-            if ( ! is_readable( $path_to_dataset ) ) {
-                $path_to_dataset = MPG_UPLOADS_DIR . basename( $path_to_dataset );
-            }
-            $reader->open($path_to_dataset);
-
-            $storage = [];
-            foreach ($reader->getSheetIterator() as $sheet) {
-                foreach ($sheet->getRowIterator() as $row) {
-                    $row = $row->toArray();
-                    if ($row[0] !== NULL) {
-                        $storage[] = $row[$choosed_culumn_number];
-                    }
-                }
-            }
-
-            $storage = array_unique($storage);
-
+			$dataset = MPG_DatasetModel::read_dataset( $path_to_dataset );
+	        $storage = array_column( $dataset,$choosed_culumn_number );
+	        $storage = array_unique( $storage );
+	        $storage = array_filter($storage);
             array_shift($storage);
-
+			array_unshift($storage, ""); //add an empty value to the beginning of the array for users to use it.
             echo json_encode([
                 'success' => true,
                 'data' => $storage

@@ -55,4 +55,35 @@ jQuery(document).on('click', '.fix-permalink-structure', function (e) {
             toastr.success(permalinkData.data, translate['Success']);
         }
     });
-})
+});
+
+jQuery(document).on('submit', 'form#subscribe-form', function (e) {
+    e.preventDefault();
+    var _this = jQuery(this);
+    _this
+    .addClass('sent');
+
+    var mainElement = jQuery(this).parents('.mpg-free-seo-guide');
+
+    jQuery.post(
+        ajaxurl,
+        jQuery(this).serialize(),
+        function(response) {
+            if ( response.status ) {
+                mainElement?.find('.mpg-title')?.text( mainElement.find('.mpg-title').data('success_title') );
+                mainElement?.find('.mpg-form-message')?.text( mainElement.find('.mpg-form-message').data('success_message') );
+                mainElement?.find('.mpg-image img:not(.d-none)')?.addClass('d-none').next('img').removeClass('d-none');
+            } else {
+                alert( response.message );
+                _this
+                .removeClass('sent');
+            }
+        },
+        'json'
+    )
+    .fail(function( xhr ){
+        console.log(xhr);
+        _this
+        .removeClass('sent');
+    })
+});

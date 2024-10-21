@@ -205,9 +205,20 @@ const english = {
         'Log was cleared',
 
     'MPG tables structure updated successfully':
-        'MPG tables structure updated successfully'
+        'MPG tables structure updated successfully',
 
+     // Button text
+    'Save':
+        'Save',
 
+    'Publish':
+        'Publish',
+
+    'Unpublish':
+        'Unpublish',
+
+    'Save draft':
+        'Save draft'
 };
 
 export { english };

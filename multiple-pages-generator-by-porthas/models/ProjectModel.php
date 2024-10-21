@@ -6,6 +6,31 @@ require_once(realpath(__DIR__) . '/../helpers/Constant.php');
 
 class MPG_ProjectModel
 {
+	/**
+	 * @var int $current_project_id The ID of the current project.
+	 */
+	private static int $current_project_id = 0;
+
+	/**
+	 * Get the current project ID.
+	 *
+	 * @return int The ID of the current project.
+	 */
+	public static function get_current_project_id() {
+		return self::$current_project_id;
+	}
+
+	/**
+	 * Set the current project ID.
+	 *
+	 * @param int $project_id The ID of the project to set as current.
+	 * @return int The newly set current project ID.
+	 */
+	public static function set_current_project_id($project_id) {
+		return self::$current_project_id = $project_id;
+	}
+
+
     public static function mpg_create_database_tables($blog_index)
     {
         try {
@@ -155,6 +180,10 @@ class MPG_ProjectModel
             if (empty($is_participate_in_search_column_exist)) {
                 $wpdb->query("ALTER TABLE `" . $mpg_projects_table . "` ADD `participate_in_search` BOOLEAN DEFAULT FALSE  AFTER `exclude_in_robots`");
             }
+	        $update_modified_on_sync_exists = $wpdb->get_results( "SELECT *  FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = '" . DB_NAME . "' AND table_name = '" . $mpg_projects_table . "' AND column_name = 'update_modified_on_sync'" );
+	        if ( empty( $update_modified_on_sync_exists ) ) {
+		        $wpdb->query( "ALTER TABLE `" . $mpg_projects_table . "` ADD `update_modified_on_sync` varchar(10) DEFAULT FALSE  AFTER `exclude_in_robots`" );
+	        }
 
 
             $is_logs_table_have_id_column = $wpdb->get_results("SELECT * FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = '" . DB_NAME . "' AND table_name = '" . $mpg_logs_table . "' AND column_name = 'id'");
@@ -163,6 +192,7 @@ class MPG_ProjectModel
                 $wpdb->query("ALTER TABLE  `" . $mpg_logs_table . "`  DROP PRIMARY KEY;");
                 $wpdb->query("ALTER TABLE  `" . $mpg_logs_table . "` ADD `id` INT(10) NOT NULL AUTO_INCREMENT FIRST, ADD PRIMARY KEY (`id`);");
             }
+			update_option('mpg_database_version', MPG_DATABASE_VERSION);
         } catch (Exception $e) {
 
             // В WprdPress ошибка вида "Wprdpress database error" - не является throwable, т.е она не прырывает ход выполнения скрипта, а просто выводится как echo, и может ломать json ответ.
@@ -296,9 +326,9 @@ class MPG_ProjectModel
 
                 $ext = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
 
-                if (!in_array($ext, ['csv', 'xls', 'xlsx', 'ods'])) {
-                    throw __('Unsupported file extension', 'mpg');
-                }
+	            if ( ! in_array( $ext, [ 'csv', 'xls', 'xlsx', 'ods' ] ) ) {
+		            throw new Exception( __( 'Unsupported file extension', 'mpg' ) );
+	            }
 
                 $destination = realpath(__DIR__ . '/../temp/') . '/unlinked_file.' . $ext;
 
@@ -312,7 +342,7 @@ class MPG_ProjectModel
                     wp_die();
                 } else {
                     do_action( 'themeisle_log_event', MPG_NAME, __('Error while uploading file', 'mpg'), 'debug', __FILE__, __LINE__ );
-                    throw __('Error while uploading file', 'mpg');
+	                throw new Exception( __( 'Error while uploading file', 'mpg' ) );
                 }
             }
         } catch (Exception $e) {
@@ -353,36 +383,7 @@ class MPG_ProjectModel
             $dataset_path = MPG_UPLOADS_DIR . $dataset_path;
         }
 
-        $ext = MPG_Helper::mpg_get_extension_by_path($dataset_path);
-
-        $reader = MPG_Helper::mpg_get_spout_reader_by_extension($ext);
-
-        $dataset_array = [];
-
-        try {
-
-            if ( ! is_readable( $dataset_path ) ) {
-                $dataset_path = MPG_UPLOADS_DIR . basename( $dataset_path );
-            }
-            $reader->open($dataset_path);
-
-            foreach ($reader->getSheetIterator() as $sheet) {
-                foreach ($sheet->getRowIterator() as $row) {
-                    $row = $row->toArray();
-                    if ($row[0] !== NULL) {
-                        $dataset_array[] = $row;
-                    }
-                }
-            break; // читаем только первую книгу
-            $reader->close();
-        }
-        } catch( Exception $e ) {
-            return array(
-                'dataset_array' => array(),
-                'urls_array' => array(),
-            );
-        }
-
+	    $dataset_array = MPG_DatasetModel::read_dataset( $dataset_path );
 
         // 1. Берем первый ряд, тоесть тот что содержит заголовки
         $headers = ! empty( $dataset_array[0] ) ? $dataset_array[0] : array();
@@ -465,6 +466,21 @@ class MPG_ProjectModel
     }
 
 
+	/**
+	 * Alternative to mpg_get_project_by_id which return just the project.
+	 *
+	 * TODO: Remove usage mpg_get_project_by_id and use this function instead.
+	 *
+	 * @param $project_id
+	 *
+	 * @return false|mixed
+	 * @throws Exception
+	 */
+	public static function get_project_by_id( $project_id ) {
+		$project_data = self::mpg_get_project_by_id( $project_id, true );
+
+		return empty( $project_data ) ? false : reset( $project_data );
+	}
     public static function mpg_get_project_by_id($project_id, $force = false)
     {
 
@@ -492,13 +508,18 @@ class MPG_ProjectModel
             throw new Exception(__('Can\'t getproject by id. Details:', 'mpg') . $e->getMessage());
         }
     }
+	public static function update_last_check($project_id){
 
+		global $wpdb;
+		$wpdb->update( $wpdb->prefix . MPG_Constant::MPG_PROJECTS_TABLE, [ 'updated_at' => time() ], [ 'id' => $project_id ] );
+		$key_name = wp_hash( 'project_id_' . $project_id );
+		delete_transient( $key_name );
+	}
 
     public static function mpg_update_project_by_id($project_id, $fields_array, $delete_dataset = false )
     {
 
         global $wpdb;
-
         try {
             if ( empty( $fields_array['worksheet_id'] ) ) {
                 unset( $fields_array['worksheet_id'] );
@@ -511,8 +532,7 @@ class MPG_ProjectModel
 	        delete_transient( 'project_id_' . $project_id );
             delete_transient( wp_hash( 'project_id_' . $project_id ) );
             if ( $delete_dataset ) {
-                delete_transient( 'dataset_array_' . $project_id );
-                delete_transient( wp_hash( 'dataset_array_' . $project_id ) );
+	            MPG_DatasetModel::delete_cache( $project_id );
             }
             
             // Save to excluded projects in a 'wp_options' for third-party plugins integration.
@@ -588,13 +608,28 @@ class MPG_ProjectModel
         }
     }
 
-    public static function mpg_copy_dataset_file($source_path)
+	/**
+	 * Clone an existing dataset file to a new project.
+	 *
+	 * @param $source_path
+	 * @param $project_id
+	 *
+	 * @return string
+	 */
+    public static function clone_dataset_file($source_path, $project_id)
     {
+	    if ( ! str_contains( $source_path, MPG_UPLOADS_DIR ) ) {
+		    $source_path = MPG_UPLOADS_DIR . $source_path;
+	    }
 
         $ext = strtolower(pathinfo($source_path, PATHINFO_EXTENSION));
 
-        $destination = MPG_UPLOADS_DIR . rand(1000000, 9999999) . '.' . $ext;
 
+        $destination = MPG_UPLOADS_DIR . $project_id . '.' . $ext;
+	    $blog_id = get_current_blog_id();
+	    if ( is_multisite() && $blog_id > 1 ) {
+		    $destination = MPG_UPLOADS_DIR . $blog_id . '/' . $project_id . '.' . $ext;
+	    }
         copy($source_path, $destination);
 
         return $destination;
@@ -673,7 +708,7 @@ class MPG_ProjectModel
 
     public static function mpg_remove_sitemap_from_robots($sitemap_url)
     {
-        $handle = fopen(ABSPATH . '/robots.txt', 'r');
+        $handle = fopen(ABSPATH . 'robots.txt', 'r');
 
         if ($handle) {
 
@@ -686,7 +721,7 @@ class MPG_ProjectModel
             }
             $file_content = implode("\n", $robots_string);
 
-            file_put_contents(ABSPATH . '/robots.txt', $file_content);
+            file_put_contents(ABSPATH . 'robots.txt', $file_content);
         }
     }
 
@@ -715,20 +750,6 @@ class MPG_ProjectModel
         return $back_to_allowed_chars;
     }
 
-
-    public static function mpg_get_lastmod_date($project_id)
-    {
-
-        $project = MPG_ProjectModel::mpg_get_project_by_id($project_id);
-        $template_id = isset($project[0]) ? $project[0]->template_id : null;
-
-        if ($template_id) {
-            return get_the_modified_date('Y-m-d', $template_id);
-        }
-
-        // Если нет (по какой-то причине) даты когда был изменен шаблон, то веернем сегодняшнюю дату.
-        return date('Y-m-d');
-    }
 
     public static function mpg_get_all_templates_id()
     {
@@ -767,6 +788,66 @@ class MPG_ProjectModel
         return $where;
     }
 
+	/**
+	 * Check if column exists in the project headers.
+	 *
+	 * @param $headers
+	 * @param $column
+	 *
+	 * @return false|int|string
+	 */
+	public static function headers_have_column( $headers, $column ) {
+		$column       = str_replace( [ '{{', '}}' ], '', $column );
+		$headers       = \MPG_ProjectModel::normalize_headers( $headers );
+		$column       = \MPG_ProjectModel::normalize_headers( [ $column ] )[0];
+		$column_index = array_search( $column, $headers );
+		if ( $column_index === false && str_starts_with( $column, 'mpg_' ) ) {
+			$column       = substr( $column, 4 );
+			$column_index = array_search( $column, $headers );
+		}
+
+		return $column_index;
+	}
+	/**
+	 * Normalize the headers.
+	 *
+	 * @param array $headers The headers array.
+	 *
+	 * @return array
+	 */
+	public static function normalize_headers( array $headers): array {
+		return array_map(function($header_value){
+			$header = strtolower( $header_value );
+			return str_replace( ' ', '_', $header );
+		},$headers);
+	}
+	/**
+	 * Returns the headers from the project.
+	 *
+	 * If the project don't have the headers then it will return the first row from the dataset.
+	 *
+	 * @param object $project The project object.
+	 *
+	 * return array
+	 *
+	 * @throws Exception
+	 */
+	public static function get_headers_from_project( $project ): array {
+
+		if ( isset( $project->headers ) && ! empty( $project->headers ) ) {
+			$json_array = json_decode( $project->headers, true );
+			if ( is_array( $json_array ) ) {
+				return $json_array;
+			}
+		}
+		// if the project is missing the headers, we can use the first row from the dataset.
+		$dataset_array = MPG_Helper::mpg_get_dataset_array( $project );
+		if ( ! empty( $dataset_array ) && isset( $dataset_array[0] ) && is_array( $dataset_array[0] ) ) {
+			return $dataset_array[0];
+		}
+		throw new Exception( 'Headers are missing in the project' );
+	}
+
     public static function mpg_get_project_ids_by_where( $where = '' )
     {
 
@@ -785,5 +866,78 @@ class MPG_ProjectModel
             throw new Exception(__('Can\'t get all projects Details:', 'mpg') . $e->getMessage());
         }
     }
+    /**
+     * Get the projects from the database.
+     *
+     * @param int $limit The number of projects to get.
+     * @return array
+     */
+    public static function get_projects($limit = 1000):array{
+        global $wpdb;
+        $table = $wpdb->prefix . MPG_Constant::MPG_PROJECTS_TABLE;
+        $query = $wpdb->prepare("SELECT * FROM $table ORDER BY id DESC LIMIT %d", $limit);
+        $results = $wpdb->get_results($query);
+        return is_array($results) ? $results : [];
+    }
+	/**
+	 * Get the project ID by template ID.
+	 *
+	 * This function retrieves the project ID associated with a given template ID.
+	 *
+	 * @param int $template_id The ID of the template.
+	 * @return int|false The project ID if found, false otherwise.
+	 */
+	public static function get_project_by_template_id( $template_id ): int {
+		global $wpdb;
+		$project_id = $wpdb->get_var( $wpdb->prepare( "SELECT id FROM {$wpdb->prefix}" . MPG_Constant::MPG_PROJECTS_TABLE . ' WHERE `template_id` = %d limit 1', $template_id ) );
+		if ( ! $project_id ) {
+			return 0;
+		}
+
+		return $project_id;
+	}
+
+	/**
+	 * Get the modified date for virtual pages.
+	 *
+	 * This function retrieves the modified date for virtual pages based on the project's settings.
+	 * It checks the `update_modified_on_sync` property of the project to determine the source of the modified date.
+	 *
+	 * @param object $project The project object.
+	 * @return int|false The modified date as a timestamp if found, false otherwise.
+	 */
+	public static function get_vpage_modified_date( $project ) {
+		if ( ! mpg_app()->is_license_of_type( 2 ) ) {
+			return false;
+		}
+		// Check if the project has the 'update_modified_on_sync' property set
+		if ( ! isset( $project->update_modified_on_sync ) ) {
+			return false;
+		}
+
+		// If the 'update_modified_on_sync' property is set to 'onsync', return the project's updated_at timestamp
+		if ( $project->update_modified_on_sync === 'onsync' ) {
+			return MPG_Validators::is_timestamp( $project->updated_at ) ? $project->updated_at : false;
+		}
+
+		// If the 'update_modified_on_sync' property is set to 'column', retrieve the modified date from the dataset
+		if ( $project->update_modified_on_sync === 'column' ) {
+			$headers = MPG_ProjectModel::get_headers_from_project( $project );
+
+			// Check if the 'modified_date' column exists in the headers
+			$column_index = \MPG_ProjectModel::headers_have_column( $headers, 'modified_date' );
+			if ( $column_index === false ) {
+				return false;
+			}
+
+			// Get the current data row for the project
+			$datarow = MPG_CoreModel::get_current_datarow( $project->id );
+
+			// Return the modified date if it is a valid timestamp, otherwise try to convert it to a timestamp
+			return MPG_Validators::is_timestamp( $datarow[ $column_index ] ) ? $datarow[ $column_index ] : ( strtotime( $datarow[ $column_index ] ) === false ? false : strtotime( $datarow[ $column_index ] ) );
+		}
+
+		return false;
+	}
 
 }

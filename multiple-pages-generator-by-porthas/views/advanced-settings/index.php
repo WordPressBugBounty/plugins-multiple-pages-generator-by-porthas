@@ -6,6 +6,8 @@
                 <h2><?php _e('Advanced settings', 'mpg'); ?></h2>
             </div>
 
+            <?php do_action( 'mpg_advanced_setting_before' ); ?>
+
             <section>
                 <!-- Update database tables structure -->
                 <p class="mpg-subtitle"><?php _e('Update tables structure', 'mpg'); ?></p>

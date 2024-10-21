@@ -4,7 +4,7 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 
 class MPG_Constant{
 
-   const DATASET_SPREADSHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/1RPlT99_ATHpHKfkFS6TwuXKb6SOahOzG/export?format=xlsx&id=1RPlT99_ATHpHKfkFS6TwuXKb6SOahOzG';
+   const DATASET_SPREADSHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/10usA3azffwWwFJurjIFMJm3g3SCSt8Ba/export?format=xlsx&id=10usA3azffwWwFJurjIFMJm3g3SCSt8Ba';
 
    const MPG_PROJECTS_TABLE = 'mpg_projects';
    const MPG_SPINTAX_TABLE  = 'mpg_spintax';

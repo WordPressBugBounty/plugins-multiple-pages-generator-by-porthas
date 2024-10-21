@@ -20,7 +20,10 @@ jQuery('a[href="#logs"]').on('click', function () {
         ],
         serverSide: true,
         searching: false,
-        retrieve: true
+        retrieve: true,
+        language: {
+            "lengthMenu": "Show _MENU_ entries",
+        }
     }
 
     jQuery('#mpg_logs_table').DataTable(initObject);

@@ -8,36 +8,45 @@ require_once(realpath(__DIR__) . '/../helpers/Validators.php');
 
 class MPG_CoreController
 {
-
-    public static $href_regexp = '/href=\\\\?".*?\\\\?"/m';
-
-
     public static function core($redirect_rules, $post, $template_post_id, $path)
     {
         global  $wp_query;
 
         // do changes in title and content
         $project_id = $redirect_rules['project_id'];
-
+	    MPG_ProjectModel::set_current_project_id( $project_id );
         add_action('elementor/frontend/element/before_render', function ($post) use ($project_id) {
             return MPG_CoreModel::mpg_shortcode_replacer($post->post_content, $project_id);
         });
-
-        // Решает проблему с соц. плагинами. (правильные ссылки на страницы без шорткодов)
-        $post->post_title = MPG_CoreModel::mpg_shortcode_replacer($post->post_title, $project_id);
-        $post->post_content = MPG_CoreModel::mpg_shortcode_replacer($post->post_content, $project_id);
+        add_filter('elementor/frontend/the_content', function ($content) use ($project_id) {
+            $content = preg_replace( '/<a(.*?)href="(.*?mpg_(.*?))"(.*?)>/', '<a$1href="{{mpg_$3}}"$4>', $content );
+            $content = MPG_CoreModel::mpg_shortcode_replacer( $content, $project_id );
+            return $content;
+        });
 
         $project = MPG_ProjectModel::mpg_get_project_by_id($project_id);
-        $urls_array = ! empty( $project[0] ) ? $project[0]->urls_array : array();
-        $urls_array = json_decode( $urls_array );
-        $path       = MPG_Helper::mpg_get_request_uri();
+	    $post_modified = MPG_ProjectModel::get_vpage_modified_date( $project[0] );
+	    if ( $post_modified !== false ) {
+		    $post_date = $post->post_date;
+		    //We choose which is the lastest one between those two, to avoid changing the date of the post to something older vs the current one.
+		    if ( strtotime( $post_date ) < $post_modified ) {
+			    $post->post_modified     = date( 'Y-m-d H:i:s', $post_modified );
+			    $post->post_modified_gmt = gmdate( 'Y-m-d H:i:s', $post_modified );
 
-        $http_code = 404;
-        $is_404    = true;
-        if ( in_array( $path, $urls_array, true ) ) {
-            $http_code = 200;
-            $is_404    = false;
-        }
+			    add_filter( 'get_the_modified_date', function ( $the_time, $format, $current_post ) use ( $post_modified, $post ) {
+				    if ( $current_post->ID !== $post->ID ) {
+					    return $the_time;
+				    }
+
+				    return date( ! empty( $format ) ? $format : get_option( 'date_format' ), $post_modified );
+			    }, 99, 3 );
+			    wp_cache_replace( $post->ID, $post, 'posts' );
+		    }
+	    }
+
+	    // Решает проблему с соц. плагинами. (правильные ссылки на страницы без шорткодов)
+	    $post->post_title = MPG_CoreModel::mpg_shortcode_replacer($post->post_title, $project_id);
+	    $post->post_content = MPG_CoreModel::mpg_shortcode_replacer($post->post_content, $project_id);
         // Override canonical URL.
         if ( apply_filters( 'mpg_enable_canonical_url_generate', true ) ) {
             remove_action( 'wp_head', 'ampforwp_home_archive_rel_canonical', 1 );
@@ -60,17 +69,20 @@ class MPG_CoreController
 		*
 		* @param mixed $html thumbnail image html.
 		*/
-		add_filter(
-			'post_thumbnail_html',
-			function ( $html ) use ( $thumbnail_info ) {
-				if ( ! empty( $thumbnail_info ) ) {
-					$html = $thumbnail_info;
-				}
-				return $html;
-			},
-			10,
-			2
-		);
+	    add_filter(
+		    'post_thumbnail_html',
+		    function ( $html, $post_id, $post_thumbnail_id, $size, $attr ) use ( $thumbnail_info ) {
+
+			    if ( ! empty( $thumbnail_info ) ) {
+				    $html = self::apply_featured_attributes( $thumbnail_info, $post_id, $post_thumbnail_id, $size, $attr ) ;
+
+			    }
+
+			    return $html;
+		    },
+		    10,
+		    5
+	    );
 
 		/**
 		* Replace thumbnail image.
@@ -145,19 +157,28 @@ class MPG_CoreController
 
         $permalink = get_permalink($template_post_id);
 
-        add_filter('wpse_link', function ($url) use ($permalink) {
+        add_filter('wpse_link', function ($url, $post_id) use ($permalink, $template_post_id) {
             global $wp;
-            if ($url === $permalink) {
+	        if ( defined( 'POLYLANG_VERSION' ) && $template_post_id !== $post_id ) {
+				// We check if the permalink belongs is a translated version of the template.
+		        $translations = pll_get_post_translations( $post_id );
+		        if ( in_array( $template_post_id, $translations ) ) {
+			        $language_to_switch = array_search( $post_id, $translations );
+
+			        return PLL()->links_model->switch_language_in_link( home_url( $wp->request ), PLL()->model->get_language( $language_to_switch ) );
+		        }
+	        }
+            if ($url === $permalink ) {
                 return home_url($wp->request);
             } else {
                 return  $url;
             }
         }, 1, 4);
 
-        status_header( $http_code );
+        status_header( 200 );
         // set important settings for page query
         $wp_query->queried_object = $post;
-        $wp_query->is_404 = $is_404;
+        $wp_query->is_404 = false;
         $wp_query->queried_object_id = $post->ID;
         $wp_query->post_count = 1;
         $wp_query->current_post = -1;
@@ -173,6 +194,7 @@ class MPG_CoreController
             $wp_query->is_page = true;
             $wp_query->is_singular = true;
         }
+	    defined( 'MPG_IS_SINGLE' ) || define( 'MPG_IS_SINGLE', true );
     }
 
 
@@ -227,35 +249,33 @@ class MPG_CoreController
 
         try {
 
-            $content = isset($_POST['content']) ? $_POST['content'] : null;
+	        $content    = isset( $_POST['content'] ) ? $_POST['content'] : '';
+	        $project_id = isset( $_POST['projectId'] ) ? sanitize_text_field( $_POST['projectId'] ) : '';
+	        $where      = isset( $_POST['where'] ) ? sanitize_text_field( $_POST['where'] ) : '';
+	        $operator   = isset( $_POST['operator'] ) ? sanitize_text_field( $_POST['operator'] ) : \MPG\Display\Base_Display::OPERATOR_HAS_VALUE;
 
-            $project_id = isset($_POST['projectId']) ? sanitize_text_field($_POST['projectId']) : null;
-            $where = isset($_POST['where']) ? sanitize_text_field($_POST['where']) : null;
-            $operator = isset($_POST['operator']) ? sanitize_text_field($_POST['operator']) : null;
+	        $direction = isset( $_POST['direction'] ) ? sanitize_text_field( $_POST['direction'] ) : '';
+	        $order_by  = isset( $_POST['orderBy'] ) ? sanitize_text_field( $_POST['orderBy'] ) : '';
 
-            $direction = isset($_POST['direction']) ? sanitize_text_field($_POST['direction']) : null;
-            $order_by = isset($_POST['orderBy']) ? sanitize_text_field($_POST['orderBy']) : null;
+	        $limit       = isset( $_POST['limit'] ) ? (int) $_POST['limit']  : 4; // тут 4, т.к. count(arr) начинается с 0
+	        $unique_rows = isset( $_POST['uniqueRows'] ) && $_POST['uniqueRows'] === 'yes';
 
-            $limit = isset($_POST['limit']) ? (int) $_POST['limit'] - 1 : 4; // тут 4, т.к. count(arr) начинается с 0
-            $unique_rows = isset($_POST['uniqueRows']) && $_POST['uniqueRows'] === 'yes';
+	        $base_url = isset( $_POST['baseUrl'] ) ? sanitize_text_field( $_POST['baseUrl'] ) : '';
+	        $inline   = new \MPG\Display\Loop\Inline();
+	        $results  = $inline->render( $project_id, [
+		        'limit'       => $limit,
+		        'direction'   => $direction,
+		        'order_by'    => $order_by,
+		        'unique_rows' => $unique_rows,
+		        'base_url'    => $base_url,
+		        'conditions'  => [
+			        'conditions' => $inline->extract_where_conditions( $where ),
+			        'logic'      => $operator
+		        ]
+	        ], $content );
 
-            $base_url = isset($_POST['baseUrl']) ? sanitize_text_field($_POST['baseUrl']) : null;
-
-            $atts = [
-                'project-id' => $project_id,
-                'where' => $where,
-                'operator' => $operator,
-                'limit' => $limit,
-                'direction' => $direction,
-                'order-by' => $order_by,
-                'unique-rows' => $unique_rows,
-                'base-url' => $base_url
-            ];
-
-            $results = self::mpg_shortcode_core($atts, $content);
-
-            echo  '{"success": true, "data":"' . str_replace("\n", '<br>', $results) . '"}';
-            wp_die();
+	        echo '{"success": true, "data":"' . str_replace( "\n", '<br>', $results ) . '"}';
+	        wp_die();
         } catch (Exception $e) {
 
             do_action( 'themeisle_log_event', MPG_NAME, sprintf( 'Can\'t show preview due to error. Details: %s', $e->getMessage() ), 'debug', __FILE__, __LINE__ );
@@ -268,476 +288,42 @@ class MPG_CoreController
         }
     }
 
-
-    // For inner call
-    public static function mpg_shortcode($atts = array(), $content = null)
-    {
-
-        try {
-            if (is_admin()) {
-                return false;
-            }
-
-            // normalize attribute keys, lowercase
-            $atts = array_change_key_case((array) $atts, CASE_LOWER);
-
-            if ( isset( $atts['limit'] ) ) {
-                // фикс из-за того, что человек пишет лимит = 2, а получает 3 результата, ведь отсчет в массивах начинается с 0
-                $atts['limit'] = (int) $atts['limit'] - 1;
-            }
-
-            $atts['unique-rows'] = isset($atts['unique-rows']) && $atts['unique-rows'] === 'yes';
-
-            return self::mpg_shortcode_core($atts, $content);
-        } catch (Exception $e) {
-
-            $path = MPG_Helper::mpg_get_request_uri(); // это та часть что идет после папки установки WP. тпиа wp.com/xxx
-            $redirect_rules = MPG_CoreModel::mpg_get_redirect_rules($path);
-
-            if ($redirect_rules && isset($redirect_rules['project_id'])) {
-
-                do_action( 'themeisle_log_event', MPG_NAME, sprintf( 'Exception in [mpg_shortcode]: %s', $e->getMessage() ), 'debug', __FILE__, __LINE__ );
-
-                MPG_LogsController::mpg_write($redirect_rules['project_id'], 'error', __('Exception in [mpg_shortcode]: ', 'mpg') . $e->getMessage());
-            }
-        }
-    }
-
-
-    public static function mpg_match($atts = array(), $content = null)
-    {
-
-        try {
-            if (is_admin()) {
-                return false;
-            }
-
-            // normalize attribute keys, lowercase
-            $atts = array_change_key_case((array) $atts, CASE_LOWER);
-            if (isset($atts['limit'])) {
-                // фикс из-за того, что человек пишет лимит = 2, а получает 3 результата, ведь отсчет в массивах начинается с 0
-                $atts['limit'] = (int) $atts['limit'] - 1;
-            }
-
-            return self::mpg_match_core($atts, $content);
-        } catch (Exception $e) {
-
-            $path = MPG_Helper::mpg_get_request_uri(); // это та часть что идет после папки установки WP. тпиа wp.com/xxx
-            $redirect_rules = MPG_CoreModel::mpg_get_redirect_rules($path);
-
-            if ($redirect_rules && isset($redirect_rules['project_id'])) {
-
-                do_action( 'themeisle_log_event', MPG_NAME, sprintf( 'Exception in [mpg_match]: %s', $e->getMessage() ), 'debug', __FILE__, __LINE__ );
-
-                MPG_LogsController::mpg_write($redirect_rules['project_id'], 'error', __('Exception in [mpg_match]: ', 'mpg') . $e->getMessage());
-            }
-        }
-    }
-
-    public static function mpg_match_core($atts, $content)
-    {
-
-        try {
-            $current_project_id   = isset($atts['current-project-id']) ? (int) $atts['current-project-id'] : null;
-            $search_in_project_id = isset($atts['search-in-project-id']) ? (int) $atts['search-in-project-id'] : null;
-
-            $current_header       = isset($atts['current-header']) ? $atts['current-header'] : null;
-            $match_with           = isset($atts['match-with']) ? $atts['match-with'] : null;
-
-            $limit                = isset($atts['limit']) ? (int) $atts['limit']  : null;
-            $order_by             = isset($atts['order-by']) ? $atts['order-by'] : null;
-            $direction            = isset($atts['direction']) ? $atts['direction'] : null;
-            $unique_rows          = isset($atts['unique-rows']) && $atts['unique-rows'] === 'yes';
-            $base_url             = isset($atts['base-url']) ? (string) $atts['base-url']  : null;
-            $where                = isset($atts['where']) ?  explode(';', $atts['where']) : [];
-
-
-            MPG_Validators::mpg_match($current_project_id, $search_in_project_id, $current_header, $match_with);
-            MPG_Validators::mpg_order_params($order_by, $direction);
-
-            // 1. Возьмем текущий проект
-            $current_project       = MPG_ProjectModel::mpg_get_project_by_id($current_project_id);
-            $current_dataset_array = MPG_Helper::mpg_get_dataset_array( is_array( $current_project ) ? reset( $current_project ) : null );
-            $current_header_value  = MPG_CoreModel::mpg_get_ceil_value_by_header($current_project, $current_dataset_array, $current_header);
-
-            // 3. Теперь мы знаем что надо искать в связаном проекте. Это ок, теперь надо прочитать этот связанный проект ($seaarch_in_project_id)
-            $search_in_project       = MPG_ProjectModel::mpg_get_project_by_id($search_in_project_id);
-            $search_in_dataset_array = MPG_Helper::mpg_get_dataset_array( reset( $search_in_project ) );
-
-            $url_column_index = null;
-            $headers_has_prefix = false;
-            $headers = $search_in_dataset_array[0];
-
-            foreach ($headers as $index => $header) {
-                if (strpos($header, 'mpg_') === 0) {
-                    $headers_has_prefix = true;
-                }
-
-                $shortcode_lowercase = strtolower($header);
-
-                if ($shortcode_lowercase === 'mpg_url' || $shortcode_lowercase === 'url') {
-                    $url_column_index = $index;
-                }
-            }
-
-            // Если просто слова - добавляем префикс.
-            if (!$headers_has_prefix) {
-                $search_in_dataset_array[0] = [];
-                foreach ($headers as $header) {
-                    $search_in_dataset_array[0][] =  'mpg_' . strtolower($header);
-                }
-            }
-            $header_index = array_search($match_with, $search_in_dataset_array[0]);
-
-            if ($header_index === false) {
-                throw new Exception(__('Headers not matched in projects', 'mpg'));
-            }
-
-
-
-            $where_storage = [];
-
-            // // Приводим заголовки в нижний регистр
-            $column_names = array_map(function ($column) {
-                return strtolower($column);
-            }, (array) $headers);
-
-
-            global $found_strings;
-            $where_storage = MPG_CoreModel::mpg_prepare_where_condition($search_in_project, $where, $search_in_dataset_array, $column_names, $found_strings);
-
-            $storage = [];
-
-            foreach ($search_in_dataset_array as $index => $row) {
-                preg_match("/^$current_header_value$/", $row[$header_index], $matches);
-                if (!empty($matches)) {
-                    $storage[] = ['row' => $row, 'index' => $index - 1];
-                }
-            }
-
-            if (!empty($storage)) {
-                $where_results = [];
-                if (!empty($where_storage)) {
-                    foreach ($storage as $block) {
-                        foreach ($where_storage as $condition) {
-                            $column_index = array_keys($condition)[0];
-                            $serching_value = array_values($condition)[0];
-
-                            preg_match("/^$serching_value$/", $block['row'][$column_index], $matches);
-                            if (!empty($matches)) {
-                                // Это сделано для того, чтобы передать индекс ряда, корорый попал в where, нужно для правильной подмены УРЛа
-                                $where_results[] = ['row' => $block['row'], 'index' => $block['index']];
-                            }
-                        }
-                    }
-
-                    if (count($where_results)) {
-                        $storage = $where_results;
-                    } else {
-                        $storage = [];
-                    }
-                }
-
-
-                $urls_array = $search_in_project[0]->urls_array ? json_decode($search_in_project[0]->urls_array) : [];
-                $short_codes = MPG_CoreModel::mpg_shortcodes_composer($headers);
-
-                $space_replacer = $search_in_project[0]->space_replacer;
-
-                // Находим все атрибуты href в шорткоде, и берем их значения
-                $re = '/href=\\\\?".*?\\\\?"/m';
-                preg_match_all($re, $content, $href_matches, PREG_SET_ORDER, 0);
-
-                $placeholders = [];
-                foreach ($href_matches as $index => $href) {
-                    $placeholders[] = '/placeholder_href_' . $index . '/';
-                    $content = str_replace($href[0], '/placeholder_href_' . $index . '/', $content);
-                }
-
-                if ($direction) {
-                    $storage = MPG_CoreModel::mpg_order($storage, $search_in_dataset_array[0], $direction, $order_by);
-                }
-
-                $strings = [];
-                $shortcode_response_data = [];
-                // Теперь внутри всех href = заглушки.
-                foreach ($storage as  $index => $row) {
-                    // Массив с рядом ячеек с сорс-файла
-                    $strings = $row['row'];
-
-                    if ($url_column_index !== null) {
-                        $strings[$url_column_index] = MPG_CoreModel::mpg_prepare_mpg_url($current_project, $urls_array, $row['index']);
-                    }
-
-                    if ($href_matches) {
-                        $processed_row = MPG_CoreModel::mpg_processing_href_matches($content, $short_codes, $href_matches, $strings, $space_replacer, $placeholders, $url_column_index, $base_url);
-                    } else {
-                        // Это значит что ссылкок в шорткоде нет, и можно просто заменять "всё на всё" без экранирования.
-                        $processed_row = preg_replace($short_codes, $strings, $content);
-                    }
-
-                    if ($unique_rows) {
-                        if (!in_array($processed_row, $shortcode_response_data)) {
-                            $shortcode_response_data[] = $processed_row;
-                        }
-                    } else {
-                        $shortcode_response_data[] = $processed_row;
-                    }
-
-                    if ( ! is_null( $limit ) && count( $shortcode_response_data ) > $limit ) {
-                        break;
-                    }
-                }
-
-                if ($unique_rows) {
-                    $shortcode_response_data = array_unique($shortcode_response_data);
-                }
-
-                return implode("", $shortcode_response_data);
-            }
-        } catch (Exception $e) {
-
-            do_action( 'themeisle_log_event', MPG_NAME, $e->getMessage(), 'debug', __FILE__, __LINE__ );
-
-            return $e->getMessage();
-        }
-    }
-
-    public static function mpg_shortcode_core($atts, $content)
-    {
-        try {
-            $project_id = isset($atts['project-id']) ? (int) $atts['project-id'] : null;
-
-            $where_params = isset($atts['where']) ? explode(';', $atts['where']) : [];
-            $operator     = isset($atts['operator']) ? $atts['operator'] : 'or';
-            $limit        = isset($atts['limit']) ? (int) $atts['limit']  : null;
-
-            $order_by     = isset($atts['order-by']) ? $atts['order-by'] : null;
-            $direction    = isset($atts['direction']) ? $atts['direction'] : null;
-            $unique_rows  = isset($atts['unique-rows']) ? $atts['unique-rows'] : null;
-            $base_url     = isset($atts['base-url']) ? (string) $atts['base-url']  : null;
-
-            MPG_Validators::mpg_order_params($order_by, $direction);
-
-            if (!$project_id) {
-                return  __('Project id is not specified in [mpg] shortcode', 'mpg');
-            }
-
-            $project = MPG_ProjectModel::mpg_get_project_by_id($project_id);
-            if (!$project) {
-                return  __('MPG Warning: Wrong project-id in [mpg] shortcode: ' . $project_id, 'mpg');
-            }
-            $dataset_array = MPG_Helper::mpg_get_dataset_array( reset( $project ) );
-
-            $headers = $dataset_array[0];
-
-            // Проверяем, заголовки это шорткоды (mpg_name), или просто слова
-            $url_column_index = null;
-            $headers_has_prefix = false;
-            foreach ($headers as $index => $header) {
-                if (strpos($header, 'mpg_') === 0) {
-                    $headers_has_prefix = true;
-                }
-
-                $shortcode_lowercase = strtolower($header);
-
-                if ($shortcode_lowercase === 'mpg_url' || $shortcode_lowercase === 'url') {
-                    $url_column_index = $index;
-                }
-            }
-
-            // Если просто слова - добавляем префикс.
-            if (!$headers_has_prefix) {
-                $dataset_array[0] = [];
-                foreach ($headers as $header) {
-                    $dataset_array[0][] =  'mpg_' . strtolower($header);
-                }
-            }
-
-            if (!$dataset_array) {
-                return false;
-            }
-
-            // Приводим заголовки в нижний регистр
-            $column_names = array_map(function ($column) {
-                return str_replace(' ', '_', strtolower($column));
-            }, (array) $dataset_array[0]);
-
-            global $found_strings;
-            $where_storage = MPG_CoreModel::mpg_prepare_where_condition($project, $where_params, $dataset_array, $column_names, $found_strings );
-
-            // Обрабатываем where=""
-            if (!empty($where_storage)) {
-                // Чтобы при where="mpg_a=^M" не выводилось первым элементом название столбца
-                array_shift($dataset_array);
-
-                $where_filter_results = [];
-                foreach ($dataset_array as $row_index => $row) {
-
-                    if ($operator === 'or') {
-
-                        foreach ($where_storage as $condition) {
-                            $column_index = array_keys($condition)[0];
-                            $serching_value = array_values($condition)[0];
-
-                            preg_match("/$serching_value/", strtolower($row[$column_index]), $matches);
-
-                            if (!empty($matches)) {
-                                // Это сделано для того, чтобы передать индекс ряда, корорый попал в where, нужно для правильной подмены УРЛа
-                                $where_filter_results[] = ['row' => $row, 'index' => $row_index - 1];
-                                break; // если нашли по первому попавшемуся совпадению - значит можно поиск прекращать (ведь это "or")
-                            }
-                        }
-                    } elseif ($operator === 'and') {
-
-                        // Суть в том, чтобы создать пустой массив, где будет столько же элементов, сколько и условий в where
-                        // При каждой итерации ряда, мы сравниваем устовия со значениями в столбцах датасета, и если оно совпало - записываем значение true в массив.
-                        // Можно было бы сделать просто флаг $is_matched = true|false, но если 4 из 5 условий дадут false, а последнее true, 
-                        // то в выдачу попадет этот ряд, хотя совпало только одно условие. И наоборот. Короче последняя итерация "решает", а это неправильно.
-
-                        $mask = array_fill(0, count($where_storage), false);
-
-                        foreach ($where_storage as $index => $condition) {
-                            $column_index = array_keys($condition)[0]; //   mpg_city
-                            $serching_value = strtolower(trim(array_values($condition)[0]));  //  Cleveland
-                            $cell_value = strtolower(trim($row[$column_index]));
-
-                            preg_match("/$serching_value/", strtolower($cell_value), $matches);
-
-                            $mask[$index] = !empty($matches); // переопределяем булевое значение: если есть совпадение - ставим true
-                        }
-
-                        $unique_mask = array_unique($mask);
-                        // Делаем массив уникальным, и если там остался один элемент. и он true, значит все были true
-                        if (count($unique_mask) === 1 && $unique_mask[0] === true) {
-                            // Это сделано для того, чтобы передать индекс ряда, корорый попал в where, нужно для правильной подмены УРЛа
-                            $where_filter_results[] = ['row' => $row, 'index' => $row_index - 1];
-                        }
-                    }
-                }
-            }
-
-            // Если ничего не нафильтровалось, но where="" есть, значит возвращаем пустоту, т.е. шорткод [mpg][/mpg] ничего не выведет
-            if (empty($where_filter_results) && !empty($where_params)) {
-                return __('where=\"\" condition return zero rows. No results found', 'mpg');
-            }
-
-            $urls_array = $project[0]->urls_array ? json_decode($project[0]->urls_array) : [];
-            $short_codes = MPG_CoreModel::mpg_shortcodes_composer($headers);
-            $space_replacer = $project[0]->space_replacer;
-
-            // весь набор данных (без заголовков)
-            if (empty($where_filter_results)) {
-                array_shift($dataset_array);
-
-                // Находим все атрибуты href в шорткоде, и берем их значения
-                preg_match_all(self::$href_regexp, $content, $href_matches, PREG_SET_ORDER, 0);
-
-                $placeholders = [];
-                foreach ($href_matches as $index => $href) {
-                    $placeholders[] = '/placeholder_href_' . $index . '/';
-                    $content = str_replace($href[0], '/placeholder_href_' . $index . '/', $content);
-                } // Теперь внутри всех href = заглушки.
-
-                if ($direction) {
-                    $dataset_array = MPG_CoreModel::mpg_order($dataset_array, $column_names, $direction, $order_by);
-                }
-
-                $strings = [];
-                $shortcode_response_data = [];
-
-                foreach ($urls_array as $index => $row) {
-                    // Массив с рядом ячеек с сорс-файла
-                    $strings = $dataset_array[$index];
-                    if ($url_column_index !== null) {
-                        $strings[$url_column_index] = MPG_CoreModel::mpg_prepare_mpg_url($project, $urls_array, $index);
-                    }
-
-                    // Если шорткод находится между href=" и " - значит его надо экранировать. Если нет - значит просто заменять "все на все", как обычно.
-                    // Для реализации этого - лучше всего вырезать то что внутри href=, заменить его на заглушку
-                    // Сделать замену по обычному сценарию, потом сделать замену шорткодов по "спец" сценарию того что в атрибуте.
-                    // Потом - заглушку заменить на обработаную строку взятую ранее из href.
-
-                    if ($href_matches) {
-                        $processed_row = MPG_CoreModel::mpg_processing_href_matches($content, $short_codes, $href_matches, $strings, $space_replacer, $placeholders, $url_column_index, $base_url);
-                    } else {
-                        // Это значит что ссылкок в шорткоде нет, и можно просто заменять "всё на всё" без экранирования.
-                        $processed_row = preg_replace($short_codes, $strings, $content);
-                    }
-
-                    if ($unique_rows) {
-                        if (!in_array($processed_row, $shortcode_response_data)) {
-                            $shortcode_response_data[] = $processed_row;
-                        }
-                    } else {
-                        $shortcode_response_data[] = $processed_row;
-                    }
-
-                    if ( ! is_null( $limit ) && count( $shortcode_response_data ) > $limit ) {
-                        break;
-                    }
-                }
-
-                return implode("", $shortcode_response_data);
-            }
-
-
-            // Если не вышли из функции до этого места ( в куске кода о where), значит обрабатываем код ниже, для всего датасета
-            // $where_filter_results  - это просто массив с рядами из файла, только не все подряд, а отобранные согласно условию where
-            if (!empty($where_filter_results)) {
-
-                // Находим все атрибуты href в шорткоде, и берем их значения
-                preg_match_all(self::$href_regexp, $content, $href_matches, PREG_SET_ORDER, 0);
-
-                $placeholders = [];
-                foreach ($href_matches as $index => $href) {
-                    $placeholders[] = '/placeholder_href_' . $index . '/';
-                    $content = str_replace($href[0], '/placeholder_href_' . $index . '/', $content);
-                }
-                // Теперь внутри всех href = заглушки.
-
-                if ($direction) {
-                    $where_filter_results = MPG_CoreModel::mpg_order($where_filter_results, $column_names, $direction, $order_by);
-                }
-
-                $strings = [];
-                $shortcode_response_data = [];
-                foreach ($where_filter_results as  $index => $row) {
-                    // Массив с рядом ячеек с сорс-файла
-                    $strings = $row['row'];
-
-                    if ($url_column_index !== null) {
-                        $strings[$url_column_index] = MPG_CoreModel::mpg_prepare_mpg_url($project, $urls_array, $index);
-                    }
-
-                    if ($href_matches) {
-                        $processed_row = MPG_CoreModel::mpg_processing_href_matches($content, $short_codes, $href_matches, $strings, $space_replacer, $placeholders, $url_column_index, $base_url);
-                    } else {
-                        // Это значит что ссылкок в шорткоде нет, и можно просто заменять "всё на всё" без экранирования.
-                        $processed_row = preg_replace($short_codes, $strings, $content);
-                    }
-
-                    if ($unique_rows) {
-                        if (!in_array($processed_row, $shortcode_response_data)) {
-                            $shortcode_response_data[] = $processed_row;
-                        }
-                    } else {
-                        $shortcode_response_data[] = $processed_row;
-                    }
-
-
-                    if ( ! is_null( $limit ) && count( $shortcode_response_data ) > $limit ) {
-                        break;
-                    }
-                }
-
-                return implode("", $shortcode_response_data);
-            }
-        } catch (Exception $e) {
-
-            do_action( 'themeisle_log_event', MPG_NAME, $e->getMessage(), 'debug', __FILE__, __LINE__ );
-
-            return $e->getMessage();
-        }
-    }
+	/**
+	 * Apply attributes to the featured image.
+	 *
+	 * @param $html
+	 * @param $post_id
+	 * @param $post_thumbnail_id
+	 * @param $size
+	 * @param $attr
+	 *
+	 * @return string The image html.
+	 */
+	public static function apply_featured_attributes( $html, $post_id, $post_thumbnail_id, $size, $attr ):string {
+		$attr = wp_parse_args( $attr, [] );
+
+		if ( isset( $attr['src'] ) ) {
+			unset( $attr['src'] );
+		}
+		if ( isset( $attr['alt'] ) ) {
+			unset( $attr['alt'] );
+		}
+		if ( ! isset( $attr['class'] ) ) {
+			$attr['class'] = '';
+		}
+		$size_class = $size;
+
+		if ( is_array( $size_class ) ) {
+			$size_class = implode( 'x', $size_class );
+		}
+
+		$attr['class'] .= "attachment-$size_class size-$size_class";
+		$attr          = array_map( 'esc_attr', $attr );
+		$attr_html = '';
+		foreach ( $attr as $name => $value ) {
+			$attr_html .= " $name=" . '"' . $value . '"';
+		}
+
+		return str_replace( 'data-attributes-empty', $attr_html, $html );
+	}
 }

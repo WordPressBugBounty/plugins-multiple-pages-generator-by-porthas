@@ -21,7 +21,7 @@ add_action('admin_head', ['Helper', 'mpg_header_code_container']);
                     <p class="mpg-subtitle"><?php _e('Single search result template', 'mpg'); ?></p>
                     <p style="margin-top: 1rem;"><?php _e("Paste HTML code of single result on a search results page, and replace static text to shortcodes presented below", 'mpg'); ?></p>
 
-                    <textarea required="required" id="mpg_search_settings_result_template" style="width: 100%" rows="5"></textarea>
+                    <textarea id="mpg_search_settings_result_template" style="width: 100%" rows="5"></textarea>
                     <p><?php _e('Supported shortcodes:', 'mpg'); ?></p>
                     <p> <mark>{{mpg_page_title}}</mark>
                         <mark>{{mpg_page_excerpt}}</mark>
@@ -34,6 +34,19 @@ add_action('admin_head', ['Helper', 'mpg_header_code_container']);
                         <mark>{{mpg_page_date}}</mark>
                         <mark>{{mpg_featured_image_url}}</mark>
                     </p>
+                    <p>
+                    <?php
+                        echo wp_kses(
+                            __( 'Defining the HTML structure is <span class="required">required</span>: leaving this area empty will result in MPG-generated pages not appearing in search results.', 'mpg' ),
+                            array(
+                                'span' => array(
+                                    'class' => true,
+                                ),
+                            )
+                        );
+                        ?>
+                        <a href="<?php echo esc_url( 'https://docs.themeisle.com/article/1461-how-to-search-through-generated-pages' ); ?>" target="_blank"><?php esc_html_e( 'Documentation', 'mpg' ); ?></a>
+                    </p>
                 </section>
 
                 <section>
@@ -45,7 +58,7 @@ add_action('admin_head', ['Helper', 'mpg_header_code_container']);
                 <section>
                     <p class="mpg-subtitle"><?php _e('Search results block selector', 'mpg'); ?></p>
                     <p style="margin-top: 1rem;"><?php _e('Set selector for block, that will be used as a container for the results from MPG', 'mpg'); ?></p>
-                    <input required="required" type="text" id="mpg_ss_results_container">
+                    <input type="text" id="mpg_ss_results_container">
                 </section>
 
                 <section>

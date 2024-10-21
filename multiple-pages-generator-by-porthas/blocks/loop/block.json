@@ -1,0 +1,111 @@
+{
+    "$schema": "https://schemas.wp.org/trunk/block.json",
+    "apiVersion": 3,
+    "name": "mpg/loop",
+    "version": "0.1.0",
+    "title": "MPG Loop",
+    "category": "design",
+    "icon": "database-view",
+    "description": "MPG Loop block to build rich content based on the MPG project data",
+    "attributes": {
+        "project_id": {
+            "type": "integer",
+            "default": 0
+        },
+        "limit": {
+            "type": "integer",
+            "default": 5
+        },
+        "uniqueRows": {
+            "type": "boolean",
+            "default": false
+        },
+        "logic": {
+            "type": "string",
+            "enum": [
+                "and",
+                "or"
+            ],
+            "default": "and"
+        },
+        "orderBy": {
+            "type": "string",
+            "default": ""
+        },
+        "direction": {
+            "enum": [
+                "asc",
+                "desc",
+                "random",
+                ""
+            ],
+            "type": "string",
+            "default": ""
+        },
+        "innerBlocksContent": {
+            "type": "string",
+            "default": ""
+        },
+        "conditions": {
+            "type": "object",
+            "default": {
+                "conditions": [],
+                "logic": "all"
+            },
+            "properties": {
+                "conditions": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "column": {
+                                "type": "string"
+                            },
+                            "operator": {
+                                "type": "string"
+                            },
+                            "value": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "logic": {
+                    "type": "string",
+                    "enum": [
+                        "all",
+                        "any"
+                    ]
+                }
+            }
+        }
+    },
+    "supports": {
+		"align": [ "wide", "full" ],
+		"anchor": true,
+		"ariaLabel": true,
+		"html": true,
+		"color": {
+			"gradients": true,
+			"heading": true,
+			"button": true,
+			"link": true
+		},
+		"shadow": true,
+		"spacing": {
+			"margin": [ "top", "bottom" ],
+			"padding": true,
+			"blockGap": true
+		},
+		"dimensions": {
+			"minHeight": true
+		},  
+		"typography": { 
+			"fontSize": true,
+			"lineHeight": true
+		} 
+	},
+    "editorScript": "file:./index.js",
+    "editorStyle": "file:./editor.css",
+    "textdomain": "multi-pages-plugin"
+}   

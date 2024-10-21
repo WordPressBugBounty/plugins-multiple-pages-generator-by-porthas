@@ -1,5 +1,5 @@
 import { translate } from "../lang/init.js";
-
+import { getMpgWhereState } from './components/shortcode.js';
 (function () {
 
     if (!localStorage.getItem('mpg_state')) {
@@ -21,13 +21,6 @@ const svgCloseIcon = '<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http:
 
 
 function mpgGetState(property) {
-    if ( window.location.search ) {
-        let UrlParam = new URLSearchParams( window.location.search );
-        if ( UrlParam.has('action') && 'from_scratch' === UrlParam.get('action') ) {
-            return null;
-        }
-    }
-
     const state = JSON.parse(localStorage.getItem('mpg_state')) || null
 
     return state[property] ? state[property] : null;
@@ -37,7 +30,7 @@ function convertHeadersToShortcodes(headers) {
 
     let columnsStorage = [];
 
-    headers.forEach(column => {
+    headers?.forEach(column => {
         let header = '';
         if (column.startsWith('mpg_')) {
             header = column.toLowerCase();
@@ -70,7 +63,7 @@ function renderShortcodePill(shortcode, index) {
 
 function generateUrlPreview(urlBuilderString, headers, spaceReplacer, inputRow) {
 
-    headers.forEach((rawHeader, index) => {
+    headers?.forEach((rawHeader, index) => {
 
         let shortcode = '';
 
@@ -117,13 +110,14 @@ function generateUrlPreview(urlBuilderString, headers, spaceReplacer, inputRow) 
     .replace(/mpgequalholder/gm, '=')
 
     if (finalPath) {
-        finalPath = backendData.baseUrl + '/' + finalPath.toLowerCase();
-        if ( backendData.lang_code != '' ) {
-            finalPath = finalPath.replace( backendData.lang_code, '/' );
+        const [baseUrl, queryString] = backendData.baseUrl.split('?');
+        finalPath = baseUrl + finalPath.toLowerCase();
+        if (backendData.lang_code !== '' && ( queryString && ! queryString.includes('lang') ) ) {
+            finalPath = finalPath.replace(backendData.lang_code, '/');
         }
-        return `${finalPath}/`;
+        return queryString ? `${finalPath}/?${queryString}` : `${finalPath}/`;
     } else {
-        return `${backendData.baseUrl}`;
+        return backendData.baseUrl;
     }
 }
 
@@ -313,14 +307,12 @@ function rebuildSandboxShortcode(customUrl = null) {
 
     let whereAttribute = '';
 
-    const whereStorage = mpgGetState('where');
+    const whereStorage = getMpgWhereState();
     if (whereStorage) {
         let condition = '';
 
         whereStorage.forEach(object => {
-            for (let header in object) {
-                condition += `${convertStringToStortcode(header)}=${object[header]};`
-            }
+                condition += `${convertStringToStortcode(object.key)}${object.operator}${object.value};`
         });
 
         whereAttribute = ` where="${condition}"`;
@@ -328,12 +320,12 @@ function rebuildSandboxShortcode(customUrl = null) {
 
     let operatorAttribute = '';
     // Если условий два, или больше, то надо дать возможность выбрать оператор - or \ and
-    if (whereStorage && whereStorage.length > 1) {
+    if (whereStorage && whereStorage.length > 0) {
 
         jQuery('.operator-selector-block').css('display', 'flex');
 
         let operator = jQuery('#mpg_operator_selector option:selected').val();
-        operatorAttribute = ` operator="${operator}"`;
+        operatorAttribute = ` logic="${operator}"`;
 
     } else {
         jQuery('.operator-selector-block').hide();
@@ -342,7 +334,7 @@ function rebuildSandboxShortcode(customUrl = null) {
     let link = '';
     let headers = mpgGetState('headers');
 
-    if (headers[0] && headers[1]) {
+    if (headers && headers[0] && headers[1]) {
 
         // Если функция вызывается при изминении УРЛа на вкладке Main
         if (customUrl) {

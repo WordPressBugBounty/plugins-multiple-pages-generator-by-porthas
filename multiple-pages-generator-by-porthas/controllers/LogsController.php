@@ -3,26 +3,25 @@
 class MPG_LogsController
 {
 
-    public static function mpg_write($project_id, $level, $message)
-    {
-        global $wpdb;
+	public static function mpg_write( $project_id = false, $level = 'warning', $message = "", $file = __FILE__, $line = __LINE__ ) {
+		global $wpdb;
 
-        $requested_url = MPG_Helper::mpg_get_request_uri();
+		$requested_url = MPG_Helper::mpg_get_request_uri();
 
-        if (!$project_id) {
-            $redirect_rules = MPG_CoreModel::mpg_get_redirect_rules($requested_url);
-            $project_id = $redirect_rules['project_id'];
-        }
-
-        $wpdb->insert($wpdb->prefix . MPG_Constant::MPG_LOGS_TABLE, [
-            'project_id' => $project_id,
-            'level' => $level,
-            'url' => $requested_url,
-            'message' => $message,
-            'datetime' => date('Y-m-d H:i:s')
-        ]);
-    }
-
+		if ( ! $project_id ) {
+			$redirect_rules = MPG_CoreModel::mpg_get_redirect_rules( $requested_url );
+			$project_id     = $redirect_rules['project_id'];
+		}
+		do_action( 'themeisle_log_event', MPG_NAME, $message, $level, __FILE__, __LINE__ );
+		$message .= $message . ' homeurl: ' . home_url();
+		$wpdb->insert( $wpdb->prefix . MPG_Constant::MPG_LOGS_TABLE, [
+			'project_id' => intval( $project_id ),
+			'level'      => esc_sql( $level ),
+			'url'        => esc_sql( $requested_url ),
+			'message'    => esc_sql( $message ),
+			'datetime'   => date( 'Y-m-d H:i:s' )
+		] );
+	}
     public static function mpg_clear_log_by_project_id()
     {
         check_ajax_referer( MPG_BASENAME, 'securityNonce' );

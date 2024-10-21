@@ -19,6 +19,11 @@ class MPG_ProjectController
         // чтобы не создавать зависимых списков
 
         if ( ! empty( $_GET['action'] ) && in_array( $_GET['action'], array( 'edit_project', 'from_scratch' ), true ) ) {
+	        if ( ! mpg_app()->can_edit() ) {
+		        echo sprintf('<meta http-equiv="refresh" content="1; URL=%s" /> ',esc_url( admin_url( 'admin.php?page=mpg-project-builder' ) ));
+
+                return;
+	        }
             $entities_array = MPG_ProjectModel::mpg_get_custom_types();
 
             MPG_ProjectBuilderView::render( $entities_array );
@@ -117,74 +122,97 @@ class MPG_ProjectController
     }
 
 
-    public static function mpg_upsert_project_source_block()
-    {
-        check_ajax_referer( MPG_BASENAME, 'securityNonce' );
+	/**
+     * Return the project path where the file will be uploaded.
+     *
+	 * @param $project_id
+	 * @param $path
+	 *
+	 * @return string
+	 */
+    public static function get_project_path(int $project_id, string $path):string{
 
-        try {
+	    $ext = MPG_Helper::mpg_get_extension_by_path( $path );
+        $blog_id = get_current_blog_id();
+	    if ( is_multisite() && $blog_id > 1 ) {
+		    return MPG_UPLOADS_DIR . $blog_id . '/' . $project_id . '.' . $ext;
+	    }
+	    return MPG_UPLOADS_DIR . $project_id . '.' . $ext;
+    }
 
-            $project_id =       isset($_POST['projectId']) ? (int) $_POST['projectId'] : null;
-            $type =             isset($_POST['type']) ? sanitize_text_field($_POST['type']) : null;
-            $folder_path =      isset($_POST['path']) ? sanitize_text_field($_POST['path']) : null;
+	public static function mpg_upsert_project_source_block() {
+		check_ajax_referer( MPG_BASENAME, 'securityNonce' );
 
-            $ext = MPG_Helper::mpg_get_extension_by_path($folder_path);
+		try {
 
-            if (!$folder_path) {
-                throw new Exception(__('Missing temprory file path', 'mpg'));
-            }
+			$project_id  = isset( $_POST['projectId'] ) ? (int) $_POST['projectId'] : null;
+			$type        = isset( $_POST['type'] ) ? sanitize_text_field( $_POST['type'] ) : null;
+			$folder_path = isset( $_POST['path'] ) ? sanitize_text_field( $_POST['path'] ) : null;
 
-            $new_path = MPG_UPLOADS_DIR . $project_id . '.' . $ext;
 
-            // Перемещаем файл в /../mpg-uploads/
-            rename($folder_path, $new_path);
+			if ( ! $folder_path || ! is_readable( $folder_path ) ) {
+				throw new Exception( __( 'The file could not be uploaded. Double-check the file format and size, then try again.', 'mpg' ) );
+			}
+			$headers = MPG_DatasetController::get_headers( $folder_path );
+			if ( empty( $headers ) || ! is_array( $headers ) ) {
+				throw new Exception( __( 'The CSV file contains empty or invalid headers. Please check and ensure all headers are correct.', 'mpg' ) );
+			}
 
-            // Суть  в том, что у нас датасеты называются как project_id.
-            // Если человек загружал в один и тот же проект, скажем только .csv то старый будет перезаписыватся новым.
-            // А если сначала .csv, потом .xls - то будет два файла с одинаковыми именами, но разными форматами. А это мусор.
-            $files = glob( MPG_UPLOADS_DIR . $project_id . '.*' );
-            foreach ($files as $project_file) {
-                if ($project_file !== $new_path) {
-                    unlink($project_file);
-                }
-            }
+			$rows = MPG_DatasetController::get_rows( $folder_path, 5 );
+			if ( empty( $rows ) || ! is_array( $rows ) ) {
+				throw new Exception( __( 'Some rows in the file are invalid. Double-check the data and try uploading once more.', 'mpg' ) );
+			}
+
+			$new_path = self::get_project_path( $project_id, $folder_path );
 
             $project = MPG_ProjectModel::mpg_get_project_by_id($project_id);
-            $url_structure = $project[0]->url_structure;
+            $url_structure = ! empty( $project ) ? $project[0]->url_structure : '';
+			// Move the file to mpg-uploads folder.
+			$success = rename( $folder_path, $new_path );
+			if ( ! $success ) {
+				throw new Exception( sprintf( __( 'The file cannot be moved to %s. Ensure the folder has the correct permissions.', 'mpg' ), $new_path ) );
+			}
+			// We delete any file with the same project_id but different extension.
+			$files = glob( MPG_UPLOADS_DIR . $project_id . '.*' );
+			foreach ( $files as $project_file ) {
+				if ( $project_file !== $new_path ) {
+					unlink( $project_file );
+				}
+			}
 
-            // Имея путь к файлу с данными, надо "нарезать" его на хедеры и взять Х строк данных для превью.
-            $headers = MPG_DatasetController::get_headers($new_path);
+			$project       = MPG_ProjectModel::mpg_get_project_by_id( $project_id );
+			$url_structure = $project[0]->url_structure;
 
-            $rows = MPG_DatasetController::get_rows($new_path, 5);
+			$fields_array = [
+				'source_type' => $type,
+				'source_path' => basename( $new_path ),
+				'headers'     => json_encode( $headers )
+			];
 
-            $fields_array = [
-                'source_type' => $type,
-                'source_path' => basename( $new_path ),
-                'headers' => json_encode($headers)
-            ];
+			MPG_ProjectModel::mpg_update_project_by_id( $project_id, $fields_array );
 
-            MPG_ProjectModel::mpg_update_project_by_id($project_id, $fields_array);
+			echo json_encode( [
+				'success' => true,
+				'data'    => [
+					'headers'       => $headers,
+					'rows'          => $rows['rows'],
+					'totalRows'     => $rows['total_rows'],
+					'projectId'     => $project_id,
+					'path'          => $new_path,
+					// В процессе сохранения проекта, мы перемещаем датасет с temp в uploads.
+					// Надо этот новый путь передать на фронт, чтобы с ним можно было работать в следующих вкладках
+					'url_structure' => $url_structure
+				]
+			] );
+		} catch ( Exception $e ) {
 
-            echo json_encode([
-                'success' => true,
-                'data' => [
-                    'headers'   => $headers,
-                    'rows'      => $rows['rows'],
-                    'totalRows' => $rows['total_rows'],
-                    'projectId' => $project_id,
-                    'path'      => $new_path, // В процессе сохранения проекта, мы перемещаем датасет с temp в uploads.
-                    // Надо этот новый путь передать на фронт, чтобы с ним можно было работать в следующих вкладках
-                    'url_structure' => $url_structure
-                ]
-            ]);
-        } catch (Exception $e) {
+			do_action( 'themeisle_log_event', MPG_NAME, $e->getMessage(), 'debug', __FILE__, __LINE__ );
 
-            do_action( 'themeisle_log_event', MPG_NAME, $e->getMessage(), 'debug', __FILE__, __LINE__ );
+			echo json_encode( [ 'success' => false, 'error' => $e->getMessage() ] );
+		}
 
-            echo json_encode(['success' => false, 'error' => $e->getMessage()]);
-        }
-
-        wp_die();
-    }
+		wp_die();
+	}
 
 
 
@@ -201,13 +229,15 @@ class MPG_ProjectController
             $url_mode =           isset($_POST['urlMode']) ? sanitize_text_field(($_POST['urlMode'])) : MPG_Constant::DEFAULT_URL_MODE;
 
             $direct_link =        isset($_POST['directLink']) ? esc_url_raw($_POST['directLink']) : null;
-            $periodicity =        isset($_POST['periodicity']) ? sanitize_text_field($_POST['periodicity']) : null;
 
-            $timezone =           isset($_POST['timezone']) ? sanitize_text_field($_POST['timezone']) : null;
-            $fetch_date_time =    isset($_POST['fetchDateTime']) ? sanitize_text_field($_POST['fetchDateTime']) : null;
-
-            $notificate_about =   isset($_POST['notificateAbout']) ? sanitize_text_field($_POST['notificateAbout']) : null;
-            $notification_email = isset($_POST['notificationEmail']) ? sanitize_email($_POST['notificationEmail']) : null;
+            $args = apply_filters('mpg_update_project_args', []);
+	        $periodicity = $args['periodicity'] ?? false;
+            $timezone = $args['timezone'] ?? false;
+            $fetch_date_time = $args['fetch_date_time'] ?? false;
+            $notificate_about = $args['notificate_about'] ?? false;
+            $notification_email = $args['notification_email'] ?? false;
+	        $update_modified_on_sync = $args['update_modified_on_sync'] ?? 'no-update';
+            $update_modified_on_sync = $periodicity === 'once' ? 'no-update' : $update_modified_on_sync;
 
             $source_type =        isset($_POST['sourceType']) ? sanitize_text_field($_POST['sourceType']) : null;
             $worksheet_id =       isset($_POST['worksheetId']) ? (int) $_POST['worksheetId'] : null;
@@ -252,7 +282,7 @@ class MPG_ProjectController
             // Это список аргументов которые надо передеать в хук.
 
             // now - это для тех случаев, когда человке хочет применить файл сейчас. И ему не нужно заводить крон-таб
-            if ($direct_link && $fetch_date_time && ! in_array( $periodicity, array( 'now', 'once' ), true ) && $notificate_about && $notification_email) {
+            if ($direct_link && $fetch_date_time && ! in_array( $periodicity, array( 'now', 'once','ondemand' ), true ) && $notificate_about && $notification_email) {
 
                 $datetime = DateTime::createFromFormat('Y/m/d H:i', $fetch_date_time, new DateTimeZone($timezone));
                 $hook_execution_time = $datetime->getTimestamp();
@@ -276,7 +306,15 @@ class MPG_ProjectController
                 $update_options_array = array_merge($update_options_array, [
                     'schedule_periodicity' => 'now' !== $periodicity ? $periodicity : null,
                 ]);
+	            if ( $periodicity === 'ondemand' ) {
+		            $update_options_array = array_merge( $update_options_array, [
+			            'schedule_source_link'        => $direct_link,
+			            'schedule_notificate_about'   => $notificate_about,
+			            'schedule_notification_email' => $notification_email
+		            ] );
+	            }
             }
+            $update_options_array['update_modified_on_sync'] = $update_modified_on_sync;
 
             MPG_ProjectModel::mpg_update_project_by_id($project_id, $update_options_array);
 
@@ -286,10 +324,9 @@ class MPG_ProjectController
             $periodicity = isset( $project[0]->schedule_periodicity ) ? $project[0]->schedule_periodicity : null;
             $expiration  = 0;
             if ( null === $periodicity ) {
-                $expiration = apply_filters( 'mpg_live_data_update_interval', MINUTE_IN_SECONDS * 15 );
+                $expiration = MPG_Helper::get_live_update_interval();
             }
-            $key_name = wp_hash( 'dataset_array_' . $project_id );
-            set_transient( $key_name, wp_json_encode( $urls_array['dataset_array'], MPG_JSON_OPTIONS ), $expiration );
+	        MPG_DatasetModel::set_cache( $project_id, $urls_array['dataset_array'], $expiration );
             echo json_encode(['success' => true]);
         } catch (Exception $e) {
 
@@ -347,7 +384,7 @@ class MPG_ProjectController
 
                 $rows = MPG_DatasetController::get_rows($project[0]->source_path, 5);
 
-                $response['rows'] = $rows['rows'];
+                $response['rows'] = wp_doing_ajax( 'wp_ajax_mpg_get_project' ) ? map_deep( $rows['rows'], 'wp_strip_all_tags' ) : $rows['rows'];
                 $response['totalRows'] = $rows['total_rows'];
 
                 $response['spintax_cached_records_count'] = MPG_SpintaxController::get_cached_records_count($project_id);
@@ -382,76 +419,12 @@ class MPG_ProjectController
         check_ajax_referer( MPG_BASENAME, 'securityNonce' );
 
         try {
-
-            $project_id = isset($_POST['projectId']) ? (int) $_POST['projectId'] : null;
-
-            if (!$project_id) {
-                throw new Exception(__('Project ID is missing', 'mpg'));
-            }
-
-            $project = (array) MPG_ProjectModel::mpg_get_project_by_id($project_id);
-
-            if ( isset( $project[0] ) && $project[0]->source_path ) {
-                $dataset_path = $project[0]->source_path;
-                // Удалим датасет проекта
-                MPG_ProjectModel::deleteFileByPath($dataset_path);
-            }
-
-            if ($project[0]->sitemap_filename) {
-                // Удалим карту сайта
-
-
-                // Это удаляется главный файл (либо он единственный, либо ...-index).
-                foreach ([
-                    $_SERVER['DOCUMENT_ROOT'] . '/' . MPG_Helper::mpg_get_site_url() . '/' . $project[0]->sitemap_filename . '.xml',
-                    $_SERVER['DOCUMENT_ROOT'] . '/' . MPG_Helper::mpg_get_site_url() . '/' . $project[0]->sitemap_filename . '-index.xml'
-                ] as $path) {
-
-                    if (file_exists($path)) {
-                        unlink($path);
-                    }
-                }
-
-                // Но если есть ...-index, то сделовательно, есть и дочерние файлы, которые тоже надо "подчистить"
-                $name = str_replace('-index', '', $project[0]->sitemap_filename);
-
-                foreach (glob($_SERVER['DOCUMENT_ROOT'] . '/' . MPG_Helper::mpg_get_site_url() . '/' . $name . '*.xml') as $path) {
-                    if (file_exists($path)) {
-                        unlink($path);
-                    }
-                }
-            }
-
-            // Удаляем крон-задачу, если есть
-            if ($project[0]->schedule_source_link && $project[0]->schedule_notificate_about && $project[0]->schedule_periodicity && $project[0]->schedule_notification_email) {
-
-                MPG_ProjectModel::mpg_remove_cron_task_by_project_id($project_id, $project);
-            }
-
-            if ($project[0]->exclude_in_robots) {
-                // Удаляем ссылку на страницу-шаблон, если она есть.
-                MPG_ProjectModel::mpg_processing_robots_txt(false, $project[0]->template_id);
-            }
-
-            if ($project[0]->sitemap_url) {
-                // Удалим карту сайта из robots.txt
-                MPG_ProjectModel::mpg_remove_sitemap_from_robots($project[0]->sitemap_url);
-            }
-
-            // Удалим проект с БД
-            MPG_ProjectModel::deleteProjectFromDb($project_id);
-
-            // Удаляем все строки для текущего проекта из БД (Spintax)
-            MPG_SpintaxModel::flush_cache_by_project_id($project_id);
-
-            // Удалим кеш для данного проекта
-            if ($project[0]->cache_type !== 'none') {
-                MPG_CacheController::mpg_flush_core($project_id, $project[0]->cache_type);
-            }
-
-            echo json_encode([
-                'success' => true
-            ]);
+	        $project_id      = isset( $_POST['projectId'] ) ? (int) $_POST['projectId'] : null;
+	        $project_manager = new ProjectsListManage( );
+	        $project_manager->delete_project( $project_id );
+	        echo json_encode( [
+		        'success' => true
+	        ] );
         } catch (Exception $e) {
 
             do_action( 'themeisle_log_event', MPG_NAME, $e->getMessage(), 'debug', __FILE__, __LINE__ );
@@ -521,123 +494,122 @@ class MPG_ProjectController
     public static function mpg_check_is_sitemap_name_is_uniq()
     {
 
-        check_ajax_referer( MPG_BASENAME, 'securityNonce' );
+	    check_ajax_referer( MPG_BASENAME, 'securityNonce' );
 
-        try {
-            $filename = isset($_POST['filename']) ? sanitize_text_field($_POST['filename']) : null;
+	    try {
+		    $filename = isset( $_POST['filename'] ) ? sanitize_text_field( $_POST['filename'] ) : null;
 
-            if (get_option('mpg_site_basepath')) {
-                $sitemap_path = get_option('mpg_site_basepath')['value'] . $filename . '.xml';
-            } else {
-                $sitemap_path = $_SERVER['DOCUMENT_ROOT'] . '/' . MPG_Helper::mpg_get_site_url() . '/' . $filename . '.xml';
-            }
+		    if ( get_option( 'mpg_site_basepath' ) ) {
+			    $sitemap_path = get_option( 'mpg_site_basepath' )['value'] . $filename . '.xml';
+		    } else {
+			    $sitemap_path = ABSPATH . $filename . '.xml';
+		    }
 
-            echo json_encode([
-                'success' => true,
-                'unique' => !is_file($sitemap_path)
-            ]);
-        } catch (Exception $e) {
+		    echo json_encode( [
+			    'success' => true,
+			    'unique'  => ! is_file( $sitemap_path )
+		    ] );
+	    } catch ( Exception $e ) {
 
-            do_action( 'themeisle_log_event', MPG_NAME, sprintf( __( 'Can\'t create sitemap, due to: %s', 'mpg' ), $e->getMessage() ), 'debug', __FILE__, __LINE__ );
+		    do_action( 'themeisle_log_event', MPG_NAME, sprintf( __( 'Can\'t create sitemap, due to: %s', 'mpg' ), $e->getMessage() ), 'debug', __FILE__, __LINE__ );
 
-            echo json_encode([
-                'success' => false,
-                'error' => __('Can\'t create sitemap, due to: ', 'mpg') . $e->getMessage()
-            ]);
-        }
-
-        wp_die();
-    }
-
-
-
-    public static function mpg_generate_sitemap()
-    {
-        check_ajax_referer( MPG_BASENAME, 'securityNonce' );
-
-        try {
-
-            $project_id            = isset($_POST['projectId'])            ? (int) $_POST['projectId'] : null;
-            $filename              = isset($_POST['filename'])             ? sanitize_file_name($_POST['filename']) : null;
-            $max_url               = isset($_POST['maxUrlPerFile'])        ? (int) $_POST['maxUrlPerFile'] : 50000;
-            $update_freq           = isset($_POST['frequency'])            ? esc_sql($_POST['frequency']) : null;
-            $add_to_robots         = isset($_POST['addToRobotsTxt'])       ? filter_var($_POST['addToRobotsTxt'], FILTER_VALIDATE_BOOLEAN) : false;
-            $previous_sitemap_name = isset($_POST['previousSitemapName'])  ? esc_sql($_POST['previousSitemapName']) : null;
-            $priority = isset( $_POST['priority'] )  ? sanitize_text_field( $_POST['priority'] ) : 1;
-
-            MPG_ProjectModel::mpg_update_project_by_id($project_id, [
-                'sitemap_filename' => $filename,
-                'sitemap_max_url' => $max_url,
-                'sitemap_update_frequency' => $update_freq,
-                'sitemap_add_to_robots' => $add_to_robots,
-                'sitemap_priority' => $priority,
-            ]);
-
-            $project = MPG_ProjectModel::mpg_get_project_by_id($project_id);
-
-            $raw_urls_list = isset($project[0]) ? $project[0]->urls_array : null;
-
-            if (!$raw_urls_list) {
-                throw new Exception(__('Project hasn\'t URLs for creating sitemap', 'mpg'));
-            }
-
-            $urls_list = json_decode($raw_urls_list, true);
-
-
-            if (!empty($previous_sitemap_name)) {
-                foreach ([
-                    $_SERVER['DOCUMENT_ROOT'] . '/' . MPG_Helper::mpg_get_site_url() . '/' . $previous_sitemap_name . '.xml',
-                    $_SERVER['DOCUMENT_ROOT'] . '/' . MPG_Helper::mpg_get_site_url() . '/' . $previous_sitemap_name . '-index.xml'
-                ] as $main_file_path) {
-
-                    if (file_exists($main_file_path)) {
-                        // Это удаляется главный файл (либо он единственный, либо ...-index).
-                        unlink($main_file_path);
-                    }
-
-                    // Но если есть ...-index, то сделовательно, есть и дочерние файлы, которые тоже надо "подчистить"
-                    $name = str_replace('-index', '', $previous_sitemap_name);
-
-                    foreach (glob($_SERVER['DOCUMENT_ROOT'] . '/' . MPG_Helper::mpg_get_site_url() . '/' . $name . '*.xml') as $path) {
-                        if (file_exists($path)) {
-                            unlink($path);
-                        }
-                    }
-
-                    // Когда генерируем новый sitemap нужно в robots удалять старый
-                    $sitemap_url = MPG_Helper::mpg_get_base_url(true) . '/' . $previous_sitemap_name . '.xml';
-                    MPG_ProjectModel::mpg_remove_sitemap_from_robots($sitemap_url);
-                }
-            }
-
-            MPG_SitemapGenerator::run($urls_list, $filename, $max_url, $update_freq, $add_to_robots, $project_id);
-
-            if (count($urls_list) >= $max_url) {
-                $sitemap_filename = $filename ? $filename . '-index.xml' : 'multipage-sitemap-index.xml';
-            } else {
-                $sitemap_filename = $filename ? $filename . '.xml' : 'multipage-sitemap.xml';
-            }
-
-            $sitemap_full_path = MPG_Helper::mpg_get_base_url(true, true) . '/' . $sitemap_filename;
-
-            MPG_ProjectModel::mpg_update_project_by_id($project_id, ['sitemap_url' => $sitemap_full_path]);
-
-            echo json_encode([
-                'success' => true,
-                'data' => $sitemap_full_path
-            ]);
-        } catch (Exception $e) {
-
-            do_action( 'themeisle_log_event', MPG_NAME, sprintf( __( 'Can\'t create sitemap, due to: %s', 'mpg' ), $e->getMessage() ), 'debug', __FILE__, __LINE__ );
-
-            echo json_encode([
-                'success' => false,
-                'error' => __('Can\'t create sitemap, due to: ', 'mpg') . $e->getMessage()
-            ]);
-        }
+		    echo json_encode( [
+			    'success' => false,
+			    'error'   => __( 'Can\'t create sitemap, due to: ', 'mpg' ) . $e->getMessage()
+		    ] );
+	    }
 
         wp_die();
     }
+
+
+	public static function mpg_generate_sitemap() {
+		check_ajax_referer( MPG_BASENAME, 'securityNonce' );
+
+		try {
+
+			$project_id            = isset( $_POST['projectId'] ) ? (int) $_POST['projectId'] : null;
+			$filename              = isset( $_POST['filename'] ) ? sanitize_file_name( $_POST['filename'] ) : null;
+			$max_url               = isset( $_POST['maxUrlPerFile'] ) ? (int) $_POST['maxUrlPerFile'] : 50000;
+			$update_freq           = isset( $_POST['frequency'] ) ? esc_sql( $_POST['frequency'] ) : null;
+			$add_to_robots         = isset( $_POST['addToRobotsTxt'] ) ? filter_var( $_POST['addToRobotsTxt'], FILTER_VALIDATE_BOOLEAN ) : false;
+			$previous_sitemap_name = isset( $_POST['previousSitemapName'] ) ? esc_sql( $_POST['previousSitemapName'] ) : null;
+			$priority              = isset( $_POST['priority'] ) ? sanitize_text_field( $_POST['priority'] ) : 1;
+
+			MPG_ProjectModel::mpg_update_project_by_id( $project_id, [
+				'sitemap_filename'         => $filename,
+				'sitemap_max_url'          => $max_url,
+				'sitemap_update_frequency' => $update_freq,
+				'sitemap_add_to_robots'    => $add_to_robots,
+				'sitemap_priority'         => $priority,
+			] );
+
+			$project = MPG_ProjectModel::get_project_by_id( $project_id );
+
+			$raw_urls_list = ! empty( $project ) ? $project->urls_array : null;
+
+			if ( empty( $raw_urls_list ) ) {
+				throw new Exception( __( 'Project don\'t have any URLs.', 'mpg' ) );
+			}
+
+			$urls_list = json_decode( $raw_urls_list, true );
+
+
+			if ( ! empty( $previous_sitemap_name ) ) {
+				foreach (
+					[
+						ABSPATH . $previous_sitemap_name . '.xml',
+						ABSPATH . $previous_sitemap_name . '-index.xml'
+					] as $main_file_path
+				) {
+
+					if ( file_exists( $main_file_path ) ) {
+						// Это удаляется главный файл (либо он единственный, либо ...-index).
+						unlink( $main_file_path );
+					}
+
+					// Но если есть ...-index, то сделовательно, есть и дочерние файлы, которые тоже надо "подчистить"
+					$name = str_replace( '-index', '', $previous_sitemap_name );
+
+					foreach ( glob( ABSPATH . $name . '*.xml' ) as $path ) {
+						if ( file_exists( $path ) ) {
+							unlink( $path );
+						}
+					}
+
+					$sitemap_url = untrailingslashit( get_site_url() ) . '/' . $previous_sitemap_name . '.xml';
+					MPG_ProjectModel::mpg_remove_sitemap_from_robots( $sitemap_url );
+				}
+			}
+
+			MPG_SitemapGenerator::run( $urls_list, $filename, $max_url, $update_freq, $add_to_robots, $project_id );
+
+			if ( count( $urls_list ) >= $max_url ) {
+				$sitemap_filename = $filename ? $filename . '-index.xml' : 'multipage-sitemap-index.xml';
+			} else {
+				$sitemap_filename = $filename ? $filename . '.xml' : 'multipage-sitemap.xml';
+			}
+
+			$sitemap_full_path = untrailingslashit( get_site_url() ) . '/' . $sitemap_filename;
+
+			MPG_ProjectModel::mpg_update_project_by_id( $project_id, [ 'sitemap_url' => $sitemap_full_path ] );
+
+			echo json_encode( [
+				'success' => true,
+				'data'    => $sitemap_full_path
+			] );
+		} catch ( Exception $e ) {
+
+			do_action( 'themeisle_log_event', MPG_NAME, sprintf( __( 'Can\'t create sitemap, due to: %s', 'mpg' ), $e->getMessage() ), 'debug', __FILE__, __LINE__ );
+
+			echo json_encode( [
+				'success' => false,
+				'error'   => __( 'Can\'t create sitemap, due to: ', 'mpg' ) . $e->getMessage()
+			] );
+		}
+
+		wp_die();
+	}
 
 
     public static function mpg_scheduled_cron_handler($project_id, $link, $notificate_about, $periodicity, $notification_email)
@@ -671,17 +643,8 @@ class MPG_ProjectController
             $urls_array = MPG_ProjectModel::mpg_generate_urls_from_dataset($dataset_path, $url_structure, $space_replacer);
 
             MPG_ProjectModel::mpg_update_project_by_id( $project_id, [ 'urls_array' => json_encode( $urls_array, JSON_UNESCAPED_UNICODE ) ], true );
+	        MPG_SitemapGenerator::maybe_create_sitemap( $urls_array, $project[0] );
 
-            $sitemap_filename = $project[0]->sitemap_filename;
-
-            if ($sitemap_filename) {
-                // Обновляем карту сайта только в том случае, если она уже есть (не надо создавать, если пользователь не хочет)
-                $sitemap_max_url = $project[0]->sitemap_max_url ?: 5000;
-                $sitemap_update_frequency = $project[0]->sitemap_update_frequency ?: 'daily';
-                $sitemap_add_to_robots = $project[0]->sitemap_add_to_robots ?: true;
-
-                MPG_SitemapGenerator::run($urls_array, $sitemap_filename, $sitemap_max_url, $sitemap_update_frequency, $sitemap_add_to_robots, $project_id);
-            }
 
             // Теперь, когда мы заменили файл с данными на тот, что пользователь указал по ссылке пользователь
             if ($notificate_about === 'every-time') {
@@ -928,12 +891,64 @@ class MPG_ProjectController
 		            wp_die( __( 'Security check failed', 'mpg' ) );
 	            }
 
-                $redirect = $projects_list_manage->delete_project( $project_id );
+	            $redirect = false;
+	            if ( $projects_list_manage->delete_project( $project_id ) ) {
+		            $redirect = admin_url( 'admin.php?page=mpg-project-builder' );
+	            }
             } elseif ( ! empty( $_GET['project_ids'] ) ) {
 	            check_ajax_referer( MPG_BASENAME, '_mpg_nonce' );
-
                 $project_ids = array_map( 'intval', $_GET['project_ids'] );
-                $redirect = $projects_list_manage->bulk_delete( $project_ids );
+
+                if ( isset( $_GET['action2'] ) && 'bulk-delete' === $_GET['action2'] ) {
+                    $redirect = $projects_list_manage->bulk_delete( $project_ids );
+                }
+            }elseif ( 'clone_project' === $action && $project_id){
+	            if ( empty( $nonce ) || false === wp_verify_nonce( $nonce, 'mpg-clone-project' ) ) {
+		            wp_die( __( 'Security check failed', 'mpg' ) );
+	            }
+
+	            $cloned_id = $projects_list_manage->clone_project( $project_id );
+	            if ( empty( $cloned_id ) ) {
+		            wp_die( __( 'Error while cloning project', 'mpg' ) );
+	            }
+	            wp_redirect( admin_url( add_query_arg(
+		            array(
+			            'page'   => 'mpg-project-builder',
+			            'action' => 'edit_project',
+			            'id'     => $cloned_id
+		            ),
+		            'admin.php'
+	            ) ), '301' );
+                die();
+            }elseif ( 'export_all_projects' === $action){
+                if ( empty( $nonce ) || false === wp_verify_nonce( $nonce, 'mpg-export-projects' ) ) {
+                    wp_die( __( 'Security check failed', 'mpg' ) );
+                }
+
+                $projects_list_manage->export_projects( $project_id );
+
+                wp_redirect( admin_url( add_query_arg(
+                    array(
+                        'page'   => 'mpg-project-builder',
+                    ),
+                    'admin.php'
+                ) ), '301' );
+                die();
+            } elseif ( 'mpg_import_projects' === $action){
+                if ( empty( $nonce ) || false === wp_verify_nonce( $nonce, 'mpg_import_projects' ) ) {
+                    wp_die( __( 'Security check failed', 'mpg' ) );
+                }
+
+                $projects_list_manage->import_projects();
+
+                wp_redirect( admin_url( add_query_arg(
+                    array(
+                        'page'   => 'mpg-project-builder',
+                        'imported' => 1,
+                    ),
+                    'admin.php'
+                ) ), '301' );
+                die();
             }
 
             if ( $redirect ) {
@@ -967,13 +982,149 @@ class MPG_ProjectController
      * Display admin notice.
      */
     public static function show_admin_notices() {
-        if ( ! isset( $_GET['deleted'] ) ) {
-            return;
-        }
+        if ( ! empty( $_GET['deleted'] ) ) {
         ?>
         <div class="notice notice-success is-dismissible">
             <p><?php esc_html_e( 'Successfully deleted.', 'mpg' ); ?></p>
         </div>
         <?php
+        } elseif( ! empty( $_GET['imported'] ) ) {
+            ?>
+            <div class="notice notice-success is-dismissible">
+                <p><?php esc_html_e( 'Successfully imported.', 'mpg' ); ?></p>
+            </div>
+            <?php
+        }
+    }
+
+    // License
+    public static function mpg_ti_toggle_license()
+    {
+
+        check_ajax_referer( MPG_BASENAME, 'nonce' );
+
+        try {
+            if ( ! isset( $_POST['license_key'] ) || ! isset( $_POST['_action'] ) ) {
+                wp_send_json(
+                    array(
+                        'message' => __( 'Invalid Action. Please refresh the page and try again.', 'neve-pro-addon' ),
+                        'success' => false,
+                    )
+                );
+            }
+
+            $key    = sanitize_text_field( wp_unslash( $_POST['license_key'] ) );
+            $action = sanitize_text_field( wp_unslash( $_POST['_action'] ) );
+
+            $response = apply_filters( 'themeisle_sdk_license_process_mpg', $key, $action );
+            if ( is_wp_error( $response ) ) {
+                wp_send_json(
+                    array(
+                        'message' => $response->get_error_message(),
+                        'success' => false,
+                    )
+                );
+            }
+
+            $status = apply_filters( 'product_mpg_license_status', false );
+
+            echo json_encode([
+                'success' => true,
+                'message' => $action === 'activate' ? esc_html__( 'Activated', 'mpg' ) : esc_html__( 'Deactivated', 'mpg' ),
+                'key'     =>  'valid' === $status ? str_repeat( '*', 30 ) . substr( $key, - 5 ) : '',
+                'button_text' => $action === 'activate' ? esc_html__( 'Deactivate', 'mpg' ) : esc_html__( 'Activate', 'mpg' ),
+                'expiration'  => '<span class="dashicons dashicons-yes-alt"></span>' . esc_html__( 'Valid — Expires', 'mpg' ) . ' ' . mpg_app()->get_license_expiration_date() . '</p>',
+                'action'      => $action,
+            ]);
+            wp_die();
+        } catch (Exception $e) {
+
+            do_action( 'themeisle_log_event', MPG_NAME, $e->getMessage(), 'debug', __FILE__, __LINE__ );
+
+            echo json_encode([
+                'success' => false,
+                'error' => $e->getMessage()
+            ]);
+            wp_die();
+        }
+    }
+    public static function mpg_ti_subscribe()
+    {
+        check_ajax_referer( MPG_BASENAME, 'nonce' );
+        try {
+
+            $email = isset( $_POST['email'] ) ? sanitize_email( wp_unslash( $_POST['email'] ) ) : '';
+            if ( is_email( $email ) ) {
+                $request_res = wp_remote_post(
+                    'https://api.themeisle.com/tracking/subscribe',
+                    array(
+                        'timeout' => 100,
+                        'headers' => array(
+                            'Content-Type'  => 'application/json',
+                            'Cache-Control' => 'no-cache',
+                            'Accept'        => 'application/json, */*;q=0.1',
+                        ),
+                        'body'    => wp_json_encode(
+                            array(
+                                'slug'  => 'mpg',
+                                'site'  => home_url(),
+                                'email' => $email,
+                                'data'  => array(
+                                    'segment' => array(),
+                                ),
+                            )
+                        ),
+                    )
+                );
+                if ( ! is_wp_error( $request_res ) ) {
+                    $body = json_decode( wp_remote_retrieve_body( $request_res ) );
+                    if ( 'success' === $body->code ) {
+                        update_user_meta( get_current_user_id(), '_mpg_dismiss_subscribe_notice', true );
+
+                        wp_send_json(
+                            array(
+                                'status' => 1,
+                            )
+                        );
+                    }
+                }
+                wp_send_json(
+                    array(
+                        'status'  => 0,
+                        'message' => __( 'Something went wrong please try again.', 'mpg' ),
+                    )
+                );
+            } else {
+                wp_send_json(
+                    array(
+                        'status'  => 0,
+                        'message' => __( 'Please enter a valid email address.', 'mpg' ),
+                    )
+                );
+            }
+        } catch (Exception $e) {
+
+            do_action( 'themeisle_log_event', MPG_NAME, $e->getMessage(), 'debug', __FILE__, __LINE__ );
+
+            echo json_encode(['success' => 0, 'message' => $e->getMessage()]);
+        }
+
+        wp_die();
+    }
+
+    public static function mpg_dismiss_subscribe_notice() {
+        if ( ! isset( $_GET['_nonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_GET['_nonce'] ) ), MPG_BASENAME ) ) {
+            wp_redirect( wp_get_referer() );
+            exit;
+        }
+
+        if ( ! is_user_logged_in() ) {
+            wp_redirect( wp_get_referer() );
+            exit;
+        }
+
+        update_user_meta( get_current_user_id(), '_mpg_dismiss_subscribe_notice', true );
+        wp_redirect( wp_get_referer() );
+        exit;
     }
 }

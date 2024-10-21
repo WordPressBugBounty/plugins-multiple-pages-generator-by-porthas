@@ -139,31 +139,40 @@ class MPG_SitemapGenerator
      * @see http://en.wikipedia.org/wiki/ISO_8601
      * @see http://php.net/manual/en/function.date.php
      */
-    public function addUrl($url, $lastModified = null, $changeFrequency = null, $priority = null)
-    {
-        if ($url == null)
-            throw new InvalidArgumentException("URL is mandatory. At least one argument should be given.");
-        $urlLenght = extension_loaded('mbstring') ? mb_strlen($url) : strlen($url);
-        if ($urlLenght > 2048)
-            throw new InvalidArgumentException("URL lenght can't be bigger than 2048 characters.
+	public function addUrl( $url, $lastModified = null, $changeFrequency = null, $priority = null ) {
+		if ( empty( $url ) ) {
+			throw new InvalidArgumentException( "URL is mandatory. At least one argument should be given." );
+		}
+		$urlLenght = extension_loaded( 'mbstring' ) ? mb_strlen( $url ) : strlen( $url );
+		if ( $urlLenght > 2048 ) {
+			throw new InvalidArgumentException( "URL lenght can't be bigger than 2048 characters.
                                                     Note, that precise url length check is guaranteed only using mb_string extension.
-                                                    Make sure Your server allow to use mbstring extension.");
-        $tmp = array();
-        $tmp['loc'] = $url;
-        if (isset($lastModified)) $tmp['lastmod'] = $lastModified;
-        if (isset($changeFrequency)) $tmp['changefreq'] = $changeFrequency;
-        if (isset($priority)) $tmp['priority'] = $priority;
-        $this->urls[] = $tmp;
-    }
+                                                    Make sure Your server allow to use mbstring extension." );
+		}
+		$tmp        = array();
+		$tmp['loc'] = $url;
+		if ( ! empty( $lastModified ) && strtotime( $lastModified ) !== false ) {
+			$tmp['lastmod'] = $lastModified;
+		}
+		if ( ! empty( $changeFrequency ) ) {
+			$tmp['changefreq'] = $changeFrequency;
+		}
+		if ( ! empty( $priority ) ) {
+			$tmp['priority'] = $priority;
+		}
+		$this->urls[] = $tmp;
+	}
     /**
      * Create sitemap in memory.
      */
     public function createSitemap()
     {
-        if (!isset($this->urls))
-            throw new BadMethodCallException("To create sitemap, call addUrl or addUrls function first.");
-        if ($this->maxURLsPerSitemap > 50000)
-            throw new InvalidArgumentException("More than 50,000 URLs per single sitemap is not allowed.");
+	    if ( empty( $this->urls ) ) {
+		    throw new BadMethodCallException( "To create sitemap, call addUrl or addUrls function first." );
+	    }
+	    if ( $this->maxURLsPerSitemap > 50000 ) {
+		    throw new InvalidArgumentException( "More than 50,000 URLs per single sitemap is not allowed." );
+	    }
 
         $generatorInfo = '';
         $sitemapHeader = '<?xml version="1.0" encoding="UTF-8"?> <urlset xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9 http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd" xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"></urlset>';
@@ -175,15 +184,17 @@ class MPG_SitemapGenerator
 
             foreach ($sitemap as $url) {
 
-                if (strpos(ABSPATH, $url['loc']) !== false) {
-                    continue;
-                }
-
-                $row = $xml->addChild('url');
-                $row->addChild('loc', htmlspecialchars($url['loc'], ENT_QUOTES, 'UTF-8'));
-                if (isset($url['lastmod'])) $row->addChild('lastmod', $url['lastmod']);
-                if (isset($url['changefreq'])) $row->addChild('changefreq', $url['changefreq']);
-                if (isset($url['priority'])) $row->addChild('priority', $url['priority']);
+	            $row = $xml->addChild( 'url' );
+	            $row->addChild( 'loc', htmlspecialchars( $url['loc'], ENT_QUOTES, 'UTF-8' ) );
+	            if ( isset( $url['lastmod'] ) ) {
+		            $row->addChild( 'lastmod', $url['lastmod'] );
+	            }
+	            if ( isset( $url['changefreq'] ) ) {
+		            $row->addChild( 'changefreq', $url['changefreq'] );
+	            }
+	            if ( isset( $url['priority'] ) ) {
+		            $row->addChild( 'priority', $url['priority'] );
+	            }
             }
 
             if (strlen($xml->asXML()) > 10485760) {
@@ -191,10 +202,10 @@ class MPG_SitemapGenerator
             }
             $this->sitemaps[] = $xml->asXML();
         }
-        if (sizeof($this->sitemaps) > 1000)
+        if (count($this->sitemaps) > 1000)
             throw new LengthException("Sitemap index can contains 1000 single sitemaps. Perhaps You trying to submit too many URLs.");
-        if (sizeof($this->sitemaps) > 1) {
-            for ($i = 0; $i < sizeof($this->sitemaps); $i++) {
+        if (count($this->sitemaps) > 1) {
+            for ($i = 0; $i < count($this->sitemaps); $i++) {
                 $this->sitemaps[$i] = array(
                     str_replace(".xml", ($i + 1) . ".xml", $this->sitemapFileName), //.xml.gz
                     $this->sitemaps[$i]
@@ -244,9 +255,9 @@ class MPG_SitemapGenerator
     {
         try {
 
-            if (!isset($this->sitemaps))
+            if (empty($this->sitemaps))
                 throw new BadMethodCallException("To write sitemap, call createSitemap function first.");
-            if (isset($this->sitemapIndex)) {
+            if (!empty($this->sitemapIndex)) {
                 $this->_writeFile($this->sitemapIndex[1], $this->basePath, $this->sitemapIndex[0]);
                 foreach ($this->sitemaps as $sitemap) {
                     if ($this->createGZipFile)
@@ -271,7 +282,7 @@ class MPG_SitemapGenerator
      */
     public function updateRobots()
     {
-        if (!isset($this->sitemaps))
+        if (empty($this->sitemaps))
             throw new BadMethodCallException("To update robots.txt, call createSitemap function first.");
         $sampleRobotsFile = "User-agent: *\nAllow: /";
         if (file_exists($this->basePath . $this->robotsFileName)) {
@@ -304,6 +315,9 @@ class MPG_SitemapGenerator
      */
     private function _writeFile($content, $filePath, $fileName)
     {
+	    if ( empty( $content ) ) {
+		    return false;
+	    }
         $file = fopen($filePath . $fileName, 'w');
         fwrite($file, $content);
         return fclose($file);
@@ -318,6 +332,9 @@ class MPG_SitemapGenerator
      */
     private function _writeGZipFile($content, $filePath, $fileName)
     {
+	    if ( empty( $content ) ) {
+		    return false;
+	    }
         $file = gzopen($filePath . $fileName, 'w');
         gzwrite($file, $content);
         return gzclose($file);
@@ -330,66 +347,62 @@ class MPG_SitemapGenerator
         return htmlspecialchars($this->sitemapFullURL, ENT_QUOTES, 'UTF-8');
     }
 
+	public static function get_basepath() {
+		if ( get_option( 'mpg_site_basepath' ) ) {
+			$site_root_path = rtrim( get_option( 'mpg_site_basepath' )['value'], '/' ) . '/';
+		} else {
+			$site_root_path = ABSPATH;
+		}
+
+		return $site_root_path;
+	}
+
+	/**
+	 * Check if we should create sitemap for project.
+	 *
+	 * @param $project
+	 * @param mixed $urls_array
+	 */
+	public static function maybe_create_sitemap( $project,$urls_array ) {
+		$sitemap_filename = $project->sitemap_filename ?? '';
+
+		if ( empty( $sitemap_filename ) ) {
+			return;
+		}
+		$sitemap_max_url          = $project->sitemap_max_url ?: 5000;
+		$sitemap_update_frequency = $project->sitemap_update_frequency ?: 'daily';
+		$sitemap_add_to_robots    = $project->sitemap_add_to_robots ?: true;
+
+		self::run( $urls_array, $sitemap_filename, $sitemap_max_url, $sitemap_update_frequency, $sitemap_add_to_robots, $project->id );
+
+	}
     public static function run($urlsArray, $sitemap_name, $sitemap_max_url, $sitemap_update_freq, $add_to_robots, $project_id)
     {
 
         try {
 
-            $project = MPG_ProjectModel::mpg_get_project_by_id($project_id);
-
-            // Like /var/www/htdocs/wordpress/
-            if (get_option('mpg_site_basepath')) {
-                $site_root_path = get_option('mpg_site_basepath')['value'];
-            } else {
-                $site_root_path = function_exists( 'get_home_path' ) ? get_home_path() : ABSPATH;
-                $site_root_path = substr($site_root_path, -1) === '/' ?  $site_root_path : $site_root_path . '/';
-            }
-
-            // Like a localhost
-            $site_url = MPG_Helper::mpg_get_site_url();
-
-            $domain = MPG_Helper::mpg_get_domain();
-
-            // Домен НЕ должен заканчиваться слешем
-            $domain = substr($domain, -1) === '/' ?  substr($domain, 0, -1)  : $domain;
-
-            $frenquency = $sitemap_update_freq ? $sitemap_update_freq : 'monthly';
-            $base_url = MPG_Helper::mpg_get_base_url(false);
-            $lastmod_date = MPG_ProjectModel::mpg_get_lastmod_date($project_id);
+            $project = MPG_ProjectModel::get_project_by_id($project_id);
+            $site_root_path = self::get_basepath();
+	        if ( empty( $project->template_id ) ) {
+		        throw new Exception( 'Project has not template.' );
+	        }
+	        $frenquency = ! empty( $sitemap_update_freq ) ? $sitemap_update_freq : 'monthly';
+	        $last_mod = get_the_modified_date( 'Y-m-d', $project->template_id );
 
 
-            if ($site_url) {
+            $siteMap = new MPG_SitemapGenerator( trailingslashit( get_site_url() ), $site_root_path );
+	        foreach ( $urlsArray as $index_url => $url ) {
+		        if ( $project->url_mode === 'without-trailing-slash' ) {
+			        $url = rtrim( $url, '/' );
+		        }
+		        MPG_CoreModel::set_current_row( $project_id, $index_url );
+		        $row_last_modified = MPG_ProjectModel::get_vpage_modified_date( $project_id );
+		        if ( $row_last_modified !== false ) {
+			        $last_mod = date( 'Y-m-d', $row_last_modified );
+		        }
+		        $siteMap->addUrl( MPG_CoreModel::path_to_url( $url ), $last_mod, $frenquency, $project->sitemap_priority );
+	        }
 
-                $siteMap = new MPG_SitemapGenerator($domain . '/' . $site_url . '/', $site_root_path);
-
-                foreach ($urlsArray as $url) {
-                    if ($project[0]->url_mode === 'without-trailing-slash') {
-                        $url = rtrim($url, '/');
-                    }
-                    $siteMap->addUrl($base_url . $url, $lastmod_date, $frenquency, $project[0]->sitemap_priority);
-                }
-            } else {
-
-                $siteMap = new MPG_SitemapGenerator($domain  . '/', $site_root_path);
-
-                // Если в УРЛе // встаречается два раза - это значит что первое вхождение это сразу за протоколом
-                // а второе - вде-то по средине уРЛа. Это плохо, надо учитывать это при добавлении УРЛа в карту сайта.
-                if ( isset( explode( '//', $base_url . '/' . reset( $urlsArray ) )[1] ) ) {
-                    foreach ($urlsArray as $url) {
-                        if ($project[0]->url_mode === 'without-trailing-slash') {
-                            $url = rtrim($url, '/');
-                        }
-                        $siteMap->addUrl($base_url .  $url, $lastmod_date, $frenquency, $project[0]->sitemap_priority);
-                    }
-                } else {
-                    foreach ($urlsArray as $url) {
-                        if ($project[0]->url_mode === 'without-trailing-slash') {
-                            $url = rtrim($url, '/');
-                        }
-                        $siteMap->addUrl($base_url . '/' . $url, $lastmod_date, $frenquency, $project[0]->sitemap_priority);
-                    }
-                }
-            }
 
             if ($sitemap_name) {
                 $siteMap->setSitemapFileName($sitemap_name);

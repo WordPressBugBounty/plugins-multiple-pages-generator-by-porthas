@@ -1,0 +1,13 @@
+
+
+[data-type="mpg/loop"].is-selected {
+	.block-list-appender {
+		margin-left: 0;
+		margin-right: 0;
+	}
+
+	.has-background .block-list-appender {
+		margin-top: 14px + 4px;
+		margin-bottom: 14px + 4px;
+	}
+}

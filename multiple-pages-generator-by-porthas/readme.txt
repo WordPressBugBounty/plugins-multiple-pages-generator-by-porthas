@@ -1,6 +1,6 @@
 === Multiple Page Generator Plugin - MPG ===
 Contributors: themeisle
-Tags: bulk pages, landing page, bulk edit, generate, mass, keyword, sitemap, template, csv, generator
+Tags: bulk page creator, landing pages, content generation, seo, programmatic seo
 Requires at least: 5.6
 Tested up to: 6.6
 Stable tag: trunk
@@ -8,184 +8,95 @@ Requires PHP: 7.2
 License: GPLv2
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-Create pages in bulk. This mass landing page creator can generate pages, bulk edit, and update pages in minutes with custom URLs and content. 
+Create thousands of targeted landing pages in bulk, boost your search visibility, and save countless hours of manual work with MPG.
 
 == Description ==
 
-
-**[MPG](https://themeisle.com/plugins/multi-pages-generator/?utm_source=plugin-readme&utm_medium=mpg&utm_campaign=description)** is the solution for web developers and SEO professionals that want to create multiple pages in bulk under the same domain.
-
-You can easily boost your website with unique pages, posts, or custom entity posts in minutes with MPG. This page generator plugin can help you create and manage thousands of keyword-specific landing pages. With custom content bulk pages you can increase your chances of getting top-ranked by search engines.
-
+**[MPG](https://themeisle.com/plugins/multi-pages-generator/?utm_source=plugin-readme&utm_medium=mpg&utm_campaign=description)** is your ultimate solution for effortless programmatic SEO. Create thousands of targeted landing pages in bulk, boost your search visibility, and save countless hours of manual work. With MPG, you'll reach more customers and grow your business faster than ever before.
 
 `<iframe width="560" height="315" src="https://www.youtube.com/embed/ib7wBuQIxU0" frameborder="0"  allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`
 
-With the **[MPG: Multiple Pages Generator](https://themeisle.com/plugins/multi-pages-generator/?utm_source=plugin-readme&utm_medium=mpg&utm_campaign=unlimited)** WordPress plugin, you can keep your website lean and fast and still generate an unlimited number of webpages with customized content using just one template page and a CSV file.
+### INSTANT PAGE GENERATOR
 
-###INSTANT PAGE GENERATOR
+Generate thousands of targeted landing pages instantly. Upload a CSV file or connect with Google Sheets, set up your template with shortcodes, and let MPG do the rest. [See MPG in action here.](https://www.youtube.com/watch?v=1MlOTlXHfJk)
 
-All you need is to upload a CSV file or connect with Google Sheets with your variable data. Then set up the template page with the shortcodes to that data. Upload those settings on the **MPG** page generator dashboard and that’s it! You instantly create thousands of landing pages on your website. [Watch MPG in action here.](https://www.youtube.com/watch?v=1MlOTlXHfJk)
+### PROGRAMMATIC SEO POWERHOUSE
 
-###USE CASES
+Dominate search results with MPG's programmatic SEO capabilities. Create keyword-rich, targeted pages at scale, improving your visibility for long-tail searches and local SEO. Boost your organic traffic and outrank your competitors effortlessly.
 
+### USE CASES
 
-**Landing pages**
-Reach out far and wide with our multiple pages generator, create thousands of high-quality and unique landing pages to increase your engaged audience.
-
-**Location pages:**
-Boost your local SEO with landing pages targeting specific locations. This page creator even lets you personalize each page with a corresponding and customized map.
-
-**Profile pages:**
-Manage profile pages within your website, add unique images, metadata, and even specific coding to each page. Simply update the information in your CSV file or Google Sheet that’s connected to the page generator.
-
-**Product pages:**
-Showcase your products and optimize your conversion rates by dedicating a landing page for each one. The **Multiple Pages Generator** allows you to interlink pages with full support for hierarchical content generation.
-
-**Translation pages:**
-Have a URL for each language you want to present yourself in. The Multiple Pages Generator Pro’s interface makes it easy for you to incorporate unique Schema markup data to your generated content.
-
-**Service pages:**
-Create targeted keyword landing pages by having a detailed page for every service offered. The Multiple Pages Generator plugin even offers database templates with niche industry keywords.
-
-**Client pages:**
-Increase your conversions by creating a customized welcome page for each of your clients. This page creator plugin will generate the new, custom pages instantly.
-
-Explore all the use cases that this mass page creator plugin makes possible for your website and your business.
-
-### UPDATE ANYTIME
-
-What’s the point of creating multiple new pages and then lose track of them? **MPG** page generator plugin makes it incredibly easy to bulk edit if you want to make small or big changes to your new pages. 
-
-You can delete or edit information from your database CSV file or Google Sheets. So if you want to replace a certain keyword, add or delete a page, just go to your database and make your alterations.
-
-If you want to change the look of your landing pages, you can bulk edit your pages by editing and updating your template page. Add a piece of information, change colors, coding, and more and MPG will do the rest.
-
-### UNIQUE LANDING PAGES
-
-You spend a lot of time and effort making sure your website stands out from the crowd and represents your company faithfully. That’s why your landing pages need to do that too. 
-
-You can design and customize your landing page template however you like. Do you have your own Javascript you need to keep? Or maybe you’re using a template from a creative plugin? The Multiple Pages Generator plugin easily adapts to all WordPress formats. 
-
-MPG works seamlessly with WordPress Page Builders and Themes. Simply edit the page you choose as the template by adding the shortcodes to the data from your CSV file or Google Sheets.
-
-### MOBILE FRIENDLY
-
-If you created a landing page that is mobile friendly, that’s awesome. With **the Multiple Pages Generator** plugin you can multiply that responsive page by a thousand and each new one will remain mobile-friendly and can have unique content data, such as dynamic images, video, maps, web forms, code, dynamic search results, etc.
-
-### fUNIQUE CONTENT PAGES
-
-The MPG page generator plugin allows you to customize your new pages in mass with just simple shortcodes. Add as many variables and dynamic data to your pages to make them incredibly unique and user-friendly.
-
-Let’s say you want to create service pages in bulk, each page would include a title, a description, an image with alt-text, a call to action, buttons, an address, a map, contact information, a short video, and a webform. With MPG you can make sure each of those elements is unique and optimized. You can add as many, or as little, elements to your page as you like. 
+- **Local SEO**: Generate location-specific pages to dominate local search results.
+- **E-commerce**: Create unique product pages for better visibility and conversions.
+- **Real Estate**: Build property listings that stand out in search results.
+- **Travel Industry**: Craft destination pages that attract more bookings.
+- **Job Boards**: Develop individual job listing pages for improved searchability.
 
 ### HOW IT WORKS
 
-The MPG plugin is the ultimate mass landing page creator plugin. And it's easier to use than you think, check out **[how it works](https://themeisle.com/plugins/multi-pages-generator/?utm_source=plugin-readme&utm_medium=mpg&utm_campaign=howitworks)**:
-
-1. Unique content gets pulled from your database files, whether they are stored offline (.csv, .xlsx or .ods file), or online (.csv or Google Sheets).
-
-2. Each header in your file represents a different set of content groups, renamed as shortcodes. These shortcodes are added to one or multiple template pages.
-
-3. The Multiple Pages Generator plugin will generate the new pages instantly without overcrowding your website. Plus it can help you create additional sitemaps, spintax, internal linking, and more!
-
-### MULTIPLE PAGES. ULTRA-FAST LOADING TIME.
-
-Keep your site lean and easily manageable, the MPG page generator plugin simply replaces data according to the URL typed in the browser, so your website will keep its optimized speed. 
-
-Use this mass landing page maker to quickly generate hundreds of thousands of URLs from just one template page, without the need to create individual pages. You can even use an existing page, simply include the shortcodes.
+1. Prepare your data in a CSV file or Google Sheets.
+2. Create a template page using your preferred page builder or theme.
+3. Use MPG to generate pages based on your template and data.
+4. Instantly publish thousands of unique, targeted pages optimized for search engines.
 
 
-### SEO FRIENDLY
+### BOOST YOUR BUSINESS WITH MPG
 
-The **Multiple Pages Generator** plugin is fantastic for Search Engine Optimization. Do you want to rank well in multiple locations? Rank well for several keywords? Then the MPG mass page creator is your new favorite tool. It works seamlessly with SEO plugins, such as Yoast SEO, 
+- Save time with bulk page creation
+- Improve search engine rankings
+- Reach more customers with targeted content
+- Easily manage and update thousands of pages
+- Stay ahead of competitors with programmatic SEO
 
-Boost Local SEO using Spintax in the MPG page generator plugin and get indexed by Google for hundreds, even thousands of keywords.
-
-
-### ADDITIONAL SITEMAPS
-
-Grab search engines’ attention and direct them to your new pages. **MPG: Multiple Pages Generator plugin** has an **[additional sitemap generator tool](https://docs.themeisle.com/article/1460-how-to-generate-a-sitemap?utm_source=wp-repo&utm_medium=link&utm_campaign=readme)** that automatically creates a sitemap of your new pages to search engines.
-
-### GENERATE INTERNAL LINKS 
-
-Create a user-friendly experience on your website by [creating lists of internal links](https://docs.themeisle.com/article/1466-how-to-generate-a-list-of-mpg-pages?utm_source=wp-repo&utm_medium=link&utm_campaign=readme) that you can add anywhere in your website.
-
-This page generator plugin comes with a link list generator, where you quickly create the code that will show the list of links you selected.
-
-### OPTIMIZE LEAD GENERATION
-
-This mass page creator plugin helps you publish multiple pages with targeted keywords that will match specific searches. This increases the chances of your audience finding and clicking on your website.
-
-The **MPG: Multiple Pages Generator** allows for unlimited personalization, so don't worry about duplicate content. You can include images, videos, maps, etc. each specific to a single, customizable URL.
-
-###FREE
-
-Enjoying the [Multiple Pages Generator plugin](https://themeisle.com/plugins/multi-pages-generator/?utm_source=plugin-readme&utm_medium=mpg&utm_campaign=freeverion) free version is limited to 1 project and every page generated has a branding label saying "Generated by MPG".
-
-### MULTIPLE SITES LICENSE:
-
-Are you an agency or do you manage multiple sites? You can get multiple site licenses for the MPG Pro page generator. 
-
-MPG Pro also allows you to schedule data import so that it automatically updates your content from your updated CSV or Google Sheets. Create multiple templates with their own databases, and much more!
-
-###DO YOU LIKE MPG? :)
+### DO YOU LIKE MPG? :)
 
 Follow us on [Twitter](https://twitter.com/themeisle) or [Facebook](https://www.facebook.com/themeisle/)
 Learn from our tutorials on [Youtube](https://www.youtube.com/channel/UCNZXoOtxC2l2nL2s6MaburQ)
 Rate us on [Wordpress](https://wordpress.org/support/plugin/multiple-pages-generator-by-porthas/reviews/?filter=5/#new-post)
 
-
-== Installation ==
-
-### HOW TO ACTIVATE WITHIN WORDPRESS
-
-1. Go to 'Plugins > Add New'
-2. Search for 'MPG: Multiple Pages Generator by Porthas'
-3. Click install then activate
-
-### HOW TO ACTIVATE MANUALLY
-
-1. Upload the plugin files to the /wp-content/plugins/porthas-multi-pages-generator directory, or install the plugin through the WordPress plugins screen directly.
-2. Activate the plugin through the &#39;Plugins&#39; screen in WordPress
-3. Use the 'Multiple Pages Generator' screen to configure the plugin
+Ready to supercharge your SEO and grow your business faster? [Get started with MPG today!](https://themeisle.com/plugins/multi-pages-generator/?utm_source=plugin-readme&utm_medium=mpg&utm_campaign=cta)
 
 == Frequently Asked Questions ==
 
-**What is the MPG plugin for?**
+**What is MPG used for?**
 
-The [Multiple Pages Generator](https://themeisle.com/plugins/multi-pages-generator/?utm_source=plugin-readme&utm_medium=mpg&utm_campaign=description) plugin is perfect for creating an unlimited number of landing pages with personalized content and searchable URLs from easily manageable templates and database files (offline or online).
+MPG allows you to create thousands of targeted landing pages in bulk, optimizing your website for programmatic SEO. It's perfect for businesses looking to scale their content creation, improve search visibility, and save time on manual page creation.
 
-**How does it work?**
+**How does MPG work?**
 
-When a URL is requested by your browser, the first priority is to load an actual existing page or post. If it doesn't exist, before returning 404, MPG will check if the URL is within its database. If it is, it will render the selected template page, replace all URL related data and shortcodes, return status 200, and load the page for the end-user.
+MPG generates pages based on your template and data source. When a URL is requested, MPG checks if it's in its database. If so, it renders the page with the appropriate content, returning a fully formed, unique page optimized for search engines.
 
-**Is there a tutorial?**
+**Is MPG compatible with my theme or page builder?**
 
-Yes, check out our tutorial videos and step-by-steps at [https://docs.themeisle.com/collection/1572-multiple-pages-generator](https://docs.themeisle.com/collection/1572-multiple-pages-generator?utm_source=wp-repo&utm_medium=link&utm_campaign=readme)
+Yes, MPG is designed to work seamlessly with most WordPress themes and popular page builders like Elementor, Divi, and WPBakery.
 
-**Is the MPG plugin free?**
+**How does MPG improve my SEO?**
 
-You can use the main features of the plugin for free to create one project. To create an unlimited amount of projects, you can upgrade your plan. Check out our incredible deals here: [Multi Pages Generator](https://themeisle.com/plugins/multi-pages-generator/?utm_source=plugin-readme&utm_medium=mpg&utm_campaign=mainfeatures)
+MPG allows you to create targeted, keyword-rich pages at scale, improving your visibility for long-tail keywords and local searches. It also generates sitemaps and internal links, further boosting your SEO efforts.
 
-**How does MPG help with my SEO?**
+**Can I update my generated pages in bulk?**
 
-The MPG plugin can create pages with customized keywords that help your site rank higher for each search. You can include specific addresses for each page, localizing your content, and making your page a priority for users in that area. And every metadata can be edited to suit the content of each of the thousands of new pages created.
+Absolutely! MPG makes it easy to bulk edit your pages, compared with WP All Import. Simply update your data source (CSV or Google Sheets) or modify your template, and MPG will update all affected pages automatically.
 
-On top of that, MPG allows you to create sitemaps with all your new URLs and automatically submit to search engines for indexing.
+**Is there a limit to how many pages I can create?**
 
+No, however in the free version the dataset is limited to the first 50 rows only.
 
-**What if my URL is showing a 404?**
+**Is there a tutorial available?**
 
-First, make sure the plugin is properly installed, the CSV is loaded and the template is properly set. If the problem persists:
+Yes, we offer comprehensive tutorial videos and step-by-step guides. Check them out at [https://docs.themeisle.com/collection/1572-multiple-pages-generator](https://docs.themeisle.com/collection/1572-multiple-pages-generator?utm_source=wp-repo&utm_medium=link&utm_campaign=readme)
 
-1. Check that the requested URL doesn&#39;t belong to an existing page, especially in the trash.
+== Installation ==
 
-2. Check that the requested URL is identically included in the data file uploaded to the MPG plugin.
+1. Go to 'Plugins > Add New' in your WordPress dashboard
+2. Search for 'MPG: Multiple Pages Generator by Porthas'
+3. Click 'Install Now' and then 'Activate'
+4. Go to the 'Multiple Pages Generator' menu item to start creating your bulk pages
 
-3. Make sure to disable any custom 404-page plugins. Sometimes they check the page URL in the database before MPG does and return 404.
-
-4. Still getting the error message? Write to support **[here.](https://wordpress.org/support/plugin/multiple-pages-generator-by-porthas)**
-
+For manual installation:
+1. Upload the plugin files to the `/wp-content/plugins/multiple-pages-generator-by-porthas` directory
+2. Activate the plugin through the 'Plugins' screen in WordPress
+3. Use the 'Multiple Pages Generator' screen to configure the plugin
 **How can I request a feature?**
 
 E-mail us at [friends@themeisle.com](mailto:friends@themeisle.com)
@@ -200,6 +111,49 @@ E-mail us at [friends@themeisle.com](mailto:friends@themeisle.com)
 
 
 == Changelog ==
+
+####   Version 4.0.0 (2024-10-21)
+
+### New Features
+- A new Gutenberg block allows users to easily manage loops for MPG-generated pages, with support for filtering and repeating content dynamically [Documentation](https://docs.themeisle.com/article/2071-how-to-use-the-template-page-in-mpg-for-programmatic-seo#block-editor-loop).
+- Added a few new predefined templates that come with richer data and a complete page template for easier project setup [Example](https://docs.themeisle.com/article/2069-currency-converter-demosite). 
+- Introduced a Preview Sample URL button on the template page, allowing users to quickly view a randomly generated page from the project to see how it looks.
+- Added the ability to export and import projects easily, allowing users to transfer projects between websites or back them up for future use. [Documentation](https://docs.themeisle.com/article/2076-how-to-import-or-export-mpg-projects) [PRO]
+- Added the ability to duplicate projects, allowing users to clone existing projects with the click of a button. [PRO]
+- Added an option to update the modified date of generated pages when data is re-fetched, with support for both automatic updates for all pages and using a modified_date column to update each generated page separately. [Documentation](https://docs.themeisle.com/article/2071-how-to-use-the-template-page-in-mpg-for-programmatic-seo#automatically-mapped-columns) [PRO]
+- Added support for conditional logic in project templates, allowing content to be rendered or hidden based on specified conditions in both Gutenberg and Elementor. [Documentation](https://docs.themeisle.com/article/2071-how-to-use-the-template-page-in-mpg-for-programmatic-seo#visibility-conditions) [PRO]
+
+### Enhancements
+- The plugin received a complete design overhaul, including a new flow for creating projects, removing duplicate save buttons, and requiring users to select the source file before configuring other settings.
+- MPG tags now render correctly when used with Elementors dynamic link fields, allowing tags like {{mpg_url}} to work as expected on buttons.
+- Clicking the MPG menu item now opens the list of existing projects instead of starting a new project.
+- The Exclude template from crawlers and site loops option is now checked by default when creating a new project, improving SEO by preventing unintended page indexing.
+- Users now benefit from an automatic sitemap regeneration feature where cron periodically checks and regenerates the sitemap with new changes, ensuring it is present and updated.
+- Improved examples of the Spintax feature to allow spinning text for dynamic content. A note explaining its usage has also been included, ensuring clear instructions.
+- The featured image mapping name has been changed for better clarity, making it easier to understand which column to use for image URLs.
+- Enhanced compatibility with WPML, Polylang, and TranslatePress for multilingual sites. Users can now easily translate project templates and generate pages into different languages.
+- Introduced support for alt text in featured images for MPG-generated pages. Users can now specify alt text in the source file for improved SEO and accessibility.
+- Added new columns in the project list view, including See All URLs, product ID, and next sync time, providing more detailed project insights.
+- Introduced more operators like >, <, >=, <=, !=, contains, has any value, checking for regex or empty values and similar checks for use in shortcodes and new Gutenberg blocks, giving users greater control over filtering results in their MPG projects.
+- Removed the Parts list, Directory of Partners, and App Integrations datasets, as they were no longer functioning as intended.
+- Added a button that allows users to directly open and edit the template page from the project creation page, streamlining the workflow.
+- Installing the PRO version of the plugin now automatically deactivates the free version, preventing conflicts and ensuring seamless transitions.
+- Improved checkbox labels and tooltips to ensure clearer communication of their functionality. Information in tooltips was also adjusted for clarity.
+- Added support for fetching data in custom intervals using a filter and introduced an On-demand webhook option that can be used to refresh project data as needed [Documentation](https://docs.themeisle.com/article/2074-how-to-set-custom-frequency-for-mpg-data-fetch).
+- Moved the license key field from the General Settings section to the MPG Dashboard for easier access and management for PRO users.
+
+### Bug Fixes
+- The Load more button now disappears automatically when there are no additional templates to load, ensuring a cleaner interface.
+- Users can now edit projects even when the source file is corrupted or unavailable, allowing for file replacement without losing progress.
+- Fixed 404 errors that occurred in the browser console when navigating through MPG project pages, ensuring smoother project management.
+- Resolved an issue where search settings with empty fields couldnt be saved. Now, users can reset configurations and save with blank fields as intended.
+- Fixed an issue where columns containing HTML in the source file caused alignment issues in the data preview. Now, the preview displays as text and is properly aligned.
+- Extra spaces in URLs within schema markup have been removed, ensuring properly formatted schema on generated pages.
+- The Add new page button is now functional in the template list, allowing users to create new pages as intended directly from projects.
+- Solved the Cannot Update Project error where users could not update a project due to missing data.
+
+
+
 
 #####   Version 3.4.8 (2024-08-28)
 

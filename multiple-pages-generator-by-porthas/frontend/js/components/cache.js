@@ -24,16 +24,16 @@ jQuery('#cache').on('click', '.card .enable-cache', async function () {
 
     toastr.success(cacheEnablingStatus.data, translate['Success'])
 
-    jQuery('.cache-page .buttons .btn')
+    jQuery('.cache-page .card-footer button.btn')
         .attr('disabled', 'disabled');
 
-    jQuery(`.cache-page .buttons[data-cache-type=${cacheType}] .enable-cache`)
+    jQuery(`.cache-page div[data-cache-type=${cacheType}] .enable-cache`)
         .removeAttr('disabled')
         .removeClass('btn-success enable-cache')
         .addClass('btn-warning disable-cache')
         .text('Disable');
 
-    jQuery(`.cache-page .buttons[data-cache-type=${cacheType}] .flush-cache`)
+    jQuery(`.cache-page div[data-cache-type=${cacheType}] .flush-cache`)
         .removeAttr('disabled')
         .removeClass('btn-light')
         .addClass('btn-danger');
@@ -65,15 +65,15 @@ jQuery('#cache').on('click', '.card .disable-cache', async function () {
 
     toastr.success(cahceDisablingStatus.data, translate['Success!'])
 
-    jQuery('.cache-page .buttons .btn')
+    jQuery('.cache-page .card-footer button.btn')
         .removeAttr('disabled');
 
-    jQuery(`.cache-page .buttons .disable-cache`)
+    jQuery(`.cache-page button.disable-cache`)
         .addClass('btn-success enable-cache')
         .removeClass('btn-warning disable-cache')
         .text('Enable');
 
-    jQuery(`.cache-page .buttons .flush-cache`)
+    jQuery(`.cache-page button.flush-cache`)
         .attr('disabled', 'disabled')
         .addClass('btn-light')
         .removeClass('btn-danger');
@@ -82,7 +82,7 @@ jQuery('#cache').on('click', '.card .disable-cache', async function () {
 });
 
 
-jQuery(`.cache-page .buttons .flush-cache`).on('click', async function () {
+jQuery(`.cache-page button.flush-cache`).on('click', async function () {
 
     let decision = confirm(translate['Are you sure, that you want to flush cache? This action can not be undone.']);
 

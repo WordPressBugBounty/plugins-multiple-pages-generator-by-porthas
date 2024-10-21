@@ -1,23 +1,6 @@
-<div class="block sidebar-block shadowed">
-    <div class="sidebar-block-inner-content">
-    <?php
-         if (mpg_app()->is_premium()) {
-        ?>
-            <a class="btn btn-success" href="#"><?php _e('PRO version', 'mpg'); ?></a>
-
-        <?php } else { ?>
-
-            <a class="btn btn-primary upgrade-btn" href="<?php echo mpg_app()->get_upgrade_url('shortcode'); ?>"><?php _e('Upgrade to PRO', 'mpg'); ?></a>
-            
-            <p><?php mpg_app()->upgrade_notice();?></p>
-
-        <?php } ?>
-    </div>
-</div>
 
 <div class="block sidebar-block shadowed">
 
-    <h2><?php _e('Need Help?', 'mpg'); ?></h2>
     <div class="sidebar-block-inner-content">
     <h4><?php _e('Create comprehensible internal links', 'mpg') ?></h4>
 
@@ -50,3 +33,4 @@
     </div>
     <a href="https://docs.themeisle.com/collection/1429-multi-pages-generator" target="_blank" class="sidebar-learn-more"><?php _e('Learn more', 'mpg');?></a>
 </div>
+<?php require plugin_dir_path( __FILE__ ) . '../../sidebar-subscribe.php'; ?>

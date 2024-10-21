@@ -1,8 +1,11 @@
 <?php
 
+require_once(realpath(__DIR__ . '/../helpers/Array.php'));
 require_once(realpath(__DIR__ . '/../helpers/Helper.php'));
+require_once(realpath(__DIR__ . '/../helpers/Parser.php'));
 require_once(realpath(__DIR__ . '/../models/ProjectModel.php'));
 require_once(realpath(__DIR__ . '/../controllers/CoreController.php'));
+require_once(realpath(__DIR__ . '/display/load.php'));
 require_once(realpath(__DIR__ . '/../controllers/DatasetController.php'));
 require_once(realpath(__DIR__ . '/../controllers/ProjectController.php'));
 require_once(realpath(__DIR__ . '/../controllers/SpintaxController.php'));
@@ -87,7 +90,16 @@ class MPG_HookController
         add_filter('cron_schedules', array('MPG_Helper', 'mpg_cron_weekly'));
         // Register additional (monthly) interval for cron because WP hasn't monthly period
         add_filter('cron_schedules', array('MPG_Helper', 'mpg_cron_monthly'));
+	    add_action( 'admin_head', function () {
 
+		    if ( ! empty( get_option( 'mpg_legacy_user', '' ) ) ) {
+			    return;
+		    }
+		    global $wpdb;
+		    $projects = $wpdb->get_var( "SELECT id FROM {$wpdb->prefix}" . MPG_Constant::MPG_PROJECTS_TABLE . "  limit 1" );
+
+		    update_option( 'mpg_legacy_user', ! empty( $projects ) ? 'yes' : 'no' );
+	    } );
         // Создаем хук, который будет вызывать функция wp_schedule_event, и wp_schedule_single_event, в момент
         // когда наступает время скачки и развертывания файла по расписанию
         add_action('mpg_schedule_execution', ['MPG_ProjectController', 'mpg_scheduled_cron_handler'], 10, 5);
@@ -111,6 +123,8 @@ class MPG_HookController
         // Other
         add_action('wp_ajax_mpg_get_permalink_structure', ['MPG_ProjectController', 'mpg_get_permalink_structure']);
         add_action('wp_ajax_mpg_change_permalink_structure', ['MPG_ProjectController', 'mpg_change_permalink_structure']);
+        add_action('wp_ajax_mpg_ti_subscribe', ['MPG_ProjectController', 'mpg_ti_subscribe']);
+        add_action('admin_action_mpg_dismiss_subscribe_notice', ['MPG_ProjectController', 'mpg_dismiss_subscribe_notice']);
 
         add_action('admin_head', ['MPG_Helper', 'mpg_header_code_container']);
 
@@ -120,7 +134,14 @@ class MPG_HookController
             }
         }, 99 );
 
+	    add_action( 'init', function () {
+		    $db_version = get_option( 'mpg_database_version' );
 
+		    if ( $db_version === MPG_DATABASE_VERSION ) {
+			    return;
+		    }
+		    MPG_Helper::mpg_activation_events();
+	    } );
 
         // Ставим noindex для страницы шаблона
         add_filter('template_redirect', function () {
@@ -134,23 +155,39 @@ class MPG_HookController
             }
         }, 1, 1);
 
-        // Filter language URL.
-        add_filter(
-            'wpml_ls_language_url',
-            function( $url, $data ) {
-                $path           = MPG_Helper::mpg_get_request_uri();
-                $redirect_rules = MPG_CoreModel::mpg_get_redirect_rules( $path );
-                if ( ! empty( $redirect_rules['template_id'] ) && ! empty( $redirect_rules['project_id'] ) ) {
-                    $page_slug = get_query_var( 'name' );
-                    if ( ! empty( $page_slug ) ) {
-                        $url = sprintf( '%s%s/', $url, $page_slug );
-                    }
-                }
-                return $url;
-            },
-            10,
-            2
-        );
+        // Filter language URL in the menu switcher.
+	    add_filter(
+		    'wpml_ls_language_url',
+		    function ( $url, $data ) {
+			    if ( ! MPG_Helper::is_mpg_single() ) {
+				    return $url;
+			    }
+			    global $sitepress;
+			    $code = $sitepress->get_language_from_url( $url );
+			    return $sitepress->convert_url_string( MPG_CoreModel::path_to_url( MPG_Helper::mpg_get_request_uri() ), $code );
+		    },
+		    10,
+		    2
+	    );
+        // Handles the WPML langhref attribute translation.
+        // WPML is using the wp_query before we set the template id, so we need handle here the translation for the virtual pages.
+	    add_filter( 'wpml_hreflangs', function ( $hreflang_items ) {
+		    if ( is_404() ) {
+			    return $hreflang_items;
+		    }
+		    if ( ! MPG_Helper::is_mpg_single() ) {
+
+			    return $hreflang_items;
+		    }
+		    global $sitepress;
+		    foreach ( $hreflang_items as $key => $hreflang_item ) {
+			    $code                   = $sitepress->get_language_from_url( $hreflang_item );
+			    $hreflang_items[ $key ] = $sitepress->convert_url_string( MPG_CoreModel::path_to_url( MPG_Helper::mpg_get_request_uri() ), $code );
+		    }
+
+		    return $hreflang_items;
+	    } );
+
 
         add_action(
             'the_seo_framework_after_admin_init',
@@ -263,12 +300,71 @@ class MPG_HookController
 
                     $post_ids[] = $excluded_project['template_id'];
                 }
-                
+
                 return $post_ids;
             } );
-        }
+        } 
+        /// Block editor assets.
+        add_action('enqueue_block_editor_assets', array('MPG_Helper', 'block_editor_assets_enqueue')); 
+	    if ( ! wp_next_scheduled( 'mpg_sitemap_check' ) ) {
+		    wp_schedule_event( time() + 60, 'twicedaily', 'mpg_sitemap_check' );
+	    }
+        add_action('mpg_sitemap_check', [__CLASS__, 'check_sitemaps']); 
     }
 
+	/**
+	 * Check the validity of sitemaps for multiple projects and regenerate them if they are invalid.
+	 *
+	 * This function performs the following steps:
+	 * 1. Retrieves a list of projects.
+	 * 2. For each project, it checks if a sitemap file exists.
+	 * 3. Validates the sitemap XML.
+	 * 4. If the sitemap is invalid, it logs an error and regenerates the sitemap.
+	 */
+	public static function check_sitemaps() {
+		$projects = MPG_ProjectModel::get_projects( 10 );
+
+		foreach ( $projects as $project ) {
+			$filename = $project->sitemap_filename;
+			if ( empty( $filename ) ) {
+				continue;
+			}
+			$urls_list = ! empty( $project ) ? $project->urls_array : null;
+
+			if ( empty( $urls_list ) ) {
+				continue;
+			}
+
+			$urls_list = json_decode( $urls_list, true );
+
+			$sitemap_valid_path = false;
+			if ( file_exists( MPG_SitemapGenerator::get_basepath() . $filename . '.xml' ) ) {
+				$sitemap_valid_path = MPG_SitemapGenerator::get_basepath() . $filename . '.xml';
+			} elseif ( file_exists( MPG_SitemapGenerator::get_basepath() . $filename . '-index.xml' ) ) {
+				$sitemap_valid_path = MPG_SitemapGenerator::get_basepath() . $filename . '-index.xml';
+			}
+			if ( ! empty( $sitemap_valid_path ) ) {
+				libxml_use_internal_errors( true ); // Enable internal error handling
+				$xml = simplexml_load_file( $sitemap_valid_path );
+				if ( $xml === false ) {
+					$sitemap_valid_path = false;
+				}
+			}
+			if ( ! empty( $sitemap_valid_path ) ) {
+				continue;
+			}
+			MPG_LogsController::mpg_write( $project->id, 'error', 'Sitemap is not valid, regenerating' );
+			// Обновляем карту сайта только в том случае, если она уже есть (не надо создавать, если пользователь не хочет)
+			$sitemap_max_url          = $project->sitemap_max_url ?: 5000;
+			$sitemap_update_frequency = $project->sitemap_update_frequency ?: 'daily';
+			$sitemap_add_to_robots    = $project->sitemap_add_to_robots ?: true;
+			try {
+				MPG_SitemapGenerator::run( $urls_list, $filename, $sitemap_max_url, $sitemap_update_frequency, $sitemap_add_to_robots, $project->id );
+			} catch ( Exception $e ) {
+				MPG_LogsController::mpg_write( $project->id, 'error', 'Sitemap generation failed: ' . $e->getMessage() );
+			}
+		}
+	}
     public static function init_ajax()
     {
 
@@ -366,8 +462,64 @@ class MPG_HookController
         add_action('wp_ajax_nopriv_mpg_search_settings_get_options', ['MPG_SearchController', 'mpg_search_settings_get_options']);
 
         add_action('wp_ajax_mpg_send_analytics_data', ['MPG_Helper', 'mpg_send_analytics_data']);
-    }
+        add_action('rest_api_init',array(__CLASS__,'register_rest_routes'));
 
+        // License
+        add_action('wp_ajax_mpg_ti_toggle_license', ['MPG_ProjectController', 'mpg_ti_toggle_license']);
+    }
+    /**
+     * Register rest routes.
+     */
+	public static function register_rest_routes() {
+
+		register_rest_route( 'mpg', '/webhook/(?P<project_id>\d+)', array(
+			'methods'             => 'POST',
+			'callback'            => array( __CLASS__, 'trigger_fetch' ),
+			'args'                => array(
+				'project_id' => array(
+					'validate_callback' => function ( $param, $request, $key ) {
+						return is_numeric( $param );
+					}
+				),
+			),
+			'permission_callback' => function ( $request ) {
+				$secret     = $request->get_param( 'hash' );
+				$project_id = $request->get_param( 'project_id' );
+				if ( empty( $project_id ) || empty( $secret ) ) {
+					return false;
+				}
+				$hash = hash_hmac( 'sha256', $project_id, SECURE_AUTH_KEY );
+
+				return hash_equals( $hash, $secret );
+			}
+		) );
+	}
+
+	/**
+     * Run the update project on demand.
+     *
+	 * @param $request
+	 *
+	 * @return WP_Error|WP_HTTP_Response|WP_REST_Response
+	 * @throws Exception
+	 */
+	public static function trigger_fetch( $request ) {
+		$project_id  = $request->get_param( 'project_id' );
+		$mpg_project = MPG_ProjectModel::mpg_get_project_by_id( $project_id );
+
+		if ( ! isset( $mpg_project[0] ) || ! $mpg_project[0]->schedule_source_link ) {
+			return new WP_Error( 'invalid_project', __( 'Your project has not properly configured source.', 'mpg' ) );
+		}
+		if ( $mpg_project[0]->schedule_periodicity !== 'ondemand' ) {
+			return new WP_Error( 'invalid_project', __( 'Your project is not configured to be updated on demand.', 'mpg' ) );
+		}
+		MPG_ProjectController::mpg_scheduled_cron_handler( $project_id, $mpg_project[0]->schedule_source_link, $mpg_project[0]->schedule_notificate_about, $mpg_project[0]->schedule_periodicity, $mpg_project[0]->schedule_notification_email );
+
+		return rest_ensure_response( [
+			'code'    => 'success',
+			'message' => sprintf( __( 'Project %s has been updated.' ), $mpg_project[0]->name )
+		] );
+	}
     public static function init_replacement()
     {
         // отвечает за замену {{шорткодов}} в тексте (например в теле поста, или заголовке)
@@ -392,9 +544,9 @@ class MPG_HookController
 
 
         // отвечает за замену {{шорткодов}} в шорткоде wp и where. Например так [mpg where="" project-id=""] {{mpg_some}} [/mpg]
-        add_shortcode('mpg', ['MPG_CoreController', 'mpg_shortcode']);
+        //add_shortcode('mpg', ['MPG_CoreController', 'mpg_shortcode']);
 
-        add_shortcode('mpg_match', ['MPG_CoreController', 'mpg_match']);
+      //  add_shortcode('mpg_match', ['MPG_CoreController', 'mpg_match']);
         // Отвечает за Spintax функционал
         add_shortcode('mpg_spintax', ['MPG_SpintaxController', 'mpg_spintax_shortcode']);
 

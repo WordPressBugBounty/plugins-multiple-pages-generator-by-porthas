@@ -1,31 +1,13 @@
-<div class="">
-    <div class="block sidebar-block shadowed">
-   <div class="sidebar-block-inner-content">
-        <?php
-         if (mpg_app()->is_premium()) {
-        ?>
-            <a href="#" class="btn btn-success"> <?php _e('PRO version', 'mpg'); ?></a>
-
-        <?php } else { ?>
-
-            <a class="btn btn-primary upgrade-btn" href="<?php echo mpg_app()->get_upgrade_url('datasetlibrary');?>"><?php _e('Upgrade to PRO', 'mpg'); ?></a>
-
-        <?php } ?>
-
-        <p style="margin-top:20px;"><?php _e('This plugin allows you to quickly create and effectively edit an infinite number of new pages or posts on your site, using only a spreadsheet.', 'mpg');?></p>
-        </div>
-    </div>
-</div>
-
 <div class="">  
+
     <div class="block sidebar-block shadowed">
 
-        <h2><?php _e('Need Help?', 'mpg'); ?></h2>
         <div class="sidebar-video-block">
-			<h4><?php _e('Welcome to MPG', 'mpg') ?></h4>
-
+			<h4><?php _e('How it works in 60 seconds.', 'mpg') ?></h4>
 			<iframe  height="200" style="max-height: 200px;" src="https://www.youtube.com/embed/tsr_RfLMVYU" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
         </div>
+
+	    <?php require_once plugin_dir_path( __FILE__ ) . '../sites-sidebar.php'; ?>
         <div class="sidebar-block-inner-content">
         <h4><?php _e('Where to start with MPG', 'mpg'); ?></h4>
         <ul>
@@ -46,4 +28,6 @@
         </ul>
         </div>
     </div>
+	<?php require_once plugin_dir_path( __FILE__ ) . '../sidebar-subscribe.php'; ?>
+
 </div>

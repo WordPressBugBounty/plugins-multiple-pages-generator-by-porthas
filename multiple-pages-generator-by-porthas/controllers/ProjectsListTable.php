@@ -80,6 +80,8 @@ if ( ! class_exists( 'Projects_List_Table' ) ) {
 			$columns = array(
 				'cb'          => '<input type="checkbox" />',
 				'name'        => __( 'Project Name', 'mpg' ),
+				'pages'       => __( 'Pages', 'mpg' ),
+				'next_sync'   => __( 'Next Sync', 'mpg' ),
 				'source_type' => __( 'Source Type', 'mpg' ),
 				'created_at'  => __( 'Date', 'mpg' ),
 			);
@@ -97,6 +99,38 @@ if ( ! class_exists( 'Projects_List_Table' ) ) {
 			switch ( $column_name ) {
 				case 'name':
 					return $item->$column_name;
+				case 'pages':
+					$total_pages = isset( $item->urls_array ) ? count( json_decode( $item->urls_array, true ) ) : 0;
+					// phpcs:ignore WordPress.WP.I18n.MissingTranslatorsComment
+					return '<a href="#" class="mpg-preview-urls" data-project_id="' . esc_attr( $item->id ). '" class="">' . sprintf( esc_html__( 'See All %d URLs', 'mpg' ), $total_pages ) . '</a>';
+				case 'next_sync':
+					if ( 'direct_link' !== $item->source_type ) {
+						return '—';
+					}
+					$next_sync = esc_html__( 'Live', 'mpg' );
+					if ( ! empty( $item->schedule_periodicity ) && ! in_array( $item->schedule_periodicity, array( 'now', 'once', 'ondemand' ), true ) ) {
+						$next_sync = wp_next_scheduled(
+							'mpg_schedule_execution',
+							array(
+								(int) $item->id,
+								$item->schedule_source_link,
+								$item->schedule_notificate_about,
+								$item->schedule_periodicity,
+								$item->schedule_notification_email,
+							)
+						);
+						$next_sync = date_i18n( 'Y m d \a\t H:i:s', $next_sync );
+					} elseif ( ! empty( $item->schedule_periodicity ) ) {
+						if ( 'once' === $item->schedule_periodicity ) {
+							$next_sync = esc_html__( 'Manual', 'mpg' );
+						} elseif ( 'now' === $item->schedule_periodicity ) {
+							$next_sync = esc_html__( 'Live', 'mpg' );
+						} elseif ( 'ondemand' === $item->schedule_periodicity ) {
+							$next_sync = esc_html__( 'On Demand', 'mpg' );
+						}
+					}
+					// phpcs:ignore WordPress.WP.I18n.MissingTranslatorsComment
+					return sprintf( esc_html__( 'Next scheduled execution: %s', 'mpg' ), esc_html( $next_sync ) );
 				case 'created_at':
 					return date_i18n( 'd M, Y, H:i a', $item->$column_name );
 				case 'source_type':
@@ -115,20 +149,25 @@ if ( ! class_exists( 'Projects_List_Table' ) ) {
 		 * @return sttring Field and action
 		 */
 		public function column_name( $item ) {
+			$edit_url = add_query_arg(
+				array(
+					'page'   => 'mpg-project-builder',
+					'action' => 'edit_project',
+					'id'     => $item->id,
+				),
+				admin_url( 'admin.php' )
+			);
+			if ( ! mpg_app()->can_edit() ) {
+				$edit_url = '#';
+			}
 			$action = array(
-				'edit'   => sprintf(
-					'<a href="%s">%s</a>',
-					esc_url(
-						add_query_arg(
-							array(
-								'page'   => 'mpg-project-builder',
-								'action' => 'edit_project',
-								'id'     => $item->id,
-							),
-							admin_url( 'admin.php' )
-						)
-					),
-					esc_html__( 'Edit', 'mpg' )
+				'id_show' => sprintf( '<span>#%d</span>', $item->id ),
+				'edit' => sprintf(
+					'<a href="%s" class="%s"style="%s" >%s</a>',
+					esc_url( $edit_url ),
+					mpg_app()->can_edit() ? 'mpg-edit-btn' : 'mpg-edit-btn-pro',
+					! mpg_app()->can_edit() ? 'opacity:0.5;' : '',
+					esc_html__( 'Edit', 'mpg' ),
 				),
 				'delete' => sprintf(
 					'<a href="%s" onclick="return confirm(\'%s\');">%s</a>',
@@ -147,6 +186,54 @@ if ( ! class_exists( 'Projects_List_Table' ) ) {
 					esc_html__( 'Delete', 'mpg' )
 				),
 			);
+			$clone_action = sprintf(
+				                '<a href="%s" class="%s"style="%s">%s</a>',
+				                mpg_app()->is_premium() ? esc_url(
+					                add_query_arg(
+						                array(
+							                'page'   => 'mpg-project-builder',
+							                'action' => 'clone_project',
+							                '_wpnonce' => wp_create_nonce( 'mpg-clone-project' ),
+							                'id'     => $item->id,
+						                ),
+						                admin_url( 'admin.php' )
+					                )
+				                ) : '#',
+				                mpg_app()->is_premium() ? 'mpg-clone-btn' : 'mpg-clone-btn-pro',
+				                ! mpg_app()->is_premium() ? 'opacity:0.5;' : '',
+				                ( ! mpg_app()->is_premium() ? '<span style="font-size: 13px;line-height: 1.5em;width: 13px;height: 13px;" class="dashicons dashicons-lock"></span>' : '' )  . esc_html__( 'Clone', 'mpg' )
+			);
+
+			$export_action = sprintf(
+				                '<a href="%s" class="%s"style="%s">%s</a>',
+				                mpg_app()->is_premium() ? esc_url(
+					                add_query_arg(
+						                array(
+							                'page'   => 'mpg-project-builder',
+							                'action' => 'export_all_projects',
+							                '_wpnonce' => wp_create_nonce( 'mpg-export-projects' ),
+							                'id'     => $item->id,
+						                ),
+						                admin_url( 'admin.php' )
+					                )
+				                ) : '#',
+				                mpg_app()->is_premium() ? 'mpg-export-btn' : 'mpg-export-btn-pro',
+				                ! mpg_app()->is_premium() ? 'opacity:0.5;' : '',
+				                ( ! mpg_app()->is_premium() ? '<span style="font-size: 13px;line-height: 1.5em;width: 13px;height: 13px;" class="dashicons dashicons-lock"></span>' : '' )  . esc_html__( 'Export', 'mpg' )
+			);
+
+			if(mpg_app()->is_premium()){
+				$action = [
+					'id_show' => sprintf( '<span>#%d</span>', $item->id ),
+					'edit' => $action['edit'],
+					'clone' => $clone_action,
+					'export' => $export_action,
+					'delete' => $action['delete'],
+				];
+			}else{
+				$action['clone'] = $clone_action;
+				$action['export'] = $export_action;
+			}
 			return sprintf( '%1$s %2$s', $item->name, $this->row_actions( $action ) );
 		}
 

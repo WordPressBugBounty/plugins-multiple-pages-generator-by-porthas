@@ -110,7 +110,66 @@ jQuery('.advanced-page .mpg-branding-position-block').on('submit', async functio
     }
 });
 
+jQuery('.advanced-page .mpg-pro-license').on('submit', async function (e) {
 
+    e.preventDefault();
 
+    const _this = jQuery(this);
+    _this
+    .find('.btn-primary')
+    .attr('disabled', true);
 
+    const event = jQuery.post(
+            ajaxurl,
+            jQuery(this).serialize(),
+            function (response) {
+                if (!response.success) {
+                    toastr.error(response.message);
+                    _this
+                    .find('.btn-primary')
+                    .removeAttr('disabled');
+                } else {
+                    toastr.success(response.message, { timeOut: 5000 });
 
+                    _this
+                    .find('.btn-primary')
+                    .removeAttr('disabled')
+                    .text(response.button_text);
+
+                    if (response.action === 'activate') {
+                        _this
+                        .find('#license_key')
+                        .attr('disabled', true)
+                        .val(response.key);
+
+                        _this
+                        .find('input[name="_action"]')
+                        .val('deactivate');
+
+                        _this
+                        .find('.mpg-license-message')
+                        .removeClass('d-none')
+                        .html(response.expiration);
+                    } else {
+                        _this
+                        .find('#license_key')
+                        .removeAttr('disabled')
+                        .val(response.key);
+
+                        _this
+                        .find('input[name="_action"]')
+                        .val('activate');
+
+                        _this
+                        .find('.mpg-license-message')
+                        .addClass('d-none');
+                    }
+                }
+            },
+            'json'
+        );
+});
+
+jQuery('.advanced-page #license_key').on( 'input', function() {
+    jQuery('.advanced-page input[name="license_key"]').val(jQuery(this).val());
+} );

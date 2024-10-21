@@ -114,7 +114,7 @@ class MPG_SearchController
                                     if (!$found) {
                                         $results[] = [
                                             'page_title' => $replaced_shortcodes_string_title,
-                                            'page_url' => MPG_Helper::mpg_get_base_url(false) . $url,
+                                            'page_url' => MPG_CoreModel::path_to_url( $url ),
                                             'page_excerpt' => MPG_Helper::mpg_prepare_post_excerpt($short_codes, $strings, $template_content),
                                             'page_author_nickname' => $author_nickname,
                                             'page_author_email' => $author_email,
@@ -152,7 +152,7 @@ class MPG_SearchController
 
             $search_string  = isset($args['s']) ? $args['s'] : null;
             $limit          = isset($args['limit']) ? (int) $args['limit'] : 10;
-            $base_url       = isset($atts['base-url']) ? (string) $atts['base-url']  : MPG_Helper::mpg_get_base_url(true);
+            $base_url       = isset($atts['base-url']) ? (string) $atts['base-url']  : '';
             $case_sensitive = isset( $args['case_sensitive'] ) && $args['case_sensitive'] === '1' ? true : false;
 
 
@@ -166,7 +166,7 @@ class MPG_SearchController
             foreach ($search['results'] as $index => $result) {
 
                 $response .= '<div class="mpg-search-results-row">';
-                $response .= '<h2 class="mpg-page-title"><a class="mpg-page-link" href="' . $base_url . $result['guid'] . '">' . $result['post_title'] . '</a></h2>' .
+                $response .= '<h2 class="mpg-page-title"><a class="mpg-page-link" href="' . $base_url . home_url( $result['guid'] ) . '">' . $result['post_title'] . '</a></h2>' .
                     '<p class="mpg-page-excerpt">' . $result['post_excerpt'] . '</p>';
                 $response .= '</div>';
                 if ($index >= $limit - 1) {
