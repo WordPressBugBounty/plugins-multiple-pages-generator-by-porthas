@@ -31,6 +31,7 @@ import {
             method: 'post',
             data: {
                 action: 'mpg_get_project',
+                securityNonce:backendData.securityNonce,
                 projectId,
             },
             statusCode: {

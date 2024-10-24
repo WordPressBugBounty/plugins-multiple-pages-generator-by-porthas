@@ -112,6 +112,14 @@ E-mail us at [friends@themeisle.com](mailto:friends@themeisle.com)
 
 == Changelog ==
 
+#####   Version 4.0.1 (2024-10-24)
+
+- Fixed an issue with URLs containing spaces not rendering properly
+- Enhanced security
+
+
+
+
 ####   Version 4.0.0 (2024-10-21)
 
 ### New Features

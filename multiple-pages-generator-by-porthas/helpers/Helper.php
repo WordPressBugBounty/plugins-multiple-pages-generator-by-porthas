@@ -253,7 +253,29 @@ class MPG_Helper
         }
         return $result;
     }
-
+	/**
+	 * Slugifies an array of strings, replacing spaces and processing special characters.
+	 *
+	 * This function iterates over an array of strings, replacing spaces with a specified
+	 * character and processing special characters. The last index of the array is ignored
+	 * as it is assumed to be a URL that does not need slugification.
+	 *
+	 * @param array $strings        The array of strings to be slugified.
+	 * @param string $space_replacer The character to replace spaces with.
+	 *
+	 * @return array The modified array of strings with spaces replaced and special characters processed.
+	 */
+	public static function slugify_strings( array $strings, string $space_replacer ): array {
+		foreach ( $strings as $index => $string ) {
+			//we ignore the last index since that is the URL and we don't need to slugify it.
+			if ($index === array_key_last($strings)) {
+				continue;
+			}
+			$strings[ $index ] = str_replace( ' ', $space_replacer, $string );
+			$strings[ $index ] = MPG_ProjectModel::mpg_processing_special_chars( $strings[ $index ], $space_replacer );
+		}
+		return $strings;
+	}
     public static function mpg_header_code_container()
     {
 

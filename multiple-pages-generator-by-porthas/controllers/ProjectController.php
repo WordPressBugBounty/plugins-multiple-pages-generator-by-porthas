@@ -342,6 +342,7 @@ class MPG_ProjectController
     public static function mpg_get_project()
     {
 
+	    check_ajax_referer( MPG_BASENAME, 'securityNonce' );
         try {
 
             $project_id = isset($_POST['projectId']) ? (int) $_POST['projectId'] : null;

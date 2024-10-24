@@ -261,7 +261,7 @@ jQuery('#mpg_preview_modal_link').on('click', function (e) {
         retrieve: true,
         resposive: true,
         ajax: {
-            url: `${ajaxurl}?action=mpg_get_data_for_preview&projectId=${projectId}`,
+            url: `${ajaxurl}?action=mpg_get_data_for_preview&projectId=${projectId}&securityNonce=${backendData.securityNonce}`,
             type: 'POST',
             // success: function (res) {  Может пригодится чтобы прятать лоадер }
         },

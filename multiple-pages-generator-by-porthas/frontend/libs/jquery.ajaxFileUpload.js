@@ -30,6 +30,7 @@ class Upload {
             formData.append("file", this.file, this.getName());
             formData.append("upload_file", true);
             formData.append("action", "mpg_upload_file");
+            formData.append( "securityNonce", backendData.securityNonce);
             formData.append('projectId', mpgGetState('projectId'))
             jQuery.ajax({
                 type: "POST",

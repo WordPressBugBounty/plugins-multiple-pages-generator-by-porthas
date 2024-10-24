@@ -38,6 +38,7 @@ class MPG_DatasetController
     // Скачиваем с Sheets настройки, создаем сущность нужного типа (страница),
     public static function mpg_deploy()
     {
+	    check_ajax_referer( MPG_BASENAME, 'securityNonce' );
         try {
 
             $dataset_id = isset($_POST['datasetId']) ? (int) ($_POST['datasetId']) : null;
@@ -221,6 +222,7 @@ class MPG_DatasetController
     public static function mpg_get_data_for_preview()
     {
 
+	    check_ajax_referer( MPG_BASENAME, 'securityNonce' );
         try {
 
             $project_id = (int) $_GET['projectId'];
@@ -277,6 +279,8 @@ class MPG_DatasetController
 
 
 	public static function mpg_preview_all_urls() {
+
+		check_ajax_referer( MPG_BASENAME, 'securityNonce' );
 		try {
 
 			$project_id = (int) $_GET['projectId'];

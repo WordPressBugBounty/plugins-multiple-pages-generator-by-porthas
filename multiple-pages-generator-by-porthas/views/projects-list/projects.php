@@ -165,7 +165,7 @@ if ( ! empty( $license ) && ( is_object( $license ) && isset( $license->key ) ) 
                 columns: [{ 'title': 'mpg_url' }],
                 retrieve: true,
                 ajax: {
-                    "url": `${ajaxurl}?action=mpg_preview_all_urls&projectId=${projectId}`,
+                    "url": `${ajaxurl}?action=mpg_preview_all_urls&projectId=${projectId}&securityNonce=<?php echo wp_create_nonce( MPG_BASENAME ); ?>`,
                     "type": "POST",
                 }
             };

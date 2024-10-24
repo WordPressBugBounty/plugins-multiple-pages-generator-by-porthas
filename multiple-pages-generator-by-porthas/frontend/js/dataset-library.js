@@ -70,6 +70,7 @@ jQuery(document).ready(async function () {
                 method: 'post',
                 data: {
                     action: 'mpg_deploy_dataset',
+                    securityNonce: backendData.securityNonce,
                     datasetId: datasetId
                 },
                 statusCode: {

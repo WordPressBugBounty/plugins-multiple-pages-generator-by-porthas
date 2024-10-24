@@ -315,6 +315,8 @@ class MPG_ProjectModel
 
     public static function mpg_upload_file()
     {
+
+	    check_ajax_referer( MPG_BASENAME, 'securityNonce' );
         try {
 
             if (isset($_FILES['file']['name']) && isset($_FILES['file']['tmp_name'])) {

@@ -127,7 +127,7 @@ abstract class Core extends Base_Display {
 		foreach ( $filtered_dataset_index as $index ) {
 			//We set the internal index to the current row. This would be used to other shortcodes to get the current row that they will apply the value for, i.e mpg-if.
 			\MPG_CoreModel::set_current_row( $project_id, $index);
-			$content_template                     = do_shortcode( $content );
+			$content_template                     = $content;
 			$strings                              = $dataset_array[ $index ];
 
 			$strings[ count( $short_codes ) - 1 ] = \MPG_CoreModel::path_to_url( $project_data->urls_array[ $index - 1  ] );
@@ -135,7 +135,7 @@ abstract class Core extends Base_Display {
 			if ( ! empty( $args['base_url'] ) ) {
 				$strings[ count( $short_codes ) - 1 ] = $args['base_url'] . $strings[ count( $short_codes ) - 1 ];
 			}
-			$content_template = preg_replace( $short_codes, $strings, $content_template );
+			$content_template = \MPG_CoreModel::replace_content( $content_template, $strings, $short_codes, $project_data->space_replacer );
 			if ( $args['unique_rows'] ?? false ) {
 				$content_signature = crc32( $content_template );
 				if ( isset( $extended_content[ $content_signature ] ) ) {

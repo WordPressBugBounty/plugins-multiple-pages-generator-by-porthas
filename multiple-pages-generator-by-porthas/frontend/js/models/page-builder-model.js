@@ -223,7 +223,7 @@ function renderTableWithAllURLs(e) {
         searching: true,
         retrieve: true,
         ajax: {
-            url: `${ajaxurl}?action=mpg_preview_all_urls&projectId=${projectId}`,
+            url: `${ajaxurl}?action=mpg_preview_all_urls&projectId=${projectId}&securityNonce=${backendData.securityNonce}`,
             type: 'POST',
             // success: function (res) {  Может пригодится чтобы прятать лоадер }
         },

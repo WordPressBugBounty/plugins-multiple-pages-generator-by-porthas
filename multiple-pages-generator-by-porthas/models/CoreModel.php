@@ -208,9 +208,67 @@ class MPG_CoreModel
 
 		return $redirect_rules;
 	}
+	/**
+	 * Replaces shortcodes in the content with the provided strings and handles special cases.
+	 *
+	 * This function processes the content to replace shortcodes with the corresponding strings.
+	 * It also handles special cases such as shortcodes within href tags and loop elements.
+	 *
+	 * @param string $content        The content in which shortcodes need to be replaced.
+	 * @param array $strings        The array of strings to replace the shortcodes with.
+	 * @param array $shortcodes     The array of shortcodes to be replaced.
+	 * @param string $space_replacer The character to replace spaces with in URLs.
+	 *
+	 * @return string The content with shortcodes replaced by the corresponding strings.
+	 */
+	public static function replace_content( string $content, array $strings, array $shortcodes, string $space_replacer ): string {
+		MPG_Parser::localize_content( $content );
+		$get_shortcodes_regexp = '/\[mpg.*?\[\/mpg.*?\]|\<\!-- wp:mpg\/loop.*?\<\!-- \/wp:mpg\/loop --\>/s';
 
-    // Принимает html код страницы, и id преокта
-    // Задача функции - заменить {{шорткоды}} на реальные значения
+		preg_match_all( $get_shortcodes_regexp, $content, $mpg_shortcodes, PREG_SET_ORDER, 0 );
+
+		//We remove the loop elements that might reference some other projects.
+		if ( ! empty( $mpg_shortcodes ) ) {
+			$placeholers = [];
+			foreach ( $mpg_shortcodes as $index => $shortcode ) {
+				$placeholers[] = '(placeholder_replacer_' . $index . ')';
+			}
+
+			$mpg_shortcodes = MPG_Helper::array_flatten( $mpg_shortcodes );
+
+			$content = str_replace( $mpg_shortcodes, $placeholers, $content );
+		}
+		$content = do_shortcode( $content );
+		MPG_Parser::normalize_row( $strings );
+
+
+		//We need to address when the shortcodes are used in href tags, in this case we need to normalize this value for url use.
+		$re = '/href=\\\\?".*?\\\\?"/m';
+
+		preg_match_all($re, $content, $href_matches, PREG_SET_ORDER, 0);
+		//If the shortcodes are used in URL, we slugify them.
+		if ( ! empty( $href_matches ) ) {
+			$strings_url = MPG_Helper::slugify_strings( $strings, $space_replacer );
+			foreach ( $href_matches as $href ) {
+				$content = str_replace( $href[0], preg_replace( $shortcodes, $strings_url, $href[0] ), $content );
+			}
+		}
+		$content = preg_replace( $shortcodes, $strings, $content );
+
+		//we add back the loop elements
+		if ( ! empty( $mpg_shortcodes ) ) {
+
+			$get_placeholders_regexp = '/\(placeholder_replacer_\d{1,3}\)/s';
+
+			preg_match_all( $get_placeholders_regexp, $content, $mpg_placeholders, PREG_SET_ORDER, 0 );
+
+			$mpg_placeholders = MPG_Helper::array_flatten( $mpg_placeholders );
+
+			return str_replace( $mpg_placeholders, $mpg_shortcodes, $content );
+		}
+
+		return $content;
+	}
     public static function mpg_shortcode_replacer($content, $project_id)
     {
 
@@ -218,43 +276,26 @@ class MPG_CoreModel
 	    if ( empty( $content ) ) {
 		    return $content;
 	    }
-        // Если во входящей строке нет шорткодов, то и нет смысла ее обрабатывать дальше.
         preg_match_all('/{{mpg_\S+}}/m', $content, $matches, PREG_SET_ORDER, 0);
 
 	    if ( empty( $matches ) ) {
 		    return $content;
 	    }
-		MPG_Parser::localize_content($content);
-        // Заменяем [mpg ...]...[/mpg] на статическое приложение, просто как заглшука,
-        // чтобы значения в шорткодах не заменялись значениями из датасета.
 
-	    $get_shortcodes_regexp = '/\[mpg.*?\[\/mpg.*?\]|\<\!-- wp:mpg\/loop.*?\<\!-- \/wp:mpg\/loop --\>/s';
-
-	    preg_match_all($get_shortcodes_regexp, $content, $mpg_shortcodes, PREG_SET_ORDER, 0);
-
-        $placeholers = [];
-        foreach ($mpg_shortcodes as $index => $shortcode) {
-            $placeholers[] = '(placeholder_replacer_' . $index . ')';
-        }
-
-        $mpg_shortcodes = MPG_Helper::array_flatten($mpg_shortcodes);
-
-        $content = str_replace($mpg_shortcodes, $placeholers, $content);
-
-        $project = MPG_ProjectModel::mpg_get_project_by_id($project_id);
-        $project_data = MPG_Helper::mpg_live_project_data_update( reset( $project ) );
+        $project = MPG_ProjectModel::get_project_by_id($project_id);
+        $project_data = MPG_Helper::mpg_live_project_data_update( $project);
         $dataset_array = MPG_Helper::mpg_get_dataset_array( $project_data );
 
 
-	    $headers = MPG_ProjectModel::get_headers_from_project( reset( $project ) );
+	    $headers = MPG_ProjectModel::get_headers_from_project( $project);
         $short_codes = self::mpg_shortcodes_composer($headers);
 
-        $urls_array = $project[0]->urls_array ? json_decode($project[0]->urls_array) : [];
+        $urls_array = $project->urls_array ? json_decode($project->urls_array) : [];
         if ( empty( $urls_array ) && is_array( MPG_Helper::$urls_array ) ) {
             $urls_array = MPG_Helper::$urls_array;
         }
 
-        $strings = null;
+        $strings = false;
 		$url_match_index = self::get_current_row($project_id);
 	    if ( $url_match_index !== false ) {
 		    $strings = $dataset_array[ $url_match_index + 1 ];
@@ -268,21 +309,11 @@ class MPG_CoreModel
 		    $strings[ count( $short_codes ) - 1 ] = MPG_CoreModel::mpg_prepare_mpg_url( $project, $urls_array, $url_match_index );
 		    // Store found string.
 		    $found_strings = $strings;
+	    } else {
+		    return $content;
 	    }
 
-
-		MPG_Parser::normalize_row($strings);
-        // Эта строка заменяет шорткоды, которые просто стоят в тексте, и не обернуты в [mpg][/mpg]
-        $content = preg_replace($short_codes, $strings, $content);
-
-        // А тут делается обратная замена - заглушек на [mpg ...] {{}} [/mpg].
-        // Это все для того, чтобы работала выдача всех (а не одного) ряда, если есть условие where.
-
-        $get_placeholders_regexp = '/\(placeholder_replacer_\d{1,3}\)/s';
-        preg_match_all($get_placeholders_regexp, $content, $mpg_placeholders, PREG_SET_ORDER, 0);
-        $mpg_placeholders = MPG_Helper::array_flatten($mpg_placeholders);
-
-        return str_replace($mpg_placeholders, $mpg_shortcodes, $content);
+	    return self::replace_content( $content, $strings, $short_codes, $project->space_replacer );
     }
 	/**
 	 * Project id.
@@ -355,40 +386,6 @@ class MPG_CoreModel
 		//We add the url in the dataset.
 	    $short_codes[] = "/(https?:\/\/)?{{mpg_url}}/";
         return $short_codes;
-    }
-
-
-	/**
-	 * Handles the href matches replacement.
-	 *
-	 * @param $content
-	 * @param $short_codes
-	 * @param $href_matches
-	 * @param $strings
-	 * @param $space_replacer
-	 * @param $placeholders
-	 * @param $base_url
-	 *
-	 * @return array|string|string[]|null
-	 */
-	public static function mpg_processing_href_matches( $content, $short_codes, $href_matches, $strings, $space_replacer, $placeholders, $base_url )
-    {
-        $temp_content = $content;
-
-        // Поскольку в href уже стоят заглушки, то меняем шорткоды на реальные значения (не боясь "повредить" то что в href)
-        $temp_content =  preg_replace($short_codes, $strings, $temp_content);
-
-        // Теперь соберем одномерный массив с тем, что изначально было в href (скорее всего - шорткоды)
-
-        $original_href_content = array_map(function ($match) use ($base_url) {
-            return str_replace('href="', 'href="' . $base_url, $match[0]);
-        }, $href_matches);
-
-        // Теперь меняем массив на массив: заглушки на шорткоды
-        $temp_content = str_replace($placeholders, $original_href_content, $temp_content);
-
-
-        return preg_replace($short_codes, $strings, $temp_content);
     }
 
 

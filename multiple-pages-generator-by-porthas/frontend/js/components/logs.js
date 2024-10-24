@@ -7,7 +7,7 @@ jQuery('a[href="#logs"]').on('click', function () {
     const initObject = {
         processing: true,
         ajax: {
-            "url": `${ajaxurl}?action=mpg_get_log_by_project_id&projectId=${projectId}`,
+            "url": `${ajaxurl}?action=mpg_get_log_by_project_id&projectId=${projectId}&securityNonce=${backendData.securityNonce}`,
             "type": "POST"
         },
         columns: [
