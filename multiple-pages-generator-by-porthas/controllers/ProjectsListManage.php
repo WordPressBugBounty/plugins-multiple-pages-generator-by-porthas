@@ -81,9 +81,8 @@ if ( ! class_exists( 'ProjectsListManage' ) ) {
 			}
 
 			$project = MPG_ProjectModel::get_project_by_id( $project_id );
-			if ( ! empty( $project ) && $project->source_path ) {
-				$dataset_path = $project->source_path;
-				MPG_ProjectModel::deleteFileByPath( $dataset_path );
+			if ( ! empty( $project ) ) {
+				MPG_ProjectModel::deleteFileByPath( MPG_DatasetModel::get_dataset_path_by_project( $project ) );
 			}
 
 			if ( ! empty( $project->sitemap_filename ) ) {
@@ -165,7 +164,7 @@ if ( ! class_exists( 'ProjectsListManage' ) ) {
 			if ( $original_row ) {
 				// Modify the 'name' column to add the "clone of #id" suffix
 				$original_row['name'] .= ' ' .sanitize_text_field( sprintf( __( '(clone of #%d)', 'mpg' ), $project_id ) );
-				$original_path = $original_row['source_path'];
+				$original_path = MPG_DatasetModel::get_dataset_path_by_project( $project_id );
 				$original_row['source_path'] = '';
 				// Insert the cloned row into the table
 				$wpdb->insert( $table, $original_row );
@@ -231,7 +230,7 @@ if ( ! class_exists( 'ProjectsListManage' ) ) {
 
 			$source_path = false;
 			if ( ! empty( $project_data->source_path ) ) {
-				$source_path = $project_data->source_path;
+				$source_path = MPG_DatasetModel::get_dataset_path_by_project( $project_data );
 				unset( $project_data->source_path );
 			}
 
@@ -327,11 +326,7 @@ if ( ! class_exists( 'ProjectsListManage' ) ) {
 				$worksheet_id      = ! empty( $import_data['worksheet_id'] ) ? $import_data['worksheet_id'] : '';
 				$original_file_url = MPG_Helper::mpg_get_direct_csv_link( $original_file_url, $worksheet_id );
 				$ext               = MPG_Helper::mpg_get_extension_by_path( $original_file_url );
-				$destination       = MPG_UPLOADS_DIR . $new_id . '.' . $ext;
-				$blog_id           = get_current_blog_id();
-				if ( is_multisite() && $blog_id > 1 ) {
-					$destination = MPG_UPLOADS_DIR . $blog_id . '/' . $new_id . '.' . $ext;
-				}
+				$destination       = MPG_DatasetModel::uploads_base_path() . $new_id . '.' . $ext;
 				$download_dataset = MPG_DatasetModel::download_file( $original_file_url, $destination );
 				if ( ! $download_dataset ) {
 					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_print_r
@@ -339,7 +334,7 @@ if ( ! class_exists( 'ProjectsListManage' ) ) {
 				}
 				$urls_array = MPG_ProjectModel::mpg_generate_urls_from_dataset( $destination, $import_data['url_structure'], $import_data['space_replacer'] );
 
-				$update_options_array = array( 'source_path' => $destination, 'urls_array' => wp_json_encode( $urls_array ) );
+				$update_options_array = array( 'source_path' => basename( $destination ), 'urls_array' => wp_json_encode( $urls_array ) );
 
 				MPG_ProjectModel::mpg_update_project_by_id( $new_id, $update_options_array );
 			}

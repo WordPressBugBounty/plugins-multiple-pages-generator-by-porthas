@@ -9,7 +9,7 @@ class MPG_SpintaxController
     public static function mpg_generate_spintax()
     {
 
-        check_ajax_referer( MPG_BASENAME, 'securityNonce' );
+	    MPG_Validators::nonce_check();
 
         $spintax_string = isset($_POST['spintaxString'])  ? $_POST['spintaxString'] : null;
 
@@ -104,7 +104,7 @@ class MPG_SpintaxController
     public static function mpg_flush_spintax_cache()
     {
 
-        check_ajax_referer( MPG_BASENAME, 'securityNonce' );
+	    MPG_Validators::nonce_check();
 
         try {
 

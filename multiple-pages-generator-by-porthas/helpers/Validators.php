@@ -45,4 +45,9 @@ class MPG_Validators
 		       && ( $timestamp <= PHP_INT_MAX )
 		       && ( $timestamp >= ~PHP_INT_MAX );
 	}
+
+	public static function nonce_check(){
+		check_ajax_referer( MPG_BASENAME, 'securityNonce' );
+		current_user_can( MPG_MenuController::MENU_ROLE ) || 	wp_die( -1, 403 );;
+	}
 }

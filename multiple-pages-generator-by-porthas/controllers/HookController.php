@@ -142,7 +142,18 @@ class MPG_HookController
 		    }
 		    MPG_Helper::mpg_activation_events();
 	    } );
-
+        // Allow usage of mpg shortcode inside link controls.
+	    add_action( 'elementor/widget/before_render_content', function ($widget) {
+		    add_filter(
+			    'clean_url', function ( $good_protocol_url, $original_url, $_context ) {
+			    $mpg_shortcode = 'mpg_.*';
+			    preg_match( "/{$mpg_shortcode}/i", $original_url, $matches );
+			    if ( ! empty( $matches ) ) {
+				    return $original_url;
+			    }
+			    return $good_protocol_url;
+		    },99, 3 );
+	    }, 99, 1 );
         // Ставим noindex для страницы шаблона
         add_filter('template_redirect', function () {
             $templates_ids = MPG_ProjectModel::mpg_get_all_templates_id();
@@ -488,7 +499,7 @@ class MPG_HookController
 				if ( empty( $project_id ) || empty( $secret ) ) {
 					return false;
 				}
-				$hash = hash_hmac( 'sha256', $project_id, SECURE_AUTH_KEY );
+				$hash = hash_hmac( 'sha256', $project_id, MPG_Helper::get_webhook_key() );
 
 				return hash_equals( $hash, $secret );
 			}

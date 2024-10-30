@@ -7,7 +7,7 @@ class MPG_CacheController
 {
     public static function mpg_enable_cache()
     {
-        check_ajax_referer( MPG_BASENAME, 'securityNonce' );
+	    MPG_Validators::nonce_check();
 
         try {
 
@@ -53,7 +53,7 @@ class MPG_CacheController
 
     public static function mpg_disable_cache()
     {
-        check_ajax_referer( MPG_BASENAME, 'securityNonce' );
+	    MPG_Validators::nonce_check();
 
         try {
 
@@ -109,7 +109,7 @@ class MPG_CacheController
 
     public static function mpg_flush_cache()
     {
-        check_ajax_referer( MPG_BASENAME, 'securityNonce' );
+	    MPG_Validators::nonce_check();
 
         try {
 
@@ -162,7 +162,7 @@ class MPG_CacheController
 
     public static function mpg_cache_statistic()
     {
-        check_ajax_referer( MPG_BASENAME, 'securityNonce' );
+	    MPG_Validators::nonce_check();
 
         try {
 

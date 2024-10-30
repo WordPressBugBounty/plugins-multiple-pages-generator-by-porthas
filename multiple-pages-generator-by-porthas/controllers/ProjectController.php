@@ -38,14 +38,8 @@ class MPG_ProjectController
     public static function mpg_upsert_project_main()
     {
 
-        // 1. человек заходит на проект, запонляет текстовые поля
-        // 2. Загружает файл, идет запрос на сервак. ложим его в папку temp, даем имя - unlinked_file.ext
-        // 3. Возаращаем путь и расширение на фронт, ставим в localstorage (state)
-        // 4. Когда человек кликает save, создаем ему проект в БД, получаем project_id.
-        // 5. Перемещаем пользовательский файл в /uploads/ и даем ему имя - project_id
-        // 6. Обновляем запись в БД, а именно - source_path
-        // 7. На фронт возвращаем project_id, а при получении, на фронте - очищаем source_path с localStorage
-        check_ajax_referer( MPG_BASENAME, 'securityNonce' );
+
+	    MPG_Validators::nonce_check();
         try {
 
             if (isset($_POST['projectName']) && isset($_POST['entityType']) && isset($_POST['templateId'])) {
@@ -130,18 +124,16 @@ class MPG_ProjectController
 	 *
 	 * @return string
 	 */
-    public static function get_project_path(int $project_id, string $path):string{
+	public static function get_project_path( int $project_id, string $path ): string {
 
-	    $ext = MPG_Helper::mpg_get_extension_by_path( $path );
-        $blog_id = get_current_blog_id();
-	    if ( is_multisite() && $blog_id > 1 ) {
-		    return MPG_UPLOADS_DIR . $blog_id . '/' . $project_id . '.' . $ext;
-	    }
-	    return MPG_UPLOADS_DIR . $project_id . '.' . $ext;
-    }
+		$ext = MPG_Helper::mpg_get_extension_by_path( $path );
+
+		return MPG_DatasetModel::uploads_base_path() . $project_id . '.' . $ext;
+	}
 
 	public static function mpg_upsert_project_source_block() {
-		check_ajax_referer( MPG_BASENAME, 'securityNonce' );
+
+		MPG_Validators::nonce_check();
 
 		try {
 
@@ -173,7 +165,7 @@ class MPG_ProjectController
 				throw new Exception( sprintf( __( 'The file cannot be moved to %s. Ensure the folder has the correct permissions.', 'mpg' ), $new_path ) );
 			}
 			// We delete any file with the same project_id but different extension.
-			$files = glob( MPG_UPLOADS_DIR . $project_id . '.*' );
+			$files = glob( MPG_DatasetModel::uploads_base_path() . $project_id . '.*' );
 			foreach ( $files as $project_file ) {
 				if ( $project_file !== $new_path ) {
 					unlink( $project_file );
@@ -219,7 +211,8 @@ class MPG_ProjectController
     // Работает с нижней кнопкой save
     public static function mpg_upsert_project_url_block()
     {
-        check_ajax_referer( MPG_BASENAME, 'securityNonce' );
+
+	    MPG_Validators::nonce_check();
 
         try {
 
@@ -264,15 +257,15 @@ class MPG_ProjectController
                 throw new Exception(__('Can\'t get project', 'mpg'));
             }
 
-            $dataset_path = $project[0]->source_path;
+	        $dataset_path = MPG_DatasetModel::get_dataset_path_by_project( $project[0] );
 
-            if ( empty( $dataset_path ) ) {
-                $project = MPG_ProjectModel::mpg_get_project_by_id($project_id,true);
-                if (!$project[0]) {
-                    throw new Exception(__('Can\'t get project', 'mpg'));
-                }
-                $dataset_path = $project[0]->source_path;
-            }
+	        if ( empty( $dataset_path ) ) {
+		        $project = MPG_ProjectModel::mpg_get_project_by_id( $project_id, true );
+		        if ( ! $project[0] ) {
+			        throw new Exception( __( 'Can\'t get project', 'mpg' ) );
+		        }
+		        $dataset_path = MPG_DatasetModel::get_dataset_path_by_project( $project[0] );;
+	        }
 
             $urls_array = MPG_ProjectModel::mpg_generate_urls_from_dataset($dataset_path, $url_structure, $space_replacer,true );
             $update_options_array['urls_array'] = json_encode($urls_array['urls_array'], JSON_UNESCAPED_UNICODE);
@@ -342,7 +335,8 @@ class MPG_ProjectController
     public static function mpg_get_project()
     {
 
-	    check_ajax_referer( MPG_BASENAME, 'securityNonce' );
+
+	    MPG_Validators::nonce_check();
         try {
 
             $project_id = isset($_POST['projectId']) ? (int) $_POST['projectId'] : null;
@@ -381,16 +375,16 @@ class MPG_ProjectController
                 ]);
             }
 
-            if ($project[0]->source_path) {
+            if ( isset($project[0]->source_path ) ) {
 
-                $rows = MPG_DatasetController::get_rows($project[0]->source_path, 5);
+	            $rows = MPG_DatasetController::get_rows( MPG_DatasetModel::get_dataset_path_by_project( $project[0] ), 5 );
 
                 $response['rows'] = wp_doing_ajax( 'wp_ajax_mpg_get_project' ) ? map_deep( $rows['rows'], 'wp_strip_all_tags' ) : $rows['rows'];
                 $response['totalRows'] = $rows['total_rows'];
 
                 $response['spintax_cached_records_count'] = MPG_SpintaxController::get_cached_records_count($project_id);
 
-                $response['source_url'] = MPG_UPLOADS_URL . str_replace( MPG_UPLOADS_DIR, '', $project[0]->source_path );
+	            $response['source_url'] = basename( $project[0]->source_path );
 
                 echo json_encode([
                     'success' => true,
@@ -417,7 +411,8 @@ class MPG_ProjectController
 
     public static function mpg_delete_project()
     {
-        check_ajax_referer( MPG_BASENAME, 'securityNonce' );
+
+	    MPG_Validators::nonce_check();
 
         try {
 	        $project_id      = isset( $_POST['projectId'] ) ? (int) $_POST['projectId'] : null;
@@ -443,7 +438,8 @@ class MPG_ProjectController
 
     public static function mpg_get_permalink_structure()
     {
-        check_ajax_referer( MPG_BASENAME, 'securityNonce' );
+
+	    MPG_Validators::nonce_check();
         try {
 
             echo json_encode([
@@ -464,7 +460,8 @@ class MPG_ProjectController
 
     public static function mpg_change_permalink_structure()
     {
-        check_ajax_referer( MPG_BASENAME, 'securityNonce' );
+
+	    MPG_Validators::nonce_check();
         try {
 
             if (update_option('permalink_structure', '/%postname%/')) {
@@ -495,7 +492,7 @@ class MPG_ProjectController
     public static function mpg_check_is_sitemap_name_is_uniq()
     {
 
-	    check_ajax_referer( MPG_BASENAME, 'securityNonce' );
+	    MPG_Validators::nonce_check();
 
 	    try {
 		    $filename = isset( $_POST['filename'] ) ? sanitize_text_field( $_POST['filename'] ) : null;
@@ -525,7 +522,7 @@ class MPG_ProjectController
 
 
 	public static function mpg_generate_sitemap() {
-		check_ajax_referer( MPG_BASENAME, 'securityNonce' );
+		MPG_Validators::nonce_check();
 
 		try {
 
@@ -624,24 +621,20 @@ class MPG_ProjectController
             if (!$project[0] or !$project[0]->source_path) {
                 throw new Exception(__('Your project has not properly configured source file', 'mpg'));
             }
+	        $source_path = MPG_DatasetModel::get_dataset_path_by_project( $project[0] );
 
-            $source_path = $project[0]->source_path;
-            if ( false === strpos( $source_path, 'wp-content' ) ) {
-                $source_path = MPG_UPLOADS_DIR . $source_path;
-            }
-            $worksheet_id = $project[0]->worksheet_id ? $project[0]->worksheet_id : null;
+	        $worksheet_id = $project[0]->worksheet_id ? $project[0]->worksheet_id : null;
 
-            // Имея путь к файлу, мы можем его открыть и перезаписать содержимое.
-            // Но сначала надо скачать файл (получить содержимое), который пользователь хочет применить
-            $direct_link = MPG_Helper::mpg_get_direct_csv_link($link, $worksheet_id);
+	        // Имея путь к файлу, мы можем его открыть и перезаписать содержимое.
+	        // Но сначала надо скачать файл (получить содержимое), который пользователь хочет применить
+	        $direct_link = MPG_Helper::mpg_get_direct_csv_link( $link, $worksheet_id );
 
-            MPG_DatasetModel::download_file($direct_link, $source_path);
+	        MPG_DatasetModel::download_file( $direct_link, $source_path );
 
-            $dataset_path = $project[0]->source_path;
-            $url_structure = $project[0]->url_structure;
-            $space_replacer = $project[0]->space_replacer;
+	        $url_structure  = $project[0]->url_structure;
+	        $space_replacer = $project[0]->space_replacer;
 
-            $urls_array = MPG_ProjectModel::mpg_generate_urls_from_dataset($dataset_path, $url_structure, $space_replacer);
+	        $urls_array = MPG_ProjectModel::mpg_generate_urls_from_dataset( $source_path, $url_structure, $space_replacer );
 
             MPG_ProjectModel::mpg_update_project_by_id( $project_id, [ 'urls_array' => json_encode( $urls_array, JSON_UNESCAPED_UNICODE ) ], true );
 	        MPG_SitemapGenerator::maybe_create_sitemap( $urls_array, $project[0] );
@@ -689,7 +682,7 @@ class MPG_ProjectController
     public static function mpg_unschedule_cron_task()
     {
 
-        check_ajax_referer( MPG_BASENAME, 'securityNonce' );
+	    MPG_Validators::nonce_check();
 
         try {
 
@@ -717,7 +710,7 @@ class MPG_ProjectController
 
     public static function mpg_set_hook_name_and_priority()
     {
-        check_ajax_referer( MPG_BASENAME, 'securityNonce' );
+	    MPG_Validators::nonce_check();
 
         try {
 
@@ -754,7 +747,7 @@ class MPG_ProjectController
 
     public static function mpg_get_hook_name_and_priority()
     {
-        check_ajax_referer( MPG_BASENAME, 'securityNonce' );
+	    MPG_Validators::nonce_check();
 
         echo json_encode([
             'success' => true,
@@ -770,7 +763,7 @@ class MPG_ProjectController
     // Footer cache hooks
     public static function mpg_set_cache_hook_name_and_priority()
     {
-        check_ajax_referer( MPG_BASENAME, 'securityNonce' );
+	    MPG_Validators::nonce_check();
 
         try {
 
@@ -808,7 +801,7 @@ class MPG_ProjectController
     public static function mpg_get_cache_hook_name_and_priority()
     {
 
-        check_ajax_referer( MPG_BASENAME, 'securityNonce' );
+	    MPG_Validators::nonce_check();
 
         echo json_encode([
             'success' => true,
@@ -825,7 +818,7 @@ class MPG_ProjectController
     public static function mpg_set_basepath()
     {
 
-        check_ajax_referer( MPG_BASENAME, 'securityNonce' );
+	    MPG_Validators::nonce_check();
 
         try {
             $basepath = sanitize_text_field($_POST['basepath']);
@@ -867,7 +860,7 @@ class MPG_ProjectController
 
     public static function mpg_get_basepath()
     {
-        check_ajax_referer( MPG_BASENAME, 'securityNonce' );
+	    MPG_Validators::nonce_check();
 
         echo json_encode([
             'success' => true,

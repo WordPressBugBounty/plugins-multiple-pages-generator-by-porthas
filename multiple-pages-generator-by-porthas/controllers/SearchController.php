@@ -182,7 +182,7 @@ class MPG_SearchController
 
     public static function mpg_search_ajax()
     {
-        check_ajax_referer( MPG_BASENAME, 'securityNonce' );
+	    MPG_Validators::nonce_check();
 
         try {
 
@@ -212,7 +212,7 @@ class MPG_SearchController
 
     public static function mpg_search_settings_upset_options()
     {
-        check_ajax_referer( MPG_BASENAME, 'securityNonce' );
+	    MPG_Validators::nonce_check();
 
         try {
 
@@ -263,7 +263,7 @@ class MPG_SearchController
 
     public static function mpg_search_settings_get_options()
     {
-        check_ajax_referer( MPG_BASENAME, 'securityNonce' );
+	    MPG_Validators::nonce_check();
 
         try {
 

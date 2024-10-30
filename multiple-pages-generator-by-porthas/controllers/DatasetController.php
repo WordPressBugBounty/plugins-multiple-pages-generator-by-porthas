@@ -38,7 +38,7 @@ class MPG_DatasetController
     // Скачиваем с Sheets настройки, создаем сущность нужного типа (страница),
     public static function mpg_deploy()
     {
-	    check_ajax_referer( MPG_BASENAME, 'securityNonce' );
+	    MPG_Validators::nonce_check();
         try {
 
             $dataset_id = isset($_POST['datasetId']) ? (int) ($_POST['datasetId']) : null;
@@ -85,18 +85,11 @@ class MPG_DatasetController
             $ext = MPG_Helper::mpg_get_extension_by_path($source_path);
 
 
-            $destination_path = MPG_UPLOADS_DIR . $project_id . '.' . $ext;
-
-            $blog_id = get_current_blog_id();
-
-            if (is_multisite() && $blog_id > 1) {
-                $destination_path = MPG_UPLOADS_DIR . $blog_id . '/' . $project_id . '.' . $ext;
-            }
-
+            $destination_path =  MPG_DatasetModel::uploads_base_path() . $project_id . '.' . $ext;
             // Начинаем собирать объект для записи в БД
             $insert_data = [
                 'source_type' => 'upload_file',
-                'source_path' => $destination_path
+                'source_path' => basename( $destination_path )
             ];
 
             $download_dataset = MPG_DatasetModel::download_file($source_path, $destination_path);
@@ -174,11 +167,6 @@ class MPG_DatasetController
     {
 
         if (!$headers) {
-
-            if ( false === strpos( $path_to_dataset, 'wp-content' ) ) {
-                $path_to_dataset = MPG_UPLOADS_DIR . $path_to_dataset;
-            }
-
 	        $headers = MPG_DatasetModel::read_dataset( $path_to_dataset, true );
         }
 
@@ -202,10 +190,6 @@ class MPG_DatasetController
 
     // возвращает массив самих данных.
 	public static function get_rows( $path_to_dataset, $limit ) {
-		if ( false === strpos( $path_to_dataset, 'wp-content' ) ) {
-			$path_to_dataset = MPG_UPLOADS_DIR . $path_to_dataset;
-		}
-
 
 		$dataset_array = MPG_DatasetModel::read_dataset( $path_to_dataset );
 
@@ -222,7 +206,7 @@ class MPG_DatasetController
     public static function mpg_get_data_for_preview()
     {
 
-	    check_ajax_referer( MPG_BASENAME, 'securityNonce' );
+	    MPG_Validators::nonce_check();
         try {
 
             $project_id = (int) $_GET['projectId'];
@@ -232,7 +216,7 @@ class MPG_DatasetController
             $length = isset($_POST['length']) ? (int) $_POST['length'] : 10;
             $search_value = isset($_POST['search']['value']) ? sanitize_text_field($_POST['search']['value']) : null;
 
-            $path_to_dataset = MPG_DatasetModel::get_dataset_path_by_project_id($project_id);
+            $path_to_dataset = MPG_DatasetModel::get_dataset_path_by_project($project_id);
 
 	        $dataset_array = MPG_DatasetModel::read_dataset( $path_to_dataset );
 
@@ -280,7 +264,7 @@ class MPG_DatasetController
 
 	public static function mpg_preview_all_urls() {
 
-		check_ajax_referer( MPG_BASENAME, 'securityNonce' );
+		MPG_Validators::nonce_check();
 		try {
 
 			$project_id = (int) $_GET['projectId'];
@@ -341,7 +325,7 @@ class MPG_DatasetController
 
     public static function mpg_download_file_by_link()
     {
-        check_ajax_referer( MPG_BASENAME, 'securityNonce' );
+	    MPG_Validators::nonce_check();
 
         try {
 
@@ -396,7 +380,7 @@ class MPG_DatasetController
     // Это для set trigger. После того, как человек выберет хедер - надо вернуть оттуда все уникальные значения
     public static function mpg_get_unique_rows_in_column()
     {
-        check_ajax_referer( MPG_BASENAME, 'securityNonce' );
+	    MPG_Validators::nonce_check();
 
         try {
 
@@ -404,15 +388,11 @@ class MPG_DatasetController
 
             $project = MPG_ProjectModel::mpg_get_project_by_id($project_id);
 
-            $path_to_dataset = $project[0]->source_path;
+	        $path_to_dataset = MPG_DatasetModel::get_dataset_path_by_project( $project[0] );
 
-            if ( false === strpos( $path_to_dataset, 'wp-content' ) ) {
-                $path_to_dataset = MPG_UPLOADS_DIR . $path_to_dataset;
-            }
-
-            if (!$path_to_dataset) {
-                throw new Exception(__('Dataset path was not defined', 'mpg'));
-            }
+	        if ( empty( $path_to_dataset ) ) {
+		        throw new Exception( __( 'Dataset path was not defined', 'mpg' ) );
+	        }
 
             $choosed_culumn_number = (int) $_POST['choosedColumnNumber'];
 			$dataset = MPG_DatasetModel::read_dataset( $path_to_dataset );

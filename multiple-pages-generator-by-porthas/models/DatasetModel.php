@@ -44,23 +44,70 @@ class MPG_DatasetModel
 		}
     }
 
+	public static function uploads_base_path(){
+		$base_path = MPG_UPLOADS_DIR;
+		$blog_id   = get_current_blog_id();
+		if ( is_multisite() && $blog_id > 1 ) {
+			$base_path = MPG_UPLOADS_DIR . $blog_id . DIRECTORY_SEPARATOR;
+		}
+		return $base_path;
+	}
+	/**
+	 * Get the dataset path by project.
+	 *
+	 * This function retrieves the dataset path associated with a given project.
+	 * It handles both numeric project IDs and project objects, and ensures the
+	 * dataset path is correctly formatted and updated in the database if necessary.
+	 *
+	 * @param mixed $project The project ID or project object.
+	 * @return string The dataset path.
+	 */
+	public static function get_dataset_path_by_project( $project ) {
 
-    public static function get_dataset_path_by_project_id($project_id)
-    {
+		global $wpdb;
+		$dataset_path = '';
+		$project_id = is_numeric( $project ) ? $project : $project->id;
+		if ( is_numeric( $project ) ) {
+			$dataset_path = $wpdb->get_var(
+				$wpdb->prepare( "SELECT source_path FROM {$wpdb->prefix}" . MPG_Constant::MPG_PROJECTS_TABLE . " WHERE id=%d", $project_id )
+			);
+		}
+		if ( isset( $project->source_path ) ) {
+			$dataset_path = $project->source_path;
+		}
+		if ( empty( $dataset_path ) ) {
+			return '';
+		}
+		$base_path = self::uploads_base_path();
+		//We check if the path has any directory separator, if not we assume it is a filename.
+		if ( strpos( $dataset_path, DIRECTORY_SEPARATOR ) === false ) {
+			return $base_path . $dataset_path;
+		}
+		//This is a legacy code, we need to check if the path is relative or absolute using wp-content.
+		if ( false === strpos( $dataset_path, 'wp-content' ) ) {
+			// The relative path is given we need to convert it to absolute path.
+			$dataset_path = MPG_UPLOADS_DIR . $dataset_path;
+			$filename     = basename( $dataset_path );
+			$wpdb->update( $wpdb->prefix . MPG_Constant::MPG_PROJECTS_TABLE, [ 'source_path' => $filename ], [ 'id' => $project_id ] );
+			return $dataset_path;
+		}
+		// We check if the path is absolute, and convert it to relative.
+		if( str_starts_with( $dataset_path, $base_path ) ) {
+			$filename     = basename( $dataset_path );
+			//We update the source file with the proper one.
+			$wpdb->update( $wpdb->prefix . MPG_Constant::MPG_PROJECTS_TABLE, [ 'source_path' => $filename ], [ 'id' => $project_id ] );
+			return $dataset_path;
+		}
+		//The path is absolute but is using a different directory, maybe due to server migration or hosting change.
+		if( ! str_starts_with( $dataset_path, MPG_UPLOADS_DIR ) ) {
+			$filename     = basename( $dataset_path );
+			$wpdb->update( $wpdb->prefix . MPG_Constant::MPG_PROJECTS_TABLE, [ 'source_path' => $filename ], [ 'id' => $project_id ] );
 
-        global $wpdb;
+			return $base_path . $filename;
+		}
 
-        $results = $wpdb->get_results(
-            $wpdb->prepare("SELECT source_path FROM {$wpdb->prefix}" .  MPG_Constant::MPG_PROJECTS_TABLE . " WHERE id=%d", $project_id)
-        );
-        if ( empty( $results ) ) {
-        	return '';
-        }
-        if ( false === strpos( $results[0]->source_path, 'wp-content' ) ) {
-            $results[0]->source_path = MPG_UPLOADS_DIR . $results[0]->source_path;
-        }
-        return $results[0]->source_path;
-    }
+		return $dataset_path;
+	}
 
 	/**
 	 * Read dataset from file.

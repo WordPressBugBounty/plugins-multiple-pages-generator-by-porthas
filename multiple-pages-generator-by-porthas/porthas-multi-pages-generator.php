@@ -8,7 +8,7 @@
  *
  * Author: Themeisle
  * Author URI: https://themeisle.com
- * Version: 4.0.1
+ * Version: 4.0.2
  */
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -24,7 +24,7 @@ defined( 'MPG_CACHE_URL' ) || define( 'MPG_CACHE_URL', WP_CONTENT_URL . DIRECTOR
 defined( 'MPG_NAME' ) || define( 'MPG_NAME', 'Multiple Pages Generator' );
 defined( 'MPG_BASE_IMG_PATH' ) || define( 'MPG_BASE_IMG_PATH', plugin_dir_url( __FILE__ ) . 'frontend/images' );
 defined( 'MPG_DATABASE_VERSION' ) || define( 'MPG_DATABASE_VERSION', '1.0.0' );
-defined( 'MPG_PLUGIN_VERSION' ) || define( 'MPG_PLUGIN_VERSION', '4.0.1' );
+defined( 'MPG_PLUGIN_VERSION' ) || define( 'MPG_PLUGIN_VERSION', '4.0.2' );
 
 // to redirect all themeisle_log_event to error log.
 if ( ! defined( 'MPG_LOCAL_DEBUG' ) ) {
@@ -94,6 +94,35 @@ if ( ! function_exists( 'mpg_run' ) ) {
 				return array(
 					'logo'     => MPG_BASE_IMG_PATH . '/icon-256x256.png',
 					'location' => 'mpg-project-builder',
+				);
+			}
+		);
+
+		add_filter(
+			'multiple_pages_generator_by_porthas_welcome_metadata',
+			function () {
+				return array(
+					'is_enabled' => ! mpg_app()->is_premium(),
+					'pro_name'   => 'Premium',
+					'logo'       => MPG_BASE_IMG_PATH . '/icon-256x256.png',
+					'cta_link'   => tsdk_translate_link( tsdk_utmify( 'https://themeisle.com/plugins/multi-pages-generator/upgrade/?discount=LOYALUSER583&dvalue=60#pricing', 'mpg-welcome', 'notice' ), 'query' ),
+				);
+			}
+		);
+
+		add_filter(
+			'multiple_pages_generator_by_porthas_welcome_upsell_message',
+			function () {
+				return wpautop(
+					sprintf(
+						__( 'Thanks for using %1$s for the past 7 days! To help you get even more from it, we’re offering an exclusive deal: upgrade to %2$s within the next 5 days and save up to 60%%. Unlock unlimited rows and projects — %3$s Upgrade now %4$s and access all the powerful features of %5$s!', 'mpg' ),
+						'<b>MPG</b>',
+						'<b>MPG PRO</b>',
+						'<a href="{cta_link}" target="_blank">',
+						'</a>',
+						'<b>MPG PRO</b>'
+					),
+					true
 				);
 			}
 		);

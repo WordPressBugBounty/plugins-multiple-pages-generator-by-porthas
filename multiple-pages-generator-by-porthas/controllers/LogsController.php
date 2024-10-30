@@ -24,7 +24,7 @@ class MPG_LogsController
 	}
     public static function mpg_clear_log_by_project_id()
     {
-        check_ajax_referer( MPG_BASENAME, 'securityNonce' );
+	    MPG_Validators::nonce_check();
 
         try {
 
@@ -61,7 +61,7 @@ class MPG_LogsController
     public static function mpg_get_log_by_project_id()
     {
 
-	    check_ajax_referer( MPG_BASENAME, 'securityNonce' );
+	    MPG_Validators::nonce_check();
 		if( ! current_user_can('editor') && ! current_user_can('administrator') ) {
 			$response = rest_ensure_response( new WP_Error( 'rest_forbidden', esc_html__( 'You cannot view the logs.', 'mpg' ), array( 'status' => 401 ) ) );
 			wp_send_json( $response );

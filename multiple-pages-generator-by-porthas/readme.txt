@@ -112,6 +112,17 @@ E-mail us at [friends@themeisle.com](mailto:friends@themeisle.com)
 
 == Changelog ==
 
+#####   Version 4.0.2 (2024-10-30)
+
+- Resolved an issue with MPG tags used in Elementor not being replaced with content correctly.
+- Fixed the projects saved path to be independent of the environment, making it more resilient to host changes and migration routines.
+- Fixed webhook authentication failure, which was preventing project data from loading in some cases.
+- Fixed usage of MPG tags in shortcodes.
+- Enhanced security.
+
+
+
+
 #####   Version 4.0.1 (2024-10-24)
 
 - Fixed an issue with URLs containing spaces not rendering properly

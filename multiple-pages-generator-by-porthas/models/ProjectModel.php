@@ -242,7 +242,7 @@ class MPG_ProjectModel
     public static function mpg_get_posts_by_custom_type()
     {
 
-        check_ajax_referer( MPG_BASENAME, 'securityNonce' );
+	    MPG_Validators::nonce_check();
 
         try {
             $custom_type_name = sanitize_text_field($_POST['custom_type_name']);
@@ -316,7 +316,7 @@ class MPG_ProjectModel
     public static function mpg_upload_file()
     {
 
-	    check_ajax_referer( MPG_BASENAME, 'securityNonce' );
+	    MPG_Validators::nonce_check();
         try {
 
             if (isset($_FILES['file']['name']) && isset($_FILES['file']['tmp_name'])) {
@@ -357,7 +357,7 @@ class MPG_ProjectModel
     }
 
     public static function mpg_options_update() {
-        check_ajax_referer( MPG_BASENAME, 'securityNonce' );
+	    MPG_Validators::nonce_check();
         
         try {
             if ( ! current_user_can( 'manage_options' ) ) {
@@ -381,10 +381,6 @@ class MPG_ProjectModel
 
     public static function mpg_generate_urls_from_dataset($dataset_path, $url_structure, $space_replacer, $return_dataset = false )
     {
-        if ( false === strpos( $dataset_path, 'wp-content' ) ) {
-            $dataset_path = MPG_UPLOADS_DIR . $dataset_path;
-        }
-
 	    $dataset_array = MPG_DatasetModel::read_dataset( $dataset_path );
 
         // 1. Берем первый ряд, тоесть тот что содержит заголовки
@@ -620,18 +616,9 @@ class MPG_ProjectModel
 	 */
     public static function clone_dataset_file($source_path, $project_id)
     {
-	    if ( ! str_contains( $source_path, MPG_UPLOADS_DIR ) ) {
-		    $source_path = MPG_UPLOADS_DIR . $source_path;
-	    }
 
         $ext = strtolower(pathinfo($source_path, PATHINFO_EXTENSION));
-
-
-        $destination = MPG_UPLOADS_DIR . $project_id . '.' . $ext;
-	    $blog_id = get_current_blog_id();
-	    if ( is_multisite() && $blog_id > 1 ) {
-		    $destination = MPG_UPLOADS_DIR . $blog_id . '/' . $project_id . '.' . $ext;
-	    }
+	    $destination = MPG_DatasetModel::uploads_base_path() . $project_id . '.' . $ext;
         copy($source_path, $destination);
 
         return $destination;

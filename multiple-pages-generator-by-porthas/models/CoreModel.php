@@ -238,7 +238,6 @@ class MPG_CoreModel
 
 			$content = str_replace( $mpg_shortcodes, $placeholers, $content );
 		}
-		$content = do_shortcode( $content );
 		MPG_Parser::normalize_row( $strings );
 
 
@@ -267,7 +266,7 @@ class MPG_CoreModel
 			return str_replace( $mpg_placeholders, $mpg_shortcodes, $content );
 		}
 
-		return $content;
+		return do_shortcode( $content );
 	}
     public static function mpg_shortcode_replacer($content, $project_id)
     {

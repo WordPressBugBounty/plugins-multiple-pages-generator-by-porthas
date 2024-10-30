@@ -43,7 +43,7 @@ class MPG_Helper
     {
 	    $is_ajax = isset( $_POST['isAjax'] ) ? (bool) $_POST['isAjax'] : false;
         if ( $is_ajax ) {
-            check_ajax_referer( MPG_BASENAME, 'securityNonce' );
+	        MPG_Validators::nonce_check();
         }
         try {
 
@@ -110,7 +110,8 @@ class MPG_Helper
 
     public static function mpg_send_analytics_data()
     {
-      check_ajax_referer( MPG_BASENAME, 'securityNonce' );
+
+	    MPG_Validators::nonce_check();
       // nothing here.
     }
 
@@ -327,14 +328,14 @@ class MPG_Helper
 
     public static function mpg_get_dataset_array( stdClass $project = null )
     {
-        $project_id         = isset( $project->id ) ? $project->id : 0;
-        $dataset_path       = isset( $project->source_path ) ? $project->source_path : '';
-        $periodicity        = isset( $project->schedule_periodicity ) ? $project->schedule_periodicity : null;
-        $source_direct_link = isset( $project->original_file_url ) ? $project->original_file_url : '';
-        $worksheet_id       = isset( $project->worksheet_id ) ? $project->worksheet_id : '';
-        $space_replacer     = isset( $project->space_replacer ) ? $project->space_replacer : '';
-        $url_structure      = isset( $project->url_structure ) ? $project->url_structure : '';
-        $source_type        = isset( $project->source_type ) ? $project->source_type : '';
+	    $project_id         = isset( $project->id ) ? $project->id : 0;
+	    $dataset_path       = MPG_DatasetModel::get_dataset_path_by_project( $project );
+	    $periodicity        = isset( $project->schedule_periodicity ) ? $project->schedule_periodicity : null;
+	    $source_direct_link = isset( $project->original_file_url ) ? $project->original_file_url : '';
+	    $worksheet_id       = isset( $project->worksheet_id ) ? $project->worksheet_id : '';
+	    $space_replacer     = isset( $project->space_replacer ) ? $project->space_replacer : '';
+	    $url_structure      = isset( $project->url_structure ) ? $project->url_structure : '';
+	    $source_type        = isset( $project->source_type ) ? $project->source_type : '';
 
         global $mpg_dataset;
         if ( ! empty( $mpg_dataset[ $project_id ] ) ) {
@@ -351,9 +352,6 @@ class MPG_Helper
 
 	    $dataset_array = MPG_DatasetModel::get_cache($project_id);
 
-        if ( false === strpos( $dataset_path, 'wp-content' ) ) {
-            $dataset_path = MPG_UPLOADS_DIR . $dataset_path;
-        }
 
 	    if ( ! $dataset_array ) {
 		    $dataset_array = MPG_DatasetModel::read_dataset( $dataset_path );
@@ -425,22 +423,18 @@ class MPG_Helper
     public static function mpg_live_project_data_update( stdClass $project = null ) {
         global $mpg_urls_array;
 
-        $project_id         = isset( $project->id ) ? $project->id : 0;
-        $dataset_path       = isset( $project->source_path ) ? $project->source_path : '';
-        $periodicity        = isset( $project->schedule_periodicity ) ? $project->schedule_periodicity : null;
-        $source_direct_link = isset( $project->original_file_url ) ? $project->original_file_url : '';
-        $worksheet_id       = isset( $project->worksheet_id ) ? $project->worksheet_id : '';
-        $space_replacer     = isset( $project->space_replacer ) ? $project->space_replacer : '';
-        $url_structure      = isset( $project->url_structure ) ? $project->url_structure : '';
-        $source_type        = isset( $project->source_type ) ? $project->source_type : '';
+	    $project_id         = isset( $project->id ) ? $project->id : 0;
+	    $dataset_path       = MPG_DatasetModel::get_dataset_path_by_project( $project );
+	    $periodicity        = isset( $project->schedule_periodicity ) ? $project->schedule_periodicity : null;
+	    $source_direct_link = isset( $project->original_file_url ) ? $project->original_file_url : '';
+	    $worksheet_id       = isset( $project->worksheet_id ) ? $project->worksheet_id : '';
+	    $space_replacer     = isset( $project->space_replacer ) ? $project->space_replacer : '';
+	    $url_structure      = isset( $project->url_structure ) ? $project->url_structure : '';
+	    $source_type        = isset( $project->source_type ) ? $project->source_type : '';
 
         $expiration = 0;
         if ( null === $periodicity ) {
             $expiration = self::get_live_update_interval();
-        }
-
-        if ( false === strpos( $dataset_path, 'wp-content' ) ) {
-            $dataset_path = MPG_UPLOADS_DIR . $dataset_path;
         }
 
         $dataset_array = MPG_DatasetModel::get_cache( $project_id );
@@ -480,7 +474,14 @@ class MPG_Helper
 	 * @return string
 	 */
 	public static function get_webhook_url( $project_id ) {
-		return rest_url( 'mpg/webhook/' . $project_id . '/?hash=' . hash_hmac( 'sha256', $project_id, SECURE_AUTH_KEY ) );
+		return rest_url( 'mpg/webhook/' . $project_id . '/?hash=' . hash_hmac( 'sha256', $project_id, self::get_webhook_key() ) );
+	}
+
+	/*
+	 * Get the webhook key.
+	 */
+	public static function get_webhook_key() {
+		return defined( 'MPG_WEBHOOK_KEY' ) ? MPG_WEBHOOK_KEY : ( defined( 'SECURE_AUTH_KEY' ) ? SECURE_AUTH_KEY : 'mpgftw' );
 	}
     /**
      * Filter found posts.

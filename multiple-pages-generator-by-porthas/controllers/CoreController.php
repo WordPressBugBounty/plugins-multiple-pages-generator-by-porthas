@@ -18,11 +18,6 @@ class MPG_CoreController
         add_action('elementor/frontend/element/before_render', function ($post) use ($project_id) {
             return MPG_CoreModel::mpg_shortcode_replacer($post->post_content, $project_id);
         });
-        add_filter('elementor/frontend/the_content', function ($content) use ($project_id) {
-            $content = preg_replace( '/<a(.*?)href="(.*?mpg_(.*?))"(.*?)>/', '<a$1href="{{mpg_$3}}"$4>', $content );
-            $content = MPG_CoreModel::mpg_shortcode_replacer( $content, $project_id );
-            return $content;
-        });
 
         $project = MPG_ProjectModel::mpg_get_project_by_id($project_id);
 	    $post_modified = MPG_ProjectModel::get_vpage_modified_date( $project[0] );
@@ -244,8 +239,7 @@ class MPG_CoreController
     // For ajax call
     public static function mpg_shortcode_ajax()
     {
-
-        check_ajax_referer( MPG_BASENAME, 'securityNonce' );
+        MPG_Validators::nonce_check();
 
         try {
 

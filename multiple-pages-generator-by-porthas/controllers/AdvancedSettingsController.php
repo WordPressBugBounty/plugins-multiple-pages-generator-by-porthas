@@ -10,7 +10,7 @@ class MPG_AdvancedSettingsController{
 
     public static function mpg_set_branding_position(){
 
-        check_ajax_referer( MPG_BASENAME, 'securityNonce' );
+	    MPG_Validators::nonce_check();
 
         try{
 
@@ -34,7 +34,7 @@ class MPG_AdvancedSettingsController{
     }
     public static function mpg_get_branding_position(){
 
-        check_ajax_referer( MPG_BASENAME, 'securityNonce' );
+	    MPG_Validators::nonce_check();
 
         try{
 
