@@ -4,7 +4,7 @@
 
     <div class="sidebar-video-block">
         <h4><?php _e('How it works in 60 seconds.', 'mpg') ?></h4>
-        <iframe height="200" style="max-height: 200px;" src="https://www.youtube.com/embed/tsr_RfLMVYU" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+        <iframe height="200" style="max-height: 200px;" src="https://www.youtube.com/embed/u5l5PB1DaSc?si=sgmp6P_Yr_fx-cyH" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
     </div>
 
 	<?php require plugin_dir_path( __FILE__ ) . '../../sites-sidebar.php'; ?>

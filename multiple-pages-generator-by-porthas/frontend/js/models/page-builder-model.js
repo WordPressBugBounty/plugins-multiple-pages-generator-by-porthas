@@ -3,7 +3,8 @@ import {
     mpgUpdateState,
     renderShortCodesDropdown,
 } from '../helper.js';
-import { translate } from '../../lang/init.js';
+
+import { __ } from '@wordpress/i18n';
 import { mpgGetState } from '../helper.js';
 
 async function fillCustomTypeDropdown(projectData) {
@@ -34,7 +35,7 @@ async function fillCustomTypeDropdown(projectData) {
         } else {
             if (entity.is_home) {
                 let option = new Option(
-                    `${entity.title} (${translate['Front page']})`,
+                    `${entity.title} (${__('Front page', 'multi-pages-plugin')})`,
                     entity.id
                 );
                 option.disabled = true;
@@ -68,7 +69,7 @@ async function fillCustomTypeDropdown(projectData) {
         jQuery('#direct_link').click();
     }
     setTemplateDropdown.select2({
-        placeholder: projectData.data.entity_type === 'post' ? translate['+ Add new post'] : `${translate['+ Add new']} ${projectData.data.entity_type}`,
+        placeholder: projectData.data.entity_type === 'post' ? __('+ Add new post', 'multi-pages-plugin') : `${__('+ Add new', 'multi-pages-plugin')} ${projectData.data.entity_type}`,
         width: '100%',
         minimumInputLength: 3,
         ajax: {
@@ -88,7 +89,7 @@ async function fillCustomTypeDropdown(projectData) {
                 if (projectData.data.entity_type === 'post') {
                     res.data.push({
                         id: backendData.mpgAdminPageUrl + 'post-new.php',
-                        title: translate['+ Add new post'],
+                        title: __('+ Add new post', 'multi-pages-plugin'),
                     });
                 } else if (projectData.data.entity_type) {
                     res.data.push({
@@ -97,7 +98,7 @@ async function fillCustomTypeDropdown(projectData) {
                             'post-new.php?post_type=' +
                             projectData.data.entity_type,
                         title:
-                            translate['+ Add new'] +
+                            __('+ Add new', 'multi-pages-plugin') +
                             ' ' +
                             projectData.data.entity_type,
                     });
@@ -197,7 +198,6 @@ function fillDataPreviewAndUrlGeneration(project, headers) {
     if (headers) {
         renderShortCodesDropdown(headers, insertShorecodeDropdown);
     }
-
     // Перерисовка поля с превью url
     jQuery('#mpg_url_constructor').attr('contenteditable', true).trigger('input');
 
@@ -210,6 +210,7 @@ function renderTableWithAllURLs(e) {
     e.preventDefault();
 
     const projectId = mpgGetState('projectId');
+
     if ( ! projectId ) {
         return;
     }

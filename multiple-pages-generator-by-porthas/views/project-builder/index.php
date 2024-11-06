@@ -15,6 +15,7 @@ class MPG_ProjectBuilderView
         <div class="project-builder">
             <div class="page-header">
                 <div class="mpg-container">
+                    <div id="tsdk_banner" class="mpg-banner"></div>
                     <div class="page-title d-flex flex-wrap align-items-center justify-content-between">
                         <h1></h1>
                         <?php

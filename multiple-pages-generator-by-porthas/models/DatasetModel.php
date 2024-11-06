@@ -53,6 +53,24 @@ class MPG_DatasetModel
 		return $base_path;
 	}
 	/**
+	 * Get the base URL for uploads.
+	 *
+	 * This function retrieves the base URL for uploads, taking into account
+	 * whether the site is part of a multisite network. If the site is part
+	 * of a multisite network and the blog ID is greater than 1, the blog ID
+	 * is appended to the base URL.
+	 *
+	 * @return string The base URL for uploads.
+	 */
+	public static function uploads_base_url(){
+		$base_url = MPG_UPLOADS_URL;
+		$blog_id   = get_current_blog_id();
+		if ( is_multisite() && $blog_id > 1 ) {
+			$base_url = MPG_UPLOADS_URL . $blog_id .DIRECTORY_SEPARATOR ;
+		}
+		return $base_url;
+	}
+	/**
 	 * Get the dataset path by project.
 	 *
 	 * This function retrieves the dataset path associated with a given project.
@@ -198,7 +216,7 @@ class MPG_DatasetModel
 		delete_transient( wp_hash( 'dataset_array_' . $project_id ) );
 	}
 	public static function mpg_read_dataset_hub() {
-		$path_to_dataset_hub = plugin_dir_path( __DIR__ ) . 'temp/dataset_hub.xlsx';
+		$path_to_dataset_hub = MPG_DatasetModel::uploads_base_path() . 'temp-dataset_hub.xlsx';
 
 		if ( ! wp_doing_ajax() ) {
 			$download_result = MPG_DatasetModel::download_file( MPG_Constant::DATASET_SPREADSHEET_CSV_URL, $path_to_dataset_hub );

@@ -332,7 +332,7 @@ class MPG_ProjectModel
 		            throw new Exception( __( 'Unsupported file extension', 'mpg' ) );
 	            }
 
-                $destination = realpath(__DIR__ . '/../temp/') . '/unlinked_file.' . $ext;
+                $destination = MPG_DatasetModel::uploads_base_path() . 'temp-unlinked_file.' . $ext;
 
                 $move = move_uploaded_file($temp_filename, $destination);
 

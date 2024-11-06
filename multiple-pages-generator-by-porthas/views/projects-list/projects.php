@@ -20,6 +20,7 @@
         <a href="#" id="mpg_import" class="page-title-action mpg-export-import-btn<?php echo ! mpg_app()->is_premium() ? ' mpg-export-import-btn-pro' : ''; ?>"><?php echo ! mpg_app()->is_premium() ? '<span class="dashicons dashicons-lock"></span>' : '<span class="dashicons dashicons-upload"></span>'; ?><?php esc_html_e( 'Import projects', 'mpg' ); ?></a>   
     </div>
 	<hr class="wp-header-end">
+    <div id="tsdk_banner" class="mpg-banner"></div>
     <div class="mpg-import-field hidden">
         <form method="post" enctype="multipart/form-data" action="<?php echo esc_url( add_query_arg( array( 'page' => 'mpg-project-builder', 'action' => 'mpg_import_projects', '_wpnonce' => wp_create_nonce( 'mpg_import_projects' ) ), admin_url( 'admin.php' ) ) ); ?>">
             <h4> <?php _e( "Choose the project's .json file to import.", 'mpg' ); ?></h4><input type="file" accept=".json" name="mpg_import" required>
@@ -195,6 +196,9 @@ if ( ! empty( $license ) && ( is_object( $license ) && isset( $license->key ) ) 
 </script>
 
 <style>
+    .notice:not([class*="themeisle"]):not([class*="ti-sdk"]) {
+        display:none;
+    }
     .mpg-modal {
         position: fixed;
         z-index: 100000;

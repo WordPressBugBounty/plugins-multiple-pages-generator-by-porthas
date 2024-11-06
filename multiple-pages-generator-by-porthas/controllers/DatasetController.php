@@ -345,7 +345,7 @@ class MPG_DatasetController
 					throw new Exception(__('Unsupported file extension', 'mpg'));
 				}
 
-                $destination = realpath(__DIR__ . '/../temp') . '/unlinked_file.' . $ext;
+                $destination = MPG_DatasetModel::uploads_base_path() . 'temp-unlinked_file.' . $ext;
 
                 if (MPG_DatasetModel::download_file($direct_link, $destination)) {
 

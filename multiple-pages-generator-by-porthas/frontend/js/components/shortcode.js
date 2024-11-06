@@ -7,7 +7,7 @@ import {
     rebuildSandboxShortcode,
 } from '../helper.js';
 
-import { translate } from '../../lang/init.js';
+import { __ } from '@wordpress/i18n';
 
 function renderConditionRowDom(dropdownOptions) {
 
@@ -23,7 +23,7 @@ function renderConditionRowDom(dropdownOptions) {
         <option value="<=" ><=</option>
     </select>
   <select disabled="disabled" class=" mpg_headers_condition_value_dropdown input-data">
-    <option disabled selected>${translate['Choose header at first']}</option>
+    <option disabled selected>${__('Choose header at first', 'multi-pages-plugin')}</option>
   </select>
   <button class="add-new-condition" style="display: inline-flex;"><span class="dashicons dashicons-no-alt"></span></button>
 </div>`;
@@ -113,6 +113,7 @@ function shortCodeTabInit() {
     );
 
     jQuery('#mpg_shortcode_sandbox_textarea').val(updatedProjectId);
+    initEvents();
 }
 
 let headersShortcodeDropdown = jQuery('.shortcode-headers-dropdown');
@@ -122,11 +123,41 @@ headersShortcodeDropdown.on('change', function () {
     jQuery('.shortcode-preview-output').html(`{{${shortcode}}}`);
 });
 
+function rebuildWhere() {
+    let where = [];
+
+    // После выбора значения из второго дропдуана - собираем значение из всех, и кидаем в стейт.
+    jQuery('.condition-row').each(function () {
+        let key = jQuery(this)
+            .find('.mpg_headers_condition_key_dropdown option:selected')
+            .text();
+        let value = jQuery(this)
+            .find('.mpg_headers_condition_value_dropdown option:selected')
+            .text();
+        let operator_rule = jQuery(this)
+            .find('.mpg_rule_operator')
+            .val();
+        // Encode the '<' symbol to '&lt;' to prevent issues with shortcode attribute parsing.
+        if(operator_rule === '<' || operator_rule === '<='){
+            operator_rule = operator_rule.replace( '<', '&lt;');
+        }
+        if (key !== '-- Not set --') {
+            // Храню это как массив объектов, а не как объект, чтобы можно было
+            // разные значения where для полей с одинаковыми названиями. (чтобы ключи не перезатирались)
+            where.push({ value: value, operator: operator_rule, key:key} );
+
+            mpgUpdateState('where', where);
+        }
+    });
+
+    rebuildSandboxShortcode();
+}
+function initEvents(){
 jQuery('.shortcode-copy').on('click', function () {
     if (copyTextToClipboard(jQuery('#mpg_shortcode_sandbox_textarea').val())) {
         toastr.success(
-            translate['Shortcode copied to clipboard!'],
-            translate['Success'],
+            __('Shortcode copied to clipboard!', 'multi-pages-plugin'),
+            __('Success', 'multi-pages-plugin'),
             { timeOut: 3000 }
         );
     }
@@ -147,16 +178,14 @@ jQuery('.copy-shortcode-btn').on('click', function () {
 
     if (copyTextToClipboard(`${shortcodeText}`)) {
         toastr.success(
-            translate['Shortcode copied to clipboard!'],
-            translate['Success'],
+            __('Shortcode copied to clipboard!', 'multi-pages-plugin'),
+            __('Success', 'multi-pages-plugin'),
             { timeOut: 3000 }
         );
     } else {
         toastr.warning(
-            translate[
-                'Looks like something went wrong while copying shortcode'
-            ],
-            translate['Hmm'],
+            __('Looks like something went wrong while copying shortcode', 'multi-pages-plugin'),
+            __('Hmm', 'multi-pages-plugin'),
             { timeOut: 3000 }
         );
     }
@@ -212,35 +241,6 @@ jQuery('.project-builder').on(
         }
     }
 );
-function rebuildWhere() {
-    let where = [];
-
-    // После выбора значения из второго дропдуана - собираем значение из всех, и кидаем в стейт.
-    jQuery('.condition-row').each(function () {
-        let key = jQuery(this)
-            .find('.mpg_headers_condition_key_dropdown option:selected')
-            .text();
-        let value = jQuery(this)
-            .find('.mpg_headers_condition_value_dropdown option:selected')
-            .text();
-        let operator_rule = jQuery(this)
-            .find('.mpg_rule_operator')
-            .val();
-        // Encode the '<' symbol to '&lt;' to prevent issues with shortcode attribute parsing.
-        if(operator_rule === '<' || operator_rule === '<='){
-            operator_rule = operator_rule.replace( '<', '&lt;');
-        }
-        if (key !== '-- Not set --') {
-            // Храню это как массив объектов, а не как объект, чтобы можно было
-            // разные значения where для полей с одинаковыми названиями. (чтобы ключи не перезатирались)
-            where.push({ value: value, operator: operator_rule, key:key} );
-
-            mpgUpdateState('where', where);
-        }
-    });
-
-    rebuildSandboxShortcode();
-}
 jQuery(document).on(
     'blur',
     '.mpg_headers_condition_value_dropdown',
@@ -350,21 +350,6 @@ jQuery('.condition-container').on('click', 'button', function () {
         rebuildSandboxShortcode(allWhereConditions);
     }
 });
-export function getMpgWhereState(){
-    let allWhereConditions = mpgGetState('where');
-    if(!allWhereConditions || allWhereConditions.length === 0){
-        return [];
-    }
-    if (allWhereConditions[0].hasOwnProperty('operator')) {
-        return allWhereConditions;
-    }
-    allWhereConditions =  Object.keys(allWhereConditions).map(key => ({
-        column: key,
-        operator: '=',
-        value: obj[key]
-    }));
-    mpgUpdateState('where', allWhereConditions);
-}
 jQuery('#mpg_limit').on('change', function () {
     mpgUpdateState('limit', jQuery(this).val());
     rebuildSandboxShortcode();
@@ -381,8 +366,8 @@ jQuery('#mpg_direction').on('change', function () {
         jQuery('#mpg_order_by').attr('disabled', directionValue === 'random');
     } else {
         toastr.warning(
-            translate['Choosed wrong direction'],
-            translate['Error']
+            __('Choosed wrong direction', 'multi-pages-plugin'),
+            __('Error', 'multi-pages-plugin')
         );
     }
 });
@@ -424,9 +409,7 @@ jQuery('#shortcode .shortcode-preview').on('click', async function () {
         if (contentMatches && contentMatches[1]) {
             content = contentMatches[1];
         } else {
-            throw translate[
-                'You need to fill some static content with shortcodes beetwen [mpg] [/mpg]'
-            ];
+            throw __('You need to fill some static content with shortcodes beetwen [mpg] [/mpg]', 'multi-pages-plugin');
         }
 
         // =================  ProjectId  =================
@@ -512,7 +495,7 @@ jQuery('#shortcode .shortcode-preview').on('click', async function () {
         let shortcodePreviewData = JSON.parse(shortcodePreview);
 
         if (!shortcodePreviewData.success) {
-            toastr.error(shortcodePreviewData.error, translate['Error']);
+            toastr.error(shortcodePreviewData.error, __('Error', 'multi-pages-plugin'));
             return;
         }
 
@@ -534,8 +517,25 @@ jQuery('#shortcode .shortcode-preview').on('click', async function () {
             jQuery('.mpg_list_preview-block').html(shortcodePreviewData.data);
         }
     } catch (error) {
-        toastr.warning(error, translate['Incorrect input']);
+        toastr.warning(error, __('Incorrect input', 'multi-pages-plugin'));
     }
 });
+}
+export function getMpgWhereState(){
+    let allWhereConditions = mpgGetState('where');
+    if(!allWhereConditions || allWhereConditions.length === 0){
+        return [];
+    }
+    if (allWhereConditions[0].hasOwnProperty('operator')) {
+        return allWhereConditions;
+    }
+    allWhereConditions =  Object.keys(allWhereConditions).map(key => ({
+        column: key,
+        operator: '=',
+        value: obj[key]
+    }));
+    mpgUpdateState('where', allWhereConditions);
+}
+
 
 export { shortCodeTabInit };

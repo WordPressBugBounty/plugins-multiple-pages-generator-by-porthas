@@ -181,16 +181,12 @@ if ( ! class_exists( 'ProjectsListManage' ) ) {
 		/**
 		 * Bulk delete
 		 *
-		 * @param int $ids ids.
+		 * @param array $ids ids.
 		 */
-		public function bulk_delete( $ids ) {
-			global $wpdb;
-			if ( ! empty( $ids ) ) {
-				$table_name = $wpdb->prefix . MPG_Constant::MPG_PROJECTS_TABLE;
-				$ids        = implode( ',', array_map( 'absint', $ids ) );
-				return $wpdb->query( "DELETE FROM $table_name WHERE id IN( $ids )" ); // phpcs:ignore
+		public function bulk_delete( array $ids ) {
+			foreach ( $ids as $id ) {
+				$this->delete_project( (int )$id );
 			}
-			return false;
 		}
 
 		/**

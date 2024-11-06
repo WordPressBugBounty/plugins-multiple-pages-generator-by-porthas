@@ -1,6 +1,6 @@
 import { mpgGetState } from '../helper.js';
-import { translate } from '../../lang/init.js';
-
+import { __ } from '@wordpress/i18n';
+export function initLogs(){
 jQuery('a[href="#logs"]').on('click', function () {
 
     const projectId = mpgGetState('projectId');
@@ -42,11 +42,11 @@ jQuery('a[href="#logs"]').on('click', function () {
         let projectData = JSON.parse(project)
 
         if (!projectData.success) {
-            toastr.error(projectData.error, translate['Can not clear log for current project']);
+            toastr.error(projectData.error, __('Can not clear log for current project', 'multi-pages-plugin'));
             return false;
         }
 
-        toastr.success(translate['Log was cleared'], translate['Done!']);
+        toastr.success(__('Log was cleared', 'multi-pages-plugin'), __('Done!', 'multi-pages-plugin'));
 
         const logsTable = jQuery('#mpg_logs_table');
 
@@ -56,3 +56,4 @@ jQuery('a[href="#logs"]').on('click', function () {
 
     });
 })
+}

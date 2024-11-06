@@ -10,14 +10,14 @@ import {
     fillUrlStructureShortcodes,
 } from '../helper.js';
 
-import { translate } from '../../lang/init.js';
+import { __ } from '@wordpress/i18n';
 
 import {
     fillCustomTypeDropdown,
     fillDataPreviewAndUrlGeneration,
 } from '../models/page-builder-model.js';
 
-(async function () {
+export async function doInit() {
     let projectId = getProjectIdFromUrl();
 
     if (projectId) {
@@ -26,7 +26,7 @@ import {
         jQuery('#mpg_project_id span').text(projectId);
         jQuery('.delete-project').show();
         jQuery("#mpg-id-block").html("ID: " + projectId).removeClass('d-none');
-        let project = await jQuery.ajax({
+        let project =  await jQuery.ajax({
             url: ajaxurl,
             method: 'post',
             data: {
@@ -37,11 +37,11 @@ import {
             statusCode: {
                 500: function (xhr) {
                     toastr.error(
-                        translate[
-                            'Looks like you attempt to use large source file, that reached memory allocated to PHP or reached max_post_size. Please, increase memory limit according to documentation for your web server. For additional information, check .log files of web server or'
-                        ] +
-                            `<a target="_blank" style="text-decoration: underline" href="https://docs.themeisle.com/article/1443-500-internal-server-error"> ${translate['read our article']}</a>.`,
-                        translate['Server settings limitation'],
+                        __(
+                            'Looks like you attempt to use large source file, that reached memory allocated to PHP or reached max_post_size. Please, increase memory limit according to documentation for your web server. For additional information, check .log files of web server or', 'multi-pages-plugin')
+                         +
+                            `<a target="_blank" style="text-decoration: underline" href="https://docs.themeisle.com/article/1443-500-internal-server-error"> ${__('read our article', 'multi-pages-plugin')}</a>.`,
+                        __('Server settings limitation', 'multi-pages-plugin'),
                         { timeOut: 30000 }
                     );
                 },
@@ -53,7 +53,7 @@ import {
         if (!projectData.success) {
             toastr.error(
                 projectData.error,
-                translate['Can not get project data']
+                __('Can not get project data', 'multi-pages-plugin')
             );
             return;
         }
@@ -154,11 +154,11 @@ import {
             projectData.data.entity_type &&
             projectData.data.template_id
         ) {
-            if (projectData.data.source_url) {
+            if (projectData.data.source_url_full) {
                 jQuery('#mpg_in_use_dataset_link')
-                    .attr('href', `${projectData.data.source_url}`)
+                    .attr('href', `${projectData.data.source_url_full}`)
                     .removeClass('disabled')
-                    .text(translate['Download']);
+                    .text(__('Download', 'multi-pages-plugin'));
             }
 
             if (projectData.data.source_type) {
@@ -273,7 +273,7 @@ import {
         }
     });
     jQuery('select.select-source-option').trigger('change');
-})();
+}
 
 function fillSitemapData(projectData) {
     // Заполняем стейт, чтобы потом с него считать во вкладке Sitemap
@@ -312,93 +312,95 @@ function fillCacheData(projectData) {
         jQuery('.cache-page .card-footer .enable-cache').removeAttr('disabled');
     }
 }
+export function handleAdvance(){
+    if (jQuery('.advanced-page').length) {
+        jQuery
+            .post(ajaxurl, {
+                action: 'mpg_get_hook_name_and_priority',
+                securityNonce: backendData.securityNonce,
+            })
+            .then((hooksRawData) => {
+                let hooksData = JSON.parse(hooksRawData);
 
-if (jQuery('.advanced-page').length) {
-    jQuery
-        .post(ajaxurl, {
-            action: 'mpg_get_hook_name_and_priority',
-            securityNonce: backendData.securityNonce,
-        })
-        .then((hooksRawData) => {
-            let hooksData = JSON.parse(hooksRawData);
-
-            if (!hooksData.success) {
-                toastr.error(hooksData.error, translate['Failed']);
-                return;
-            } else {
-                if (hooksData.data.hook_name && hooksData.data.hook_priority) {
-                    jQuery('#mpg_hook_name').val(hooksData.data.hook_name);
-                    jQuery('#mpg_hook_priority').val(
-                        hooksData.data.hook_priority
-                    );
+                if (!hooksData.success) {
+                    toastr.error(hooksData.error, __('Failed', 'multi-pages-plugin'));
+                    return;
+                } else {
+                    if (hooksData.data.hook_name && hooksData.data.hook_priority) {
+                        jQuery('#mpg_hook_name').val(hooksData.data.hook_name);
+                        jQuery('#mpg_hook_priority').val(
+                            hooksData.data.hook_priority
+                        );
+                    }
                 }
-            }
-        });
+            });
 
-    jQuery
-        .post(ajaxurl, {
-            action: 'mpg_get_basepath',
-            securityNonce: backendData.securityNonce,
-        })
-        .then((basepathRawData) => {
-            let basepathData = JSON.parse(basepathRawData);
+        jQuery
+            .post(ajaxurl, {
+                action: 'mpg_get_basepath',
+                securityNonce: backendData.securityNonce,
+            })
+            .then((basepathRawData) => {
+                let basepathData = JSON.parse(basepathRawData);
 
-            if (!basepathData.success) {
-                toastr.error(basepathData.error, translate['Failed']);
-                return;
-            } else {
-                if (basepathData.data) {
-                    jQuery('.mpg-path-block select').val(basepathData.data);
+                if (!basepathData.success) {
+                    toastr.error(basepathData.error, __('Failed', 'multi-pages-plugin'));
+                    return;
+                } else {
+                    if (basepathData.data) {
+                        jQuery('.mpg-path-block select').val(basepathData.data);
+                    }
                 }
-            }
-        });
+            });
 
-    jQuery
-        .post(ajaxurl, {
-            action: 'mpg_get_cache_hook_name_and_priority',
-            securityNonce: backendData.securityNonce,
-        })
-        .then((cacheHooksRawData) => {
-            let cacheHooksData = JSON.parse(cacheHooksRawData);
+        jQuery
+            .post(ajaxurl, {
+                action: 'mpg_get_cache_hook_name_and_priority',
+                securityNonce: backendData.securityNonce,
+            })
+            .then((cacheHooksRawData) => {
+                let cacheHooksData = JSON.parse(cacheHooksRawData);
 
-            if (!cacheHooksData.success) {
-                toastr.error(cacheHooksData.error, translate['Failed']);
-                return;
-            } else {
-                if (
-                    cacheHooksData.data.cache_hook_name &&
-                    cacheHooksData.data.cache_hook_priority
-                ) {
-                    jQuery('#mpg_cache_hook_name').val(
-                        cacheHooksData.data.cache_hook_name
-                    );
-                    jQuery('#mpg_cache_hook_priority').val(
+                if (!cacheHooksData.success) {
+                    toastr.error(cacheHooksData.error, __('Failed', 'multi-pages-plugin'));
+                    return;
+                } else {
+                    if (
+                        cacheHooksData.data.cache_hook_name &&
                         cacheHooksData.data.cache_hook_priority
-                    );
+                    ) {
+                        jQuery('#mpg_cache_hook_name').val(
+                            cacheHooksData.data.cache_hook_name
+                        );
+                        jQuery('#mpg_cache_hook_priority').val(
+                            cacheHooksData.data.cache_hook_priority
+                        );
+                    }
                 }
-            }
-        });
+            });
 
-    jQuery
-        .post(ajaxurl, {
-            action: 'mpg_get_branding_position',
-            securityNonce: backendData.securityNonce,
-        })
-        .then((brandingPositionRawData) => {
-            let brandingPositionData = JSON.parse(brandingPositionRawData);
+        jQuery
+            .post(ajaxurl, {
+                action: 'mpg_get_branding_position',
+                securityNonce: backendData.securityNonce,
+            })
+            .then((brandingPositionRawData) => {
+                let brandingPositionData = JSON.parse(brandingPositionRawData);
 
-            if (!brandingPositionData.success) {
-                toastr.error(brandingPositionData.error, translate['Failed']);
-                return;
-            } else {
-                if (brandingPositionData.data) {
-                    jQuery('#mpg_change_branding_position').val(
-                        brandingPositionData.data
-                    );
+                if (!brandingPositionData.success) {
+                    toastr.error(brandingPositionData.error, __('Failed', 'multi-pages-plugin'));
+                    return;
+                } else {
+                    if (brandingPositionData.data) {
+                        jQuery('#mpg_change_branding_position').val(
+                            brandingPositionData.data
+                        );
+                    }
                 }
-            }
-        })
-        .catch((e) => {
-            console.log(e);
-        });
+            })
+            .catch((e) => {
+                console.log(e);
+            });
+    }
+
 }

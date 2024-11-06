@@ -144,7 +144,13 @@ class MPG_Helper
             wp_enqueue_script('mpg_popper_1_js',                 plugins_url('frontend/libs/popper/popper.min.js', __DIR__), array('jquery'), MPG_PLUGIN_VERSION);
 
             wp_enqueue_script('mpg_tippy_2_js',                 plugins_url('frontend/libs/popper/tippy-bundle.umd.min.js', __DIR__), array('jquery'), MPG_PLUGIN_VERSION);
-            wp_enqueue_script('mpg_main_js',                    plugins_url('frontend/js/app.js', __DIR__), array('jquery'), MPG_PLUGIN_VERSION);
+	        $has_build    = is_readable( MPG_MAIN_DIR . '/frontend/build/app.asset.php' );
+	        $app_assets   = $has_build ? require MPG_MAIN_DIR . '/frontend/build/app.asset.php' : array(
+		        'dependencies' => array(),
+		        'version'      => MPG_PLUGIN_VERSION
+	        );
+	        $app_location = $has_build ? plugins_url( 'frontend/build/app.js', __DIR__ ) : plugins_url( 'frontend/js/app.js', __DIR__ );
+	        wp_enqueue_script( 'mpg_main_js', $app_location, array_merge( array( 'jquery' ), $app_assets['dependencies'] ), $app_assets['version'] );
 
             wp_localize_script('mpg_main_js', 'backendData', [
                 'baseUrl'           => home_url('/'),
@@ -189,18 +195,6 @@ class MPG_Helper
                 'securityNonce'     => wp_create_nonce( MPG_BASENAME ),
             ]);
         }
-    }
-
-
-    public static function mpg_add_type_attribute($tag, $handle, $src)
-    {
-        // if not your script, do nothing and return original $tag
-        if ('mpg_js' !== $handle) {
-            return $tag;
-        }
-        // change the script tag by adding type="module" and return it.
-        $tag = '<script type="module" src="' . esc_url($src) . '"></script>';
-        return $tag;
     }
 
 
@@ -603,37 +597,6 @@ class MPG_Helper
     }
 
     /**
-     * Get the plan category for the product plan ID.
-     *
-     * @param object $license_data The license data.
-     * @return int
-     */
-    private static function plan_category( $license_data ) {
-
-        if ( !isset( $license_data->plan ) || ! is_numeric(  $license_data->plan ) ) {
-            return 0; // Free
-        }
-
-        $plan = (int) $license_data->plan;
-        $current_category = -1; // Unknown category.
-
-        $categories = array(
-            "1" => array(1, 4), // Personal
-            "2" => array(2, 5), // Business
-            "3" => array(3, 6), // Agency
-        );
-
-        foreach ( $categories as $category => $plans ) {
-            if ( in_array( $plan, $plans, true ) ) {
-                $current_category = (int) $category;
-                break;
-            }
-        }
-
-        return $current_category;
-    }
-
-    /**
 	 * Get the data used for the survey.
 	 *
 	 * @return array
@@ -688,7 +651,7 @@ class MPG_Helper
 				'license_status'     => ! empty( $license_saved->license ) ? $license_saved->license : 'invalid',
 				'days_since_install' => $install_category,
 				'version'            => $version,
-                'plan'               => self::plan_category( $license_saved ),
+                'plan'               => mpg_app()->get_license_type(),
 			),
 		);
 	}
@@ -727,7 +690,7 @@ class MPG_Helper
 			return true;
 		}
 		//we check if this is a translated version of the template.
-		if ( defined( 'POLYLANG_VERSION' ) ) {
+		if ( defined( 'POLYLANG_VERSION' ) && function_exists( 'pll_get_post_translations' ) ) {
 			$translations = pll_get_post_translations( $post_id );
 			foreach ( $translations as $lang => $translated_post_id ) {
 				$project_id = MPG_ProjectModel::get_project_by_template_id( $post_id );

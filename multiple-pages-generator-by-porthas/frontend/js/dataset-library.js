@@ -1,7 +1,5 @@
-import { translate } from '../lang/init.js';
-
-jQuery(document).ready(async function () {
-
+import { __ } from '@wordpress/i18n';
+export function initDataset(){
     if (jQuery('.dataset-library')) {
 
         try {
@@ -76,8 +74,8 @@ jQuery(document).ready(async function () {
                 statusCode: {
                     500: function (xhr) {
                         toastr.error(
-                            translate['Looks like you attempt to use large source file, that reached memory allocated to PHP or reached max_post_size. Please, increase memory limit according to documentation for your web server. For additional information, check .log files of web server or'] + `<a target="_blank" style="text-decoration: underline" href="https://docs.themeisle.com/article/1443-500-internal-server-error"> ${translate['read our article']}</a>.`,
-                            translate['Server settings limitation'], { timeOut: 30000 });
+                            __('Looks like you attempt to use large source file, that reached memory allocated to PHP or reached max_post_size. Please, increase memory limit according to documentation for your web server. For additional information, check .log files of web server or', 'multi-pages-plugin') + `<a target="_blank" style="text-decoration: underline" href="https://docs.themeisle.com/article/1443-500-internal-server-error"> ${__('read our article', 'multi-pages-plugin')}</a>.`,
+                            __('Server settings limitation', 'multi-pages-plugin'), { timeOut: 30000 });
                     }
                 }
             });
@@ -100,5 +98,4 @@ jQuery(document).ready(async function () {
             }, 3000);
 
         });
-    }
-});
+    }}

@@ -8,53 +8,68 @@ Requires PHP: 7.2
 License: GPLv2
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-Create thousands of targeted landing pages in bulk, boost your search visibility, and save countless hours of manual work with MPG.
+   Create thousands of targeted landing pages in bulk, boost your search visibility, and save countless hours of manual work with MPG.🚀
 
 == Description ==
 
-**[MPG](https://themeisle.com/plugins/multi-pages-generator/?utm_source=plugin-readme&utm_medium=mpg&utm_campaign=description)** is your ultimate solution for effortless programmatic SEO. Create thousands of targeted landing pages in bulk, boost your search visibility, and save countless hours of manual work. With MPG, you'll reach more customers and grow your business faster than ever before.
+**[MPG](https://themeisle.com/plugins/multi-pages-generator/?utm_source=plugin-readme&utm_medium=mpg&utm_campaign=description)** revolutionizes how you create and manage content at scale. In today's competitive digital landscape, standing out requires more than just quality content—you need quantity without sacrificing quality. MPG helps you achieve both.
 
-`<iframe width="560" height="315" src="https://www.youtube.com/embed/ib7wBuQIxU0" frameborder="0"  allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`
+<iframe width="560" height="315" src="https://www.youtube.com/embed/u5l5PB1DaSc?si=CMc2f3bMsHU6gW4f" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
 
-### INSTANT PAGE GENERATOR
+### Core Features ⚡
 
-Generate thousands of targeted landing pages instantly. Upload a CSV file or connect with Google Sheets, set up your template with shortcodes, and let MPG do the rest. [See MPG in action here.](https://www.youtube.com/watch?v=1MlOTlXHfJk)
+- Import data from CSV files
+- Compatible with any WordPress theme or page builder
+- SEO-ready page generation
+- Custom URL structures
+- Basic sitemap support
 
-### PROGRAMMATIC SEO POWERHOUSE
+Note: Free version processes up to 50 rows of data. For unlimited pages, check out [MPG Pro](https://themeisle.com/plugins/multi-pages-generator/?utm_source=plugin-readme&utm_medium=mpg&utm_campaign=pro).
 
-Dominate search results with MPG's programmatic SEO capabilities. Create keyword-rich, targeted pages at scale, improving your visibility for long-tail searches and local SEO. Boost your organic traffic and outrank your competitors effortlessly.
+### UNLOCK MORE WITH MPG PRO 🎯
 
-### USE CASES
+Take your content strategy to the next level:
+- **No Data Limits**: Process unlimited rows
+- **Live Updates**: Auto-sync with CSV & Google Sheets
+- **Advanced SEO**: Schema markup, meta controls, dynamic sitemaps
+- **Content Tools**: Spintax support, conditional logic
+- **Multiple Projects**: Manage various data sets
+- **Priority Support**: Get help when you need it
 
-- **Local SEO**: Generate location-specific pages to dominate local search results.
-- **E-commerce**: Create unique product pages for better visibility and conversions.
-- **Real Estate**: Build property listings that stand out in search results.
-- **Travel Industry**: Craft destination pages that attract more bookings.
-- **Job Boards**: Develop individual job listing pages for improved searchability.
+[View pricing](https://themeisle.com/plugins/multi-pages-generator/?utm_source=plugin-readme&utm_medium=mpg&utm_campaign=pricing) | [Compare versions](https://docs.themeisle.com/article/1573-mpg-free-vs-pro)
+
+### PERFECT FOR
+
+- **Local Businesses**: Create location-specific landing pages
+- **Real Estate**: Generate property listing pages
+- **Directories**: Build business or service directories
+- **E-commerce**: Scale product landing pages
+- **Job Boards**: Automate job listing pages
 
 ### HOW IT WORKS
 
-1. Prepare your data in a CSV file or Google Sheets.
-2. Create a template page using your preferred page builder or theme.
-3. Use MPG to generate pages based on your template and data.
-4. Instantly publish thousands of unique, targeted pages optimized for search engines.
+1. Import your spreadsheet data
+2. Design your page template
+3. Set your URL structure
+4. Generate pages automatically
 
+[View step-by-step guide](https://docs.themeisle.com/article/1572-multiple-pages-generator)
 
-### BOOST YOUR BUSINESS WITH MPG
+### RESOURCES
 
-- Save time with bulk page creation
-- Improve search engine rankings
-- Reach more customers with targeted content
-- Easily manage and update thousands of pages
-- Stay ahead of competitors with programmatic SEO
+- 📚 [Knowledge Base](https://docs.themeisle.com/collection/1572-multiple-pages-generator)
+- 📱 [Support Forum](https://wordpress.org/support/plugin/multiple-pages-generator-by-porthas/)
+- 💡 [Feature Request](mailto:friends@themeisle.com)
+- 🎥 [Video Tutorials](https://www.youtube.com/channel/UCNZXoOtxC2l2nL2s6MaburQ)
 
-### DO YOU LIKE MPG? :)
+### JOIN OUR COMMUNITY ✨
 
-Follow us on [Twitter](https://twitter.com/themeisle) or [Facebook](https://www.facebook.com/themeisle/)
-Learn from our tutorials on [Youtube](https://www.youtube.com/channel/UCNZXoOtxC2l2nL2s6MaburQ)
-Rate us on [Wordpress](https://wordpress.org/support/plugin/multiple-pages-generator-by-porthas/reviews/?filter=5/#new-post)
+- Follow us on [Twitter](https://twitter.com/themeisle)
+- Join us on [Facebook](https://www.facebook.com/themeisle/)
+- Subscribe to our [Youtube](https://www.youtube.com/channel/UCNZXoOtxC2l2nL2s6MaburQ) channel
+- Rate us on [WordPress](https://wordpress.org/support/plugin/multiple-pages-generator-by-porthas/reviews/?filter=5/#new-post)
 
-Ready to supercharge your SEO and grow your business faster? [Get started with MPG today!](https://themeisle.com/plugins/multi-pages-generator/?utm_source=plugin-readme&utm_medium=mpg&utm_campaign=cta)
+Ready to supercharge your WordPress site? [Get started with MPG today!](https://themeisle.com/plugins/multi-pages-generator/?utm_source=plugin-readme&utm_medium=mpg&utm_campaign=cta)
 
 == Frequently Asked Questions ==
 
@@ -68,7 +83,7 @@ MPG generates pages based on your template and data source. When a URL is reques
 
 **Is MPG compatible with my theme or page builder?**
 
-Yes, MPG is designed to work seamlessly with most WordPress themes and popular page builders like Elementor, Divi, and WPBakery.
+Yes, MPG is designed to work seamlessly with most WordPress themes and popular page builders.
 
 **How does MPG improve my SEO?**
 
@@ -103,14 +118,29 @@ E-mail us at [friends@themeisle.com](mailto:friends@themeisle.com)
 
 
 == Screenshots ==
-1. **Multiple pages.** Unique and searchable URLs in minutes.
-2. **Custom URLs.** Create dynamic URLs for each new page generated
-3. **Additional sitemap generator.** Create and submit a new sitemap automatically.
-4. **Dynamic Unique Content.** Customize Schema, Spintax, and all other elements in your pages.
-5. **Create inlinks.** Optimize your website with internal links to your new pages.
+1. Project Setup: MPG project configuration page for connecting and syncing with external data sources.
+2. URL Generator: MPG URL builder for creating SEO-friendly URLs from job data fields.
+3. Job Data Display: MPG-powered data table showing job listings with integrated filtering and pagination.
+4. Spintax Editor: Advanced text variation tool that creates unique content versions to avoid duplication.
+5. Cache Manager: Dual-option caching system with disk and database storage for optimizing page load times.
+6. Sitemap Tool: XML sitemap generator with customizable URL limits and update frequency settings.
+7. Shortcode System: Dynamic content generator using shortcodes with Spintax support for content variation.
+8. MPG Visibility Rules: Conditional display settings for controlling when and how content appears.
+9. MPG Loop Block: Customizable content block builder with project-based data filtering and display settings.
 
 
 == Changelog ==
+
+#####   Version 4.0.3 (2024-11-06)
+
+- Fixed issue where existing projects were not showing settings when editing
+- Fixed issue where mpg_url tag was not converting to the URL of a generated page
+- Fixed missing dashboard menu item
+- Updated MPG educational video in the sidebar
+- Enhanced security
+
+
+
 
 #####   Version 4.0.2 (2024-10-30)
 

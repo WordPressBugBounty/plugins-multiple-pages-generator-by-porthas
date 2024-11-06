@@ -25,10 +25,20 @@ class MPG_ProjectController
                 return;
 	        }
             $entities_array = MPG_ProjectModel::mpg_get_custom_types();
-
+	        if ( $_GET['action'] === 'edit_project' ) {
+		        if ( ! mpg_app()->is_license_of_type( 2 ) ) {
+			        do_action( 'themeisle_sdk_load_banner', 'mpg' );
+		        }
+	        }
             MPG_ProjectBuilderView::render( $entities_array );
             return;
         }
+
+       
+        if ( ! mpg_app()->is_license_of_type(2) ) {
+            do_action( 'themeisle_sdk_load_banner', 'mpg' );
+        }
+
         // Display project list table.
         $projects_list = new Projects_List_Table();
         require_once plugin_dir_path( __FILE__ ) . '../views/projects-list/projects.php';
@@ -141,8 +151,12 @@ class MPG_ProjectController
 			$type        = isset( $_POST['type'] ) ? sanitize_text_field( $_POST['type'] ) : null;
 			$folder_path = isset( $_POST['path'] ) ? sanitize_text_field( $_POST['path'] ) : null;
 
+			$ext = MPG_Helper::mpg_get_extension_by_path( $folder_path );
+			if ( ! in_array( $ext, [ 'csv', 'xls', 'xlsx', 'ods' ], true ) ) {
+				throw new Exception( __( 'Unsupported file extension', 'mpg' ) );
+			}
 
-			if ( ! $folder_path || ! is_readable( $folder_path ) ) {
+			if ( ! $folder_path || ( ! is_readable( $folder_path ) || ! str_contains( $folder_path, MPG_DatasetModel::uploads_base_path() ) ) ) {
 				throw new Exception( __( 'The file could not be uploaded. Double-check the file format and size, then try again.', 'mpg' ) );
 			}
 			$headers = MPG_DatasetController::get_headers( $folder_path );
@@ -385,6 +399,7 @@ class MPG_ProjectController
                 $response['spintax_cached_records_count'] = MPG_SpintaxController::get_cached_records_count($project_id);
 
 	            $response['source_url'] = basename( $project[0]->source_path );
+	            $response['source_url_full'] = MPG_DatasetModel::uploads_base_url() . basename( $project[0]->source_path );
 
                 echo json_encode([
                     'success' => true,
@@ -894,8 +909,9 @@ class MPG_ProjectController
                 $project_ids = array_map( 'intval', $_GET['project_ids'] );
 
                 if ( isset( $_GET['action2'] ) && 'bulk-delete' === $_GET['action2'] ) {
-                    $redirect = $projects_list_manage->bulk_delete( $project_ids );
+	                 $projects_list_manage->bulk_delete( $project_ids );
                 }
+	            $redirect = admin_url( 'admin.php?page=mpg-project-builder' );
             }elseif ( 'clone_project' === $action && $project_id){
 	            if ( empty( $nonce ) || false === wp_verify_nonce( $nonce, 'mpg-clone-project' ) ) {
 		            wp_die( __( 'Security check failed', 'mpg' ) );

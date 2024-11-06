@@ -241,7 +241,7 @@
                                         </div>
                                     </form>
                                 </div>
-                                <div class="mt-0" id="upload_file" role="tabpanel" aria-labelledby="upload_file-tab" style="display: none">
+                                <div class="mt-0 file-upload" id="upload_file" role="tabpanel" aria-labelledby="upload_file-tab" style="display: none">
                                     <form action="">
                                         <div class="sub-section">
                                             <div class="block-with-tooltip">

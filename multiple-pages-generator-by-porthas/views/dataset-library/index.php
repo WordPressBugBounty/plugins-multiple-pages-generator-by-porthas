@@ -11,7 +11,7 @@ class MPG_DatasetLibraryView
 
         add_action('admin_head', ['Helper', 'mpg_header_code_container']);
 
-        $is_pro = mpg_app()->is_premium();
+	    $is_pro = mpg_app()->is_premium();
 
 ?>
 		<div class="page-header-top">
@@ -60,7 +60,7 @@ class MPG_DatasetLibraryView
                     <div class="top-content">
                         <form name="filterform" onsubmit="return false;">
                             <div class="left-block">
-                                <h2><?php _e('How would you like to start?', 'mpg'); ?></h1>
+                                <h2><?php _e('How would you like to start?', 'mpg'); ?></h2>
                                 
                             </div>
                             <div class="right-block">

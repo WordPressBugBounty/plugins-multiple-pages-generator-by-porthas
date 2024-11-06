@@ -110,15 +110,12 @@ class MPG_HookController
 
         // Создаем таблицу для проектов (если ее еще нет) при активации хука.
         register_activation_hook($mpg_index_file,  array('MPG_Helper', 'mpg_activation_events'));
-
         // Include styles and scripts in MGP plugin pages only
         add_action('admin_enqueue_scripts', array('MPG_Helper', 'mpg_admin_assets_enqueue'));
 
         add_action('wp_enqueue_scripts', array('MPG_Helper', 'mpg_front_assets_enqueue'));
 
 
-        // https://stackoverflow.com/questions/58931144/enqueue-javascript-with-type-module
-        add_filter('script_loader_tag', array('MPG_Helper', 'mpg_add_type_attribute'), 10, 3);
 
         // Other
         add_action('wp_ajax_mpg_get_permalink_structure', ['MPG_ProjectController', 'mpg_get_permalink_structure']);

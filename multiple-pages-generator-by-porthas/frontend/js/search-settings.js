@@ -1,7 +1,9 @@
-import { translate } from "../lang/init.js";
+import { __ } from '@wordpress/i18n';
 
-jQuery(document).ready(async function () {
-
+export async  function  initSearch(){
+    if ((new URL(location.href).searchParams.get('page') !== 'mpg-search-settings')) {
+        return;
+    }
     const search = await jQuery.post(ajaxurl, {
         action: 'mpg_search_settings_get_options',
         securityNonce: backendData.securityNonce
@@ -10,7 +12,7 @@ jQuery(document).ready(async function () {
     let searchData = JSON.parse(search);
 
     if (!searchData.success) {
-        toastr.error(searchData.error, translate['Failed']);
+        toastr.error(searchData.error, __('Failed', 'multi-pages-plugin'));
     } else {
 
         const template = searchData?.data?.mpg_ss_result_template;
@@ -54,9 +56,9 @@ jQuery(document).ready(async function () {
         let searchData = JSON.parse(search);
 
         if (!searchData.success) {
-            toastr.error(searchData.error, translate['Failed']);
+            toastr.error(searchData.error, __('Failed', 'multi-pages-plugin'));
         } else {
-            toastr.success(translate['Success'], { timeOut: 5000 });
+            toastr.success(__('Success', 'multi-pages-plugin'), { timeOut: 5000 });
         }
     });
-});
+}

@@ -109,9 +109,9 @@ abstract class Base_Display implements DisplayInterface {
 			case self::OPERATOR_EMPTY:
 				return empty( $value );
 			case self::OPERATOR_CONTAINS:
-				return strpos( $value, $condition_value ) !== false;
+				return strpos( strtolower( $value ), strtolower( $condition_value ) ) !== false;
 			case self::OPERATOR_NOT_CONTAINS:
-				return strpos( $value, $condition_value ) === false;
+				return strpos( strtolower( $value ), strtolower( $condition_value ) ) === false;
 			case self::OPERATOR_GREATER_THAN:
 				$value = is_numeric( $value ) ? $value : false;
 				if ( $value === false ) {
@@ -142,13 +142,9 @@ abstract class Base_Display implements DisplayInterface {
 				return $value <= $condition_value;
 			case self::OPERATOR_REGEX:
 				$regex_pattern = $condition_value;
-				if ( ! str_starts_with( $condition_value, '/' ) ) {
-					$regex_pattern = '/' . $regex_pattern;
+				if ( ! preg_match( '/^\/.*\/[imsxuADU]*$/', $condition_value ) ) {
+					$regex_pattern = '/' . $condition_value . '/i';
 				}
-				if ( ! str_ends_with( $condition_value, '/' ) ) {
-					$regex_pattern = $regex_pattern . '/';
-				}
-
 				return preg_match( $regex_pattern, $value );
 			default:
 				//Default is self::OPERATOR_HAS_VALUE

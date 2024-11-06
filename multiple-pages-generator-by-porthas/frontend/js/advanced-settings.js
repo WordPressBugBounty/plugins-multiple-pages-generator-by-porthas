@@ -1,5 +1,5 @@
-import { translate } from "../lang/init.js";
-
+import { __ } from '@wordpress/i18n';
+export function initAdvance(){
 jQuery('#mpg_update_tables_structure').on('click', async function () {
 
     const event = await jQuery.post(ajaxurl, {
@@ -11,9 +11,9 @@ jQuery('#mpg_update_tables_structure').on('click', async function () {
     let eventData = JSON.parse(event);
 
     if (!eventData.success) {
-        toastr.error(eventData.error, translate['Failed']);
+        toastr.error(eventData.error, __('Failed', 'multi-pages-plugin'));
     } else {
-        toastr.success(translate['MPG tables structure updated successfully'], translate['Success'], { timeOut: 5000 });
+        toastr.success(__('MPG tables structure updated successfully', 'multi-pages-plugin'), __('Success', 'multi-pages-plugin'), { timeOut: 5000 });
     }
 })
 
@@ -34,9 +34,9 @@ jQuery('.advanced-page .mpg-hooks-block').on('submit', async function (e) {
     let eventData = JSON.parse(event);
 
     if (!eventData.success) {
-        toastr.error(eventData.error, translate['Failed']);
+        toastr.error(eventData.error, __('Failed', 'multi-pages-plugin'));
     } else {
-        toastr.success(translate['Hook settings updated sucessfully'], translate['Success'], { timeOut: 5000 });
+        toastr.success(__('Hook settings updated sucessfully', 'multi-pages-plugin'), __('Success', 'multi-pages-plugin'), { timeOut: 5000 });
     }
 });
 
@@ -55,9 +55,9 @@ jQuery('.advanced-page .mpg-path-block').on('submit', async function (e) {
     let eventData = JSON.parse(event);
 
     if (!eventData.success) {
-        toastr.error(eventData.error, translate['Failed']);
+        toastr.error(eventData.error, __('Failed', 'multi-pages-plugin'));
     } else {
-        toastr.success(translate['Basepath settings updated sucessfully'], translate['Success'], { timeOut: 5000 });
+        toastr.success(__('Basepath settings updated sucessfully', 'multi-pages-plugin'), __('Success', 'multi-pages-plugin'), { timeOut: 5000 });
     }
 });
 
@@ -81,9 +81,9 @@ jQuery('.advanced-page .mpg-cache-hooks-block').on('submit', async function (e) 
     let eventData = JSON.parse(event);
 
     if (!eventData.success) {
-        toastr.error(eventData.error, translate['Failed']);
+        toastr.error(eventData.error, __('Failed', 'multi-pages-plugin'));
     } else {
-        toastr.success(translate['Hook settings updated sucessfully'], translate['Success'], { timeOut: 5000 });
+        toastr.success(__('Hook settings updated sucessfully', 'multi-pages-plugin'), __('Success', 'multi-pages-plugin'), { timeOut: 5000 });
     }
 });
 
@@ -104,9 +104,9 @@ jQuery('.advanced-page .mpg-branding-position-block').on('submit', async functio
     let eventData = JSON.parse(event);
 
     if (!eventData.success) {
-        toastr.error(eventData.error, translate['Failed']);
+        toastr.error(eventData.error, __('Failed', 'multi-pages-plugin'));
     } else {
-        toastr.success(translate['Hook settings updated sucessfully'], translate['Success'], { timeOut: 5000 });
+        toastr.success(__('Hook settings updated sucessfully', 'multi-pages-plugin'), __('Success', 'multi-pages-plugin'), { timeOut: 5000 });
     }
 });
 
@@ -173,3 +173,4 @@ jQuery('.advanced-page .mpg-pro-license').on('submit', async function (e) {
 jQuery('.advanced-page #license_key').on( 'input', function() {
     jQuery('.advanced-page input[name="license_key"]').val(jQuery(this).val());
 } );
+}

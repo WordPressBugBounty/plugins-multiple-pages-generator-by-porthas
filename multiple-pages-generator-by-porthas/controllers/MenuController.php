@@ -37,7 +37,7 @@ class MPG_MenuController {
 		function mpg_main_footer_style() {
 			?>
 			<style>
-				.toplevel_page_mpg-project-builder .wp-first-item {
+				li.toplevel_page_mpg-project-builder .wp-first-item {
 					display: none !important;
 				}
 			</style>

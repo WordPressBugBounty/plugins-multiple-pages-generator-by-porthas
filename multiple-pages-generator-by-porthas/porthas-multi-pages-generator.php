@@ -4,11 +4,11 @@
  * Plugin Name: Multiple Pages Generator by Themeisle
  * Plugin URI: https://themeisle.com/plugins/multi-pages-generator/
  * Description: Plugin for generation of multiple frontend pages from .csv, .xlsx, .ods, or Google Sheets.
- * WordPress Available:  yes 
+*  * WordPress Available:  yes 
  *
  * Author: Themeisle
  * Author URI: https://themeisle.com
- * Version: 4.0.2
+ * Version: 4.0.3
  */
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -24,7 +24,7 @@ defined( 'MPG_CACHE_URL' ) || define( 'MPG_CACHE_URL', WP_CONTENT_URL . DIRECTOR
 defined( 'MPG_NAME' ) || define( 'MPG_NAME', 'Multiple Pages Generator' );
 defined( 'MPG_BASE_IMG_PATH' ) || define( 'MPG_BASE_IMG_PATH', plugin_dir_url( __FILE__ ) . 'frontend/images' );
 defined( 'MPG_DATABASE_VERSION' ) || define( 'MPG_DATABASE_VERSION', '1.0.0' );
-defined( 'MPG_PLUGIN_VERSION' ) || define( 'MPG_PLUGIN_VERSION', '4.0.2' );
+defined( 'MPG_PLUGIN_VERSION' ) || define( 'MPG_PLUGIN_VERSION', '4.0.3' );
 
 // to redirect all themeisle_log_event to error log.
 if ( ! defined( 'MPG_LOCAL_DEBUG' ) ) {

@@ -1,6 +1,6 @@
 import { mpgGetState } from '../helper.js';
-import { translate } from '../../lang/init.js';
-
+import { __ } from '@wordpress/i18n';
+export function initCache(){
 jQuery('#cache').on('click', '.card .enable-cache', async function () {
 
     const cacheType = jQuery(this).parent().attr('data-cache-type');
@@ -19,10 +19,10 @@ jQuery('#cache').on('click', '.card .enable-cache', async function () {
     let cacheEnablingStatus = JSON.parse(rawCacheEnablingStatus)
 
     if (!cacheEnablingStatus.success) {
-        toastr.error(cacheEnablingStatus.error, translate['Failed']);
+        toastr.error(cacheEnablingStatus.error, __('Failed', 'multi-pages-plugin'));
     }
 
-    toastr.success(cacheEnablingStatus.data, translate['Success'])
+    toastr.success(cacheEnablingStatus.data, __('Success', 'multi-pages-plugin'))
 
     jQuery('.cache-page .card-footer button.btn')
         .attr('disabled', 'disabled');
@@ -60,10 +60,10 @@ jQuery('#cache').on('click', '.card .disable-cache', async function () {
     let cahceDisablingStatus = JSON.parse(rawCahceDisablingStatus)
 
     if (!cahceDisablingStatus.success) {
-        toastr.error(cahceDisablingStatus.error, translate['Failed']);
+        toastr.error(cahceDisablingStatus.error, __('Failed', 'multi-pages-plugin'));
     }
 
-    toastr.success(cahceDisablingStatus.data, translate['Success!'])
+    toastr.success(cahceDisablingStatus.data, __('Success!', 'multi-pages-plugin'))
 
     jQuery('.cache-page .card-footer button.btn')
         .removeAttr('disabled');
@@ -84,7 +84,7 @@ jQuery('#cache').on('click', '.card .disable-cache', async function () {
 
 jQuery(`.cache-page button.flush-cache`).on('click', async function () {
 
-    let decision = confirm(translate['Are you sure, that you want to flush cache? This action can not be undone.']);
+    let decision = confirm(__('Are you sure, that you want to flush cache? This action can not be undone.', 'multi-pages-plugin'));
 
     if (decision) {
         const cacheType = jQuery(this).parent().attr('data-cache-type');
@@ -99,17 +99,17 @@ jQuery(`.cache-page button.flush-cache`).on('click', async function () {
         let cacheFlushStatus = JSON.parse(rawCacheFlushStatus)
 
         if (!cacheFlushStatus.success) {
-            toastr.error(cacheFlushStatus.error, translate['Failed']);
+            toastr.error(cacheFlushStatus.error, __('Failed', 'multi-pages-plugin'));
         }
 
-        toastr.success(cacheFlushStatus.data, translate['Success']);
+        toastr.success(cacheFlushStatus.data, __('Success', 'multi-pages-plugin'));
 
         await getActualCacheStat();
     }
 });
 
 jQuery('#cache-tab').on('click', getActualCacheStat);
-
+}
 async function getActualCacheStat() {
 
     if (jQuery('.cache-page .buttons .btn.disable-cache').length) {
@@ -132,7 +132,7 @@ async function getActualCacheStat() {
         let cacheStats = JSON.parse(rawCacheStats)
 
         if (!cacheStats.success) {
-            toastr.error(cacheStats.error, translate['Failed']);
+            toastr.error(cacheStats.error, __('Failed', 'multi-pages-plugin'));
         } else {
 
             jQuery('.cache-page .pages-in-cache, .cache-page .cache-size').text('N/A');

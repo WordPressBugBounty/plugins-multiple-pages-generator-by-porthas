@@ -3,12 +3,9 @@
     padding-left: 0px;
 }
 .file-upload #progress-wrp {
-    border: 1px solid #0099cc;
     padding: 1px;
     position: relative;
-    height: 30px;
     border-radius: 3px;
-    margin: 10px;
     text-align: left;
     background: #fff;
     -webkit-box-shadow: inset 1px 3px 6px rgba(0, 0, 0, 0.12);
@@ -2201,4 +2198,11 @@ div.dt-length select.dt-input {
     cursor: copy;
     border: 1px solid;
     border-color: rgba(217, 217, 217, 1);
+}
+.notice:not([class*="themeisle"]):not([class*="ti-sdk"]) {
+    display:none;
+}
+
+.mpg-banner-library {
+    margin: 25px;
 }

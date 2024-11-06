@@ -1,7 +1,7 @@
 
 import { copyTextToClipboard, mpgGetState } from '../helper.js';
-import { translate } from '../../lang/init.js';
-
+import { __ } from '@wordpress/i18n';
+export function initSpintax(){
 const inputTextarea = jQuery('#mpg_spintax_input_textarea');
 const outputTextarea = jQuery('#mpg_spintax_output_textarea');
 
@@ -34,7 +34,7 @@ jQuery('.copy-spintax-output').on('click', function () {
 
     const randomNumber = Math.floor(Math.random() * 1000) + 100;
     if (copyTextToClipboard(`[mpg_spintax  project_id="${mpgGetState('projectId')}" block_id="${randomNumber}"]${inputTextarea.val()}[/mpg_spintax]`)) {
-        toastr.success(translate['Spintax code copied to clipboard!'], translate['Success'], { timeOut: 3000 });
+        toastr.success(__('Spintax code copied to clipboard!', 'multi-pages-plugin'), __('Success', 'multi-pages-plugin'), { timeOut: 3000 });
     }
 });
 
@@ -43,7 +43,7 @@ jQuery('.spintax-page .cache-info button').on('click', async function (e) {
 
     e.preventDefault();
 
-    let decision = confirm(translate['Are you sure, that you want to flush Spintax cache for current project? This action can not be undone.']);
+    let decision = confirm(__('Are you sure, that you want to flush Spintax cache for current project? This action can not be undone.', 'multi-pages-plugin'));
 
     if (decision) {
 
@@ -56,12 +56,13 @@ jQuery('.spintax-page .cache-info button').on('click', async function (e) {
         let projectData = JSON.parse(project)
 
         if (!projectData.success) {
-            toastr.error(projectData.error, translate['Can not flush Spintax cache']);
+            toastr.error(projectData.error, __('Can not flush Spintax cache', 'multi-pages-plugin'));
         }
 
-        toastr.success(translate['Spintax cache successfully flushed'], translate['Done!'])
+        toastr.success(__('Spintax cache successfully flushed', 'multi-pages-plugin'), __('Done!', 'multi-pages-plugin'))
 
         // Заполним значение для поля количества записей в БД для Спинтакс, для текущего проекта
         jQuery('.cache-info .num-rows').text(0);
     }
 });
+}
