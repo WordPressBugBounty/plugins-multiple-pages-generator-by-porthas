@@ -384,7 +384,7 @@ class MPG_SitemapGenerator
             $project = MPG_ProjectModel::get_project_by_id($project_id);
             $site_root_path = self::get_basepath();
 	        if ( empty( $project->template_id ) ) {
-		        throw new Exception( 'Project has not template.' );
+		        throw new Exception( __( 'Project has no template.', 'mpg' ) );
 	        }
 	        $frenquency = ! empty( $sitemap_update_freq ) ? $sitemap_update_freq : 'monthly';
 	        $last_mod = get_the_modified_date( 'Y-m-d', $project->template_id );

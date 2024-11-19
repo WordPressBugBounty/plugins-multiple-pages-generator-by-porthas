@@ -119,7 +119,7 @@ abstract class Core extends Base_Display {
 		$filtered_dataset_index = array_slice( $filtered_dataset_index, 0, $limit );
 
 		//Now we need to apply the loop to the content.
-		$project_data->urls_array = $project_data->urls_array ? json_decode( $project_data->urls_array ) : [];
+		$urls_array = $project_data->urls_array ? json_decode( $project_data->urls_array ) : [];
 		$short_codes              = \MPG_CoreModel::mpg_shortcodes_composer( $headers );
 		$extended_content         = [];
 		//We need to backup the internal row index to set it back once we are done.
@@ -130,7 +130,7 @@ abstract class Core extends Base_Display {
 			$content_template                     = $content;
 			$strings                              = $dataset_array[ $index ];
 
-			$strings[ count( $short_codes ) - 1 ] = \MPG_CoreModel::path_to_url( $project_data->urls_array[ $index - 1  ] );
+			$strings[ count( $short_codes ) - 1 ] = \MPG_CoreModel::path_to_url( $urls_array[ $index - 1  ] );
 
 			if ( ! empty( $args['base_url'] ) ) {
 				$strings[ count( $short_codes ) - 1 ] = $args['base_url'] . $strings[ count( $short_codes ) - 1 ];

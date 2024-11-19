@@ -76,9 +76,9 @@ class MPG_SearchController
 
                         if (!empty($matches)) {
 
-                            $project = MPG_ProjectModel::mpg_get_project_by_id($entity['project_id']);
-                            $dataset_array = MPG_Helper::mpg_get_dataset_array( reset( $project ) );
-                            $headers = $project[0]->headers;
+                            $project = MPG_ProjectModel::get_project_by_id($entity['project_id']);
+                            $dataset_array = MPG_Helper::mpg_get_dataset_array( $project );
+                            $headers = $project->headers;
                             $headers_array = json_decode($headers);
                             $headers_array = array_map(function ($raw_header) {
                                 $header = str_replace(' ', '_', strtolower($raw_header));
@@ -93,7 +93,7 @@ class MPG_SearchController
 
 
                             $short_codes = MPG_CoreModel::mpg_shortcodes_composer($headers_array);
-                            $urls_array = $project[0]->urls_array ? json_decode($project[0]->urls_array) : [];
+                            $urls_array = $project->urls_array ? json_decode($project->urls_array) : [];
 
                             foreach ($urls_array as $index => $url) {
 

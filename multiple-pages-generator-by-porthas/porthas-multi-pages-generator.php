@@ -8,7 +8,7 @@
  *
  * Author: Themeisle
  * Author URI: https://themeisle.com
- * Version: 4.0.3
+ * Version: 4.0.4
  */
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -24,7 +24,7 @@ defined( 'MPG_CACHE_URL' ) || define( 'MPG_CACHE_URL', WP_CONTENT_URL . DIRECTOR
 defined( 'MPG_NAME' ) || define( 'MPG_NAME', 'Multiple Pages Generator' );
 defined( 'MPG_BASE_IMG_PATH' ) || define( 'MPG_BASE_IMG_PATH', plugin_dir_url( __FILE__ ) . 'frontend/images' );
 defined( 'MPG_DATABASE_VERSION' ) || define( 'MPG_DATABASE_VERSION', '1.0.0' );
-defined( 'MPG_PLUGIN_VERSION' ) || define( 'MPG_PLUGIN_VERSION', '4.0.3' );
+defined( 'MPG_PLUGIN_VERSION' ) || define( 'MPG_PLUGIN_VERSION', '4.0.4' );
 
 // to redirect all themeisle_log_event to error log.
 if ( ! defined( 'MPG_LOCAL_DEBUG' ) ) {

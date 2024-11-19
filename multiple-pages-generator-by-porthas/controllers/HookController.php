@@ -9,7 +9,6 @@ require_once(realpath(__DIR__ . '/display/load.php'));
 require_once(realpath(__DIR__ . '/../controllers/DatasetController.php'));
 require_once(realpath(__DIR__ . '/../controllers/ProjectController.php'));
 require_once(realpath(__DIR__ . '/../controllers/SpintaxController.php'));
-require_once(realpath(__DIR__ . '/../controllers/CacheController.php'));
 
 class MPG_HookController
 {
@@ -56,17 +55,17 @@ class MPG_HookController
         );
 
         // Excluding template pages from search / loop
-        add_action('pre_get_posts', function ($query) {
-            if ( ! empty( $_GET['elementor-preview'] ) && is_numeric( $_GET['elementor-preview'] ) ) {
-                return;
-            }
-            if ( ! is_admin() && ! defined( 'TI_UNIT_TESTING' ) ) {
-                $templates_ids = MPG_ProjectModel::mpg_get_all_templates_id();
-                if ($templates_ids) {
-                    $query->query_vars['post__not_in'] = $templates_ids;
-                }
-            }
-        });
+	    add_action( 'pre_get_posts', function ( $query ) {
+		    if ( ! empty( $_GET['elementor-preview'] ) && is_numeric( $_GET['elementor-preview'] ) ) {
+			    return;
+		    }
+		    if ( ! is_user_logged_in() && ! defined( 'TI_UNIT_TESTING' ) ) {
+			    $templates_ids = MPG_ProjectModel::mpg_get_all_templates_id();
+			    if ( $templates_ids ) {
+				    $query->query_vars['post__not_in'] = $templates_ids;
+			    }
+		    }
+	    } );
 
 
         add_action( 'wp', function( $wp ) {
@@ -318,6 +317,18 @@ class MPG_HookController
 		    wp_schedule_event( time() + 60, 'twicedaily', 'mpg_sitemap_check' );
 	    }
         add_action('mpg_sitemap_check', [__CLASS__, 'check_sitemaps']); 
+
+        // Rank math exclude post.
+        add_filter( 'rank_math/sitemap/posts_to_exclude', function( $exclude_ids ) {
+            global $wpdb;
+            $exclude_template_ids = $wpdb->get_results( "SELECT template_id FROM {$wpdb->prefix}" .  MPG_Constant::MPG_PROJECTS_TABLE . ' WHERE `exclude_in_robots` = 1', ARRAY_A );
+            if ( empty( $exclude_template_ids ) ) {
+                return $exclude_ids;
+            }
+            $exclude_template_ids = wp_list_pluck( $exclude_template_ids, 'template_id' );
+            $exclude_template_ids = array_map( 'intval', $exclude_template_ids );
+            return array_merge( $exclude_ids, $exclude_template_ids );
+        });
     }
 
 	/**
@@ -423,18 +434,6 @@ class MPG_HookController
         add_action('wp_ajax_mpg_flush_spintax_cache', ['MPG_SpintaxController', 'mpg_flush_spintax_cache']);
 
 
-        // Cache tab
-        add_action('wp_ajax_mpg_enable_cache', ['MPG_CacheController', 'mpg_enable_cache']);
-
-        add_action('wp_ajax_mpg_disable_cache', ['MPG_CacheController', 'mpg_disable_cache']);
-
-        add_action('wp_ajax_mpg_flush_cache', ['MPG_CacheController', 'mpg_flush_cache']);
-
-        add_action('wp_ajax_mpg_cache_statistic', ['MPG_CacheController', 'mpg_cache_statistic']);
-
-        // Работает для постов и страниц
-        add_action('save_post', ['MPG_CacheController', 'mpg_flush_cache_on_template_update'], 10, 3);
-
         // Logs tab
 
         add_action('wp_ajax_mpg_get_log_by_project_id', ['MPG_LogsController', 'mpg_get_log_by_project_id']);
@@ -513,19 +512,19 @@ class MPG_HookController
 	 */
 	public static function trigger_fetch( $request ) {
 		$project_id  = $request->get_param( 'project_id' );
-		$mpg_project = MPG_ProjectModel::mpg_get_project_by_id( $project_id );
+		$mpg_project = MPG_ProjectModel::get_project_by_id( $project_id );
 
-		if ( ! isset( $mpg_project[0] ) || ! $mpg_project[0]->schedule_source_link ) {
+		if ( empty( $mpg_project ) || ! $mpg_project->schedule_source_link ) {
 			return new WP_Error( 'invalid_project', __( 'Your project has not properly configured source.', 'mpg' ) );
 		}
-		if ( $mpg_project[0]->schedule_periodicity !== 'ondemand' ) {
+		if ( $mpg_project->schedule_periodicity !== 'ondemand' ) {
 			return new WP_Error( 'invalid_project', __( 'Your project is not configured to be updated on demand.', 'mpg' ) );
 		}
-		MPG_ProjectController::mpg_scheduled_cron_handler( $project_id, $mpg_project[0]->schedule_source_link, $mpg_project[0]->schedule_notificate_about, $mpg_project[0]->schedule_periodicity, $mpg_project[0]->schedule_notification_email );
+		MPG_ProjectController::mpg_scheduled_cron_handler( $project_id, $mpg_project->schedule_source_link, $mpg_project->schedule_notificate_about, $mpg_project->schedule_periodicity, $mpg_project->schedule_notification_email );
 
 		return rest_ensure_response( [
 			'code'    => 'success',
-			'message' => sprintf( __( 'Project %s has been updated.' ), $mpg_project[0]->name )
+			'message' => sprintf( __( 'Project %s has been updated.' ), $mpg_project->name )
 		] );
 	}
     public static function init_replacement()

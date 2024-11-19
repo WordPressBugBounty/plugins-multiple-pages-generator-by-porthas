@@ -774,6 +774,8 @@ export function pageBuilderInit() {
             if (!data.success) {
                 event.target.checked = !event.target.checked;
                 toastr.error(data.error, __('Error', 'multi-pages-plugin'));
+            }else{
+                toastr.success(__('Success', 'multi-pages-plugin'), { timeOut: 5000 });
             }
         });
 

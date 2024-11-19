@@ -72,14 +72,6 @@ class MPG_ProjectController
 
                 if ($project_id) {
 
-                    $project = MPG_ProjectModel::mpg_get_project_by_id($project_id);
-                    $current_template_id = $project ? $project[0]->template_id : null;
-                    $cache_type = $project ? $project[0]->cache_type : null;
-
-                    if ((int) $current_template_id !== $template_id && $cache_type) {
-                        // Значит человек изменил шаблон. Надо сбросить кеш.
-                        MPG_CacheController::mpg_flush_core($project_id, $cache_type);
-                    }
 
                     $fields_array = [
                         'name' => $project_name,
@@ -148,14 +140,14 @@ class MPG_ProjectController
 		try {
 
 			$project_id  = isset( $_POST['projectId'] ) ? (int) $_POST['projectId'] : null;
-			$type        = isset( $_POST['type'] ) ? sanitize_text_field( $_POST['type'] ) : null;
+			$type = MPG_Validators::validate_source_type( $_POST['type'] ?? '' );
 			$folder_path = isset( $_POST['path'] ) ? sanitize_text_field( $_POST['path'] ) : null;
 
 			$ext = MPG_Helper::mpg_get_extension_by_path( $folder_path );
 			if ( ! in_array( $ext, [ 'csv', 'xls', 'xlsx', 'ods' ], true ) ) {
 				throw new Exception( __( 'Unsupported file extension', 'mpg' ) );
 			}
-
+			// Ensure the file is within the intended directory and is readable.
 			if ( ! $folder_path || ( ! is_readable( $folder_path ) || ! str_contains( $folder_path, MPG_DatasetModel::uploads_base_path() ) ) ) {
 				throw new Exception( __( 'The file could not be uploaded. Double-check the file format and size, then try again.', 'mpg' ) );
 			}
@@ -169,25 +161,30 @@ class MPG_ProjectController
 				throw new Exception( __( 'Some rows in the file are invalid. Double-check the data and try uploading once more.', 'mpg' ) );
 			}
 
-			$new_path = self::get_project_path( $project_id, $folder_path );
+            $sanitized_filename = sanitize_file_name( basename( $folder_path ) );
+			$new_path = self::get_project_path( $project_id, $sanitized_filename );
 
-            $project = MPG_ProjectModel::mpg_get_project_by_id($project_id);
-            $url_structure = ! empty( $project ) ? $project[0]->url_structure : '';
+            $project = MPG_ProjectModel::get_project_by_id($project_id);
+            $url_structure = ! empty( $project ) ? $project->url_structure : '';
 			// Move the file to mpg-uploads folder.
 			$success = rename( $folder_path, $new_path );
 			if ( ! $success ) {
 				throw new Exception( sprintf( __( 'The file cannot be moved to %s. Ensure the folder has the correct permissions.', 'mpg' ), $new_path ) );
 			}
-			// We delete any file with the same project_id but different extension.
-			$files = glob( MPG_DatasetModel::uploads_base_path() . $project_id . '.*' );
+			// Delete any file with the same project_id but different extension, after sanitizing each filename.
+			$base_path = MPG_DatasetModel::uploads_base_path();
+			$files     = glob( $base_path . $project_id . '.*' );
 			foreach ( $files as $project_file ) {
 				if ( $project_file !== $new_path ) {
-					unlink( $project_file );
+					$sanitized_project_file = $base_path . sanitize_file_name( basename( $project_file ) );
+					if ( file_exists( $sanitized_project_file ) ) {
+						unlink( $sanitized_project_file );
+					}
 				}
 			}
 
-			$project       = MPG_ProjectModel::mpg_get_project_by_id( $project_id );
-			$url_structure = $project[0]->url_structure;
+			$project       = MPG_ProjectModel::get_project_by_id( $project_id );
+			$url_structure = $project->url_structure;
 
 			$fields_array = [
 				'source_type' => $type,
@@ -246,7 +243,7 @@ class MPG_ProjectController
 	        $update_modified_on_sync = $args['update_modified_on_sync'] ?? 'no-update';
             $update_modified_on_sync = $periodicity === 'once' ? 'no-update' : $update_modified_on_sync;
 
-            $source_type =        isset($_POST['sourceType']) ? sanitize_text_field($_POST['sourceType']) : null;
+	        $source_type = MPG_Validators::validate_source_type( $_POST['sourceType'] ?? '', ! empty( $direct_link ) ? MPG_Validators::SOURCE_TYPE_URL : MPG_Validators::SOURCE_TYPE_UPLOAD );
             $worksheet_id =       isset($_POST['worksheetId']) ? (int) $_POST['worksheetId'] : null;
 
             $update_options_array = [
@@ -265,22 +262,17 @@ class MPG_ProjectController
 
 
             // Имея загруженный dataset, заменитель пробелов и структуру URL'ов, можно собрать массив из url с реальными данными
-            $project = MPG_ProjectModel::mpg_get_project_by_id($project_id);
+            $project = MPG_ProjectModel::get_project_by_id($project_id);
 
-            if (!$project[0]) {
-                throw new Exception(__('Can\'t get project', 'mpg'));
-            }
-
-	        $dataset_path = MPG_DatasetModel::get_dataset_path_by_project( $project[0] );
-
-	        if ( empty( $dataset_path ) ) {
-		        $project = MPG_ProjectModel::mpg_get_project_by_id( $project_id, true );
-		        if ( ! $project[0] ) {
-			        throw new Exception( __( 'Can\'t get project', 'mpg' ) );
-		        }
-		        $dataset_path = MPG_DatasetModel::get_dataset_path_by_project( $project[0] );;
+	        if ( empty( $project ) ) {
+		        throw new Exception( __( 'Can\'t get project', 'mpg' ) );
 	        }
 
+	        $dataset_path = MPG_DatasetModel::get_dataset_path_by_project( $project );
+
+	        if ( empty( $dataset_path ) ) {
+		        throw new Exception( __( 'Can\'t get dataset path', 'mpg' ) );
+	        }
             $urls_array = MPG_ProjectModel::mpg_generate_urls_from_dataset($dataset_path, $url_structure, $space_replacer,true );
             $update_options_array['urls_array'] = json_encode($urls_array['urls_array'], JSON_UNESCAPED_UNICODE);
 
@@ -325,10 +317,7 @@ class MPG_ProjectController
 
             MPG_ProjectModel::mpg_update_project_by_id($project_id, $update_options_array);
 
-            // При сохранении нового файла - скидать кеш
-            MPG_CacheController::mpg_flush_core($project_id, $project[0]->cache_type);
-
-            $periodicity = isset( $project[0]->schedule_periodicity ) ? $project[0]->schedule_periodicity : null;
+            $periodicity = $project->schedule_periodicity ?? null;
             $expiration  = 0;
             if ( null === $periodicity ) {
                 $expiration = MPG_Helper::get_live_update_interval();
@@ -359,47 +348,41 @@ class MPG_ProjectController
                 throw new Exception(__('Missing project ID', 'mpg'));
             }
 
-            $is_admin = function_exists( 'is_admin' ) && is_admin() ? true :false;
-            $project = MPG_ProjectModel::mpg_get_project_by_id( $project_id, $is_admin );
+            $project = MPG_ProjectModel::get_project_by_id( $project_id);
 
-            if (!$project) {
+            if (empty($project)) {
                 throw new Exception(__('Project not found', 'mpg'));
             }
 
-            $response = (array) $project[0];
+            $response = (array) $project;
 
             $dataset_path = ! empty( $response['source_path'] ) ? $response['source_path'] : '';
+	        if ( empty( $dataset_path ) ) {
+		        throw new Exception( __( 'Project dataset not found', 'mpg' ) );
+	        }
 
-            if ( empty( $dataset_path ) ) {
-                $project = MPG_ProjectModel::mpg_get_project_by_id($project_id,true);
-                if (!$project) {
-                    throw new Exception(__('Project not found', 'mpg'));
-                }
-                $response = (array) $project[0];
-            }
-
-            if ($project[0]->schedule_periodicity && $project[0]->schedule_source_link && $project[0]->schedule_notificate_about) {
+            if ($project->schedule_periodicity && $project->schedule_source_link && $project->schedule_notificate_about) {
 
                 $response['nextExecutionTimestamp'] = wp_next_scheduled('mpg_schedule_execution', [
                     (int) $project_id,
-                    $project[0]->schedule_source_link,
-                    $project[0]->schedule_notificate_about,
-                    $project[0]->schedule_periodicity,
-                    $project[0]->schedule_notification_email
+                    $project->schedule_source_link,
+                    $project->schedule_notificate_about,
+                    $project->schedule_periodicity,
+                    $project->schedule_notification_email
                 ]);
             }
 
-            if ( isset($project[0]->source_path ) ) {
+            if ( isset($project->source_path ) ) {
 
-	            $rows = MPG_DatasetController::get_rows( MPG_DatasetModel::get_dataset_path_by_project( $project[0] ), 5 );
+	            $rows = MPG_DatasetController::get_rows( MPG_DatasetModel::get_dataset_path_by_project( $project ), 5 );
 
                 $response['rows'] = wp_doing_ajax( 'wp_ajax_mpg_get_project' ) ? map_deep( $rows['rows'], 'wp_strip_all_tags' ) : $rows['rows'];
                 $response['totalRows'] = $rows['total_rows'];
 
                 $response['spintax_cached_records_count'] = MPG_SpintaxController::get_cached_records_count($project_id);
 
-	            $response['source_url'] = basename( $project[0]->source_path );
-	            $response['source_url_full'] = MPG_DatasetModel::uploads_base_url() . basename( $project[0]->source_path );
+	            $response['source_url'] = basename( $project->source_path );
+	            $response['source_url_full'] = MPG_DatasetModel::uploads_base_url() . basename( $project->source_path );
 
                 echo json_encode([
                     'success' => true,
@@ -630,15 +613,15 @@ class MPG_ProjectController
 
         try {
 
-            $project = MPG_ProjectModel::mpg_get_project_by_id($project_id);
+            $project = MPG_ProjectModel::get_project_by_id($project_id);
 
 
-            if (!$project[0] or !$project[0]->source_path) {
-                throw new Exception(__('Your project has not properly configured source file', 'mpg'));
-            }
-	        $source_path = MPG_DatasetModel::get_dataset_path_by_project( $project[0] );
+	        if ( empty( $project ) || empty( $project->source_path ) ) {
+		        throw new Exception( __( 'Your project has not properly configured source file', 'mpg' ) );
+	        }
+	        $source_path = MPG_DatasetModel::get_dataset_path_by_project( $project );
 
-	        $worksheet_id = $project[0]->worksheet_id ? $project[0]->worksheet_id : null;
+	        $worksheet_id = ! empty( $project->worksheet_id ) ? $project->worksheet_id : null;
 
 	        // Имея путь к файлу, мы можем его открыть и перезаписать содержимое.
 	        // Но сначала надо скачать файл (получить содержимое), который пользователь хочет применить
@@ -646,13 +629,13 @@ class MPG_ProjectController
 
 	        MPG_DatasetModel::download_file( $direct_link, $source_path );
 
-	        $url_structure  = $project[0]->url_structure;
-	        $space_replacer = $project[0]->space_replacer;
+	        $url_structure  = $project->url_structure;
+	        $space_replacer = $project->space_replacer;
 
 	        $urls_array = MPG_ProjectModel::mpg_generate_urls_from_dataset( $source_path, $url_structure, $space_replacer );
 
             MPG_ProjectModel::mpg_update_project_by_id( $project_id, [ 'urls_array' => json_encode( $urls_array, JSON_UNESCAPED_UNICODE ) ], true );
-	        MPG_SitemapGenerator::maybe_create_sitemap( $urls_array, $project[0] );
+	        MPG_SitemapGenerator::maybe_create_sitemap( $urls_array, $project );
 
 
             // Теперь, когда мы заменили файл с данными на тот, что пользователь указал по ссылке пользователь
@@ -664,8 +647,6 @@ class MPG_ProjectController
                 );
             }
 
-            // При срабатывании крон-задачи -  скидать кеш
-            MPG_CacheController::mpg_flush_core($project_id, $project[0]->cache_type);
         } catch (Exception $e) {
 
             do_action( 'themeisle_log_event', MPG_NAME, sprintf( __( 'Hi. <br>In process of execution the next error occurred: %s', 'mpg' ), $e->getMessage() ), 'debug', __FILE__, __LINE__ );
@@ -703,7 +684,7 @@ class MPG_ProjectController
 
             $project_id = isset($_POST['projectId']) ? (int) $_POST['projectId'] : null;
 
-            $project = (array) MPG_ProjectModel::mpg_get_project_by_id($project_id);
+            $project = (array) MPG_ProjectModel::get_project_by_id($project_id);
 
             MPG_ProjectModel::mpg_remove_cron_task_by_project_id($project_id, $project);
 
@@ -732,7 +713,7 @@ class MPG_ProjectController
             $hook_name = sanitize_text_field($_POST['hook_name']);
             $hook_priority = sanitize_text_field($_POST['hook_priority']);
 
-            if ($hook_name !== 'pre_handle_404' && $hook_name !== 'posts_selection' && $hook_name !== 'template_redirect') {
+            if ($hook_name !== 'pre_handle_404' && $hook_name !== 'posts_selection' && $hook_name !== 'template_redirect' && $hook_name !== 'wp') {
                 throw new Exception(__('Hook name is not correct', 'mpg'));
             }
 

@@ -9,56 +9,6 @@ class MPG_CoreModel
 	 */
 	private static $current_row = [];
 
-    public static function mpg_get_all_tepmlates_ids()
-    {
-        global $wpdb;
-
-        $key_name = wp_hash( 'get_all_tepmlates_ids' );
-        $cache = get_transient( 'get_all_tepmlates_ids' );
-        if ( false === $cache ) {
-            $cache = get_transient( $key_name );
-        }
-
-        if ($cache) {
-            return $cache;
-        }
-
-        $templates_ids = [];
-
-        $all_projects_data = $wpdb->get_results("SELECT template_id FROM " . $wpdb->prefix . MPG_Constant::MPG_PROJECTS_TABLE);
-
-
-        if ($all_projects_data) {
-            foreach ($all_projects_data as $project_object) {
-
-                if ((int) $project_object->template_id) {
-                    $templates_ids[] = (int) $project_object->template_id;
-                }
-            }
-        }
-
-        set_transient( $key_name, $templates_ids);
-        return $templates_ids;
-    }
-
-    // replace shortcodes in head section if exist
-    public static function multipage_replace_data($html)
-    {
-
-        $path = MPG_Helper::mpg_get_request_uri();
-        $metadata_array = self::mpg_get_redirect_rules($path);
-
-        $template_post = get_post($metadata_array['template_id']);
-        $current_post = get_post();
-
-        if ($template_post->ID == $current_post->ID) {
-
-            $project_id = $metadata_array['project_id'];
-            return self::mpg_shortcode_replacer($html, $project_id);
-        }
-    }
-
-
 	public static function mpg_get_redirect_rules( $needed_path, $projects = array() ) {
 
 		global $wpdb, $pagenow, $post;
@@ -102,17 +52,20 @@ class MPG_CoreModel
 		foreach ( $projects as $project ) {
 			$urls_array  = $project->urls_array ? json_decode( $project->urls_array ) : array();
 			$urls_array  = is_array( $urls_array ) ? $urls_array : array();
-			if ( null === $project->schedule_periodicity ) {
-				$updated_project_data = MPG_Helper::mpg_live_project_data_update( $project );
-				if ( is_object( $updated_project_data ) ) {
-					$project = $updated_project_data;
-					if ( $project->urls_array ) {
-						$urls_array = json_decode( $project->urls_array );
-						$urls_array = is_array( $urls_array ) ? $urls_array : array();
+			try {
+				if ( null === $project->schedule_periodicity ) {
+					$updated_project_data = MPG_Helper::mpg_live_project_data_update( $project );
+					if ( is_object( $updated_project_data ) ) {
+						$project = $updated_project_data;
+						if ( $project->urls_array ) {
+							$urls_array = json_decode( $project->urls_array );
+							$urls_array = is_array( $urls_array ) ? $urls_array : array();
+						}
 					}
 				}
+			} catch ( \Exception $exception ) {
+				MPG_LogsController::mpg_write( '', 'warning', $exception->getMessage() . ' path: ' . $needed_path);
 			}
-
 			if ( empty( $urls_array ) ) {
 				continue;
 			}
@@ -321,10 +274,10 @@ class MPG_CoreModel
 	 */
 	public static function mpg_thumbnail_replacer( $project_id ) {
 		$thumbnail_html = '';
-		$project        = MPG_ProjectModel::mpg_get_project_by_id( $project_id );
+		$project        = MPG_ProjectModel::get_project_by_id( $project_id );
 		// do action with short codes.
 		try {
-			$headers = MPG_ProjectModel::get_headers_from_project( reset( $project ) );
+			$headers = MPG_ProjectModel::get_headers_from_project( $project );
 		} catch ( Exception $e ) {
 			do_action( 'themeisle_log_event', MPG_NAME, $e->getMessage(), 'error', __FILE__, __LINE__ );
 			return $thumbnail_html;
@@ -388,106 +341,6 @@ class MPG_CoreModel
     }
 
 
-    public static function mpg_header_handler($project_id, $path)
-    {
-
-
-        $current_cache_type = MPG_CacheModel::mpg_get_current_caching_type($project_id);
-
-        switch ($current_cache_type) {
-            case 'disk':
-
-                $cache_path = MPG_CACHE_DIR . $project_id;
-                $cache_file_name = ltrim(rtrim(strtolower($path), '/'), '/') . '.html';
-
-                if (file_exists($cache_path . '/' . $cache_file_name)) {
-                    $html = file_get_contents($cache_path . '/' . $cache_file_name);
-
-                    echo MPG_CoreModel::mpg_shortcode_replacer($html, $project_id);
-                    exit;
-                }
-                break;
-            case 'database':
-
-                $cached_string = MPG_CacheModel::mpg_get_row_from_database_cache($project_id, $path);
-                if ($cached_string) {
-
-                    echo MPG_CoreModel::mpg_shortcode_replacer($cached_string, $project_id);
-                    exit;
-                }
-                break;
-        }
-
-
-        ob_start(function ($buffer) use ($project_id) {
-            return MPG_CoreModel::mpg_shortcode_replacer($buffer, $project_id);
-        });
-    }
-
-	public static function mpg_footer_handler( $project_id, $path ) {
-
-		// Если пользователь залогинен, значит у него есть админ-бар, и ссылки типа "Ввойти", уже будут "Выйти".
-		// Потом эта страница попадает в кеш, и будет видна обычным пользователям.
-
-		// Disable caching for OpenGraph requests too. Task 87
-		if ( is_user_logged_in() || self::mpg_is_opengraph_request() !== false ) {
-
-			ob_end_flush();
-		} else {
-
-			$current_cache_type = MPG_CacheModel::mpg_get_current_caching_type( $project_id );
-
-			$html_code = ob_get_contents();
-
-			$current_cache_type = 'none' !== $current_cache_type ? $current_cache_type : '';
-
-			switch ( $current_cache_type ) {
-				case 'disk':
-
-					$cache_path      = MPG_CACHE_DIR . $project_id;
-					$cache_file_name = ltrim( rtrim( strtolower( $path ), '/' ), '/' ) . '.html';
-					$cache_file_name = str_replace( '/', '-', $cache_file_name );
-
-					if ( ! is_dir( $cache_path ) ) {
-						if ( ! mkdir( $cache_path ) ) {
-							throw new Exception( 'Creating forler for caching is failed. Please, check permissions' );
-						}
-
-						// Создадим пустой файл, чтобы через браузер нельзя было посмотреть что в папке.
-						fwrite( fopen( $cache_path . '/index.php', 'w+' ), '' );
-					}
-
-					if ( ! file_exists( $cache_path . '/' . $cache_file_name ) ) {
-						fwrite( fopen( $cache_path . '/' . $cache_file_name, 'w+' ), $html_code );
-					}
-					ob_end_flush();
-					break;
-
-				case 'database':
-
-					MPG_CacheModel::mpg_set_row_to_database_cache( $project_id, $path, $html_code );
-					ob_end_flush();
-					break;
-				default:
-					ob_end_flush();
-
-					return $html_code;
-
-			}
-
-		}
-	}
-
-    public static function mpg_is_opengraph_request()
-    {
-
-        $user_agent = $_SERVER['HTTP_USER_AGENT'];
-
-        return
-            strpos($user_agent, 'facebookexternalhit') !== false ||
-            strpos($user_agent, 'TelegramBot') !== false ||
-            strpos($user_agent, 'Twitterbot') !== false;
-    }
 
 	public static function get_ceil_value_by_header( $current_project, $dataset_array, $header_value ) {
 
@@ -502,76 +355,6 @@ class MPG_CoreModel
 		return $strings[ $shortcode_column_index ];
 	}
 
-    public static function mpg_prepare_where_condition($project, $where_params, $dataset_array, $column_names, $found_strings = array() )
-    {
-        $where_storage = [];
-        foreach ($where_params as $condition) {
-
-            $column_value_pair = explode('=', $condition);
-            $column_name = strtolower(trim($column_value_pair[0])); // column name
-            $column_index = array_search($column_name, $column_names);
-            $column_value = isset($column_value_pair[1]) ? $column_value_pair[1] : null;
-
-            if (isset($column_value)) {
-
-                preg_match_all('/{{.*?}}/m', $column_value, $matches, PREG_SET_ORDER, 0);
-                // Этот блок для того, чтобы работали конструкции типа where="mpg_state_id={{mpg_state_id}};mpg_county_name=Kitsap"
-                if (!empty($matches)) {
-
-					$url_index = self::get_current_row( $project[0]->id );
-                    if (!$url_index) { //false если не найден  (надо этот случай расследовать более детально)
-                        // throw new Exception(__('Current page URL was not found in project. Please, check is project-id attribue in [mpg] shortcode is correct.', 'mpg'));
-                        $strings = $found_strings;
-                    } else {
-                        // +1 чтобы пропустить ряд с заголовками. Да, можно сделать array_shift, но это затратная операция по CPU.
-                        $strings = $dataset_array[$url_index + 1];
-                    }
-                    // Из какого по счету столбца брать значение для замены шорткода, который введен в where
-                    $shortcode_column_index = array_search(str_replace(['{{', '}}'], '',  $column_value), $dataset_array[0]);
-
-                    if (MPG_Helper::mpg_string_start_with($column_value_pair[1], '^') && MPG_Helper::mpg_string_end_with($column_value_pair[1], '$')) {
-
-                        $column_value = '^' . $strings[$shortcode_column_index] . '$';
-                    } elseif (MPG_Helper::mpg_string_start_with($column_value_pair[1], '^') && !MPG_Helper::mpg_string_end_with($column_value_pair[1], '$')) {
-
-                        $column_value =  '^' . $strings[$shortcode_column_index];
-                    } elseif (!MPG_Helper::mpg_string_start_with($column_value_pair[1], '^')  &&  MPG_Helper::mpg_string_end_with($column_value_pair[1], '$')) {
-
-                        $column_value = $strings[$shortcode_column_index] . '$';
-                    } elseif (!MPG_Helper::mpg_string_start_with($column_value_pair[1], '^') && !MPG_Helper::mpg_string_end_with($column_value_pair[1], '$')) {
-
-                        $column_value = $strings[$shortcode_column_index];
-                    }
-                }
-
-                array_push($where_storage, [$column_index => strtolower($column_value)]); // value for search
-            }
-        }
-
-        return $where_storage;
-    }
-
-    public static function mpg_order($source_data, $column_names, $direction, $order_by)
-    {
-
-        $column = [];
-        $column_index = array_search($order_by, $column_names);
-
-        if ($direction === 'asc' || $direction === 'desc') {
-
-            foreach ($source_data as $key => $row) {
-
-                $column[$key] = isset($row['row']) ? $row['row'][$column_index] : $row[$column_index];
-            }
-
-            array_multisort($column, $direction === 'asc' ? SORT_ASC : SORT_DESC, $source_data);
-        } elseif ($direction === 'random') {
-            shuffle($source_data);
-        } else {
-        }
-
-        return $source_data;
-    }
 
 	/**
 	 * Replace shortcodes in content.
@@ -636,8 +419,8 @@ class MPG_CoreModel
 			return false;
 		}
 
-		$project       = MPG_ProjectModel::mpg_get_project_by_id( $project_id );
-		$dataset_array = MPG_Helper::mpg_get_dataset_array( $project[0] );
+		$project       = MPG_ProjectModel::get_project_by_id( $project_id );
+		$dataset_array = MPG_Helper::mpg_get_dataset_array( $project );
 
 		return $dataset_array[ $index + 1 ] ?? false;
 	}
@@ -656,8 +439,9 @@ class MPG_CoreModel
 		//If this is not set we need to fetch it.
 		$url_path            = MPG_Helper::mpg_get_request_uri();
 		$needs_path_variants = MPG_Helper::generate_path_variants( $url_path );
-		$project             = MPG_ProjectModel::mpg_get_project_by_id( $project_id );
-		$urls_array          = $project[0]->urls_array ? json_decode( $project[0]->urls_array ) : [];
+		$project             = MPG_ProjectModel::get_project_by_id( $project_id );
+
+		$urls_array          = $project->urls_array ? json_decode( $project->urls_array ) : [];
 		if ( empty( $urls_array ) && is_array( MPG_Helper::$urls_array ) ) {
 			$urls_array = MPG_Helper::$urls_array;
 		}

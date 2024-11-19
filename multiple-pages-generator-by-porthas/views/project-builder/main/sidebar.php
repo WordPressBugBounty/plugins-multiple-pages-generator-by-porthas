@@ -40,12 +40,3 @@
     </div>
 </div>
 <?php require plugin_dir_path( __FILE__ ) . '../../sidebar-subscribe.php'; ?>
-<div class="block sidebar-block shadowed">
-    <h2><?php _e('Help us improve', 'mpg'); ?></h2>
-    <div class="sidebar-block-inner-content">
-        <label>
-            <input type="checkbox" name="mpg_enable_telemetry" value="1" <?php echo ( 'yes' === get_option('multi_pages_plugin_logger_flag', false) ) ? 'checked' : ''; ?> />
-            <?php _e('Send data about plugin settings to measure the usage of the features. The data is private and not shared with third-party entities. Only plugin data is collected without sensitive information.', 'mpg'); ?>
-        </label>
-    </div>
-</div>

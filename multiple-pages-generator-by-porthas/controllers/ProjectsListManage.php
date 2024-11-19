@@ -130,10 +130,6 @@ if ( ! class_exists( 'ProjectsListManage' ) ) {
 			// Удаляем все строки для текущего проекта из БД (Spintax)
 			MPG_SpintaxModel::flush_cache_by_project_id( $project_id );
 
-			// Удалим кеш для данного проекта
-			if ( $project->cache_type !== 'none' ) {
-				MPG_CacheController::mpg_flush_core( $project_id, $project->cache_type );
-			}
 			return true;
 		}
 

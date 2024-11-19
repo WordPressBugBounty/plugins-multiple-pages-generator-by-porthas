@@ -22,8 +22,8 @@ class MPG_CoreController
 		    return MPG_CoreModel::mpg_shortcode_replacer( $content, $project_id );
 	    } );
 
-        $project = MPG_ProjectModel::mpg_get_project_by_id($project_id);
-	    $post_modified = MPG_ProjectModel::get_vpage_modified_date( $project[0] );
+        $project = MPG_ProjectModel::get_project_by_id($project_id);
+	    $post_modified = MPG_ProjectModel::get_vpage_modified_date( $project );
 	    if ( $post_modified !== false ) {
 		    $post_date = $post->post_date;
 		    //We choose which is the lastest one between those two, to avoid changing the date of the post to something older vs the current one.
@@ -54,7 +54,7 @@ class MPG_CoreController
             add_action( 'wp_head', function () use ($project) {
                 global $wp;
 
-                $trail_slash = $project[0]->url_mode === 'without-trailing-slash' ? '' : '/';
+                $trail_slash = $project->url_mode === 'without-trailing-slash' ? '' : '/';
 
                 printf('<link rel="canonical" href="%1$s' . $trail_slash . '">' . "\n",  esc_url_raw(home_url($wp->request)));
 
@@ -110,10 +110,6 @@ class MPG_CoreController
 
         MPG_SEOModel::mpg_the_seo_framework( $project_id );
 
-        // Решает проблему с тем, что не заменяются шорткоды в Elementor.
-        add_action('wp_head', function () use ($project_id, $path) {
-            MPG_CoreModel::mpg_header_handler($project_id, $path);
-        }, 9, 0);
 
         add_action('wp_footer', function () {
             if (!mpg_app()->is_premium()) {
@@ -132,10 +128,6 @@ class MPG_CoreController
 
         $hook_name = get_option('mpg_cache_hook_name') ? get_option('mpg_cache_hook_name') : 'wp_print_footer_scripts';
         $hook_priority = get_option('mpg_cache_hook_priority') ? get_option('mpg_cache_hook_priority') : 10;
-
-        add_action($hook_name, function () use ($project_id, $path) {
-            MPG_CoreModel::mpg_footer_handler($project_id, $path);
-        }, $hook_priority, 0);
 
         // setup template post as global, this is needed for the_title(), the_permalink()
         setup_postdata($GLOBALS['post'] = &$post);
@@ -183,7 +175,7 @@ class MPG_CoreController
         $wp_query->posts = array($post);
         $wp_query->is_author = false;
 
-        if ($project[0]->entity_type === 'post') {
+        if ($project->entity_type === 'post') {
             $wp_query->is_single = true;
             $wp_query->is_page = false;
             $wp_query->is_singular = true;

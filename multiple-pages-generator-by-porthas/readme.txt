@@ -2,7 +2,7 @@
 Contributors: themeisle
 Tags: bulk page creator, landing pages, content generation, seo, programmatic seo
 Requires at least: 5.6
-Tested up to: 6.6
+Tested up to: 6.7
 Stable tag: trunk
 Requires PHP: 7.2
 License: GPLv2
@@ -130,6 +130,21 @@ E-mail us at [friends@themeisle.com](mailto:friends@themeisle.com)
 
 
 == Changelog ==
+
+#####   Version 4.0.4 (2024-11-19)
+
+- Fixed issue with table creation when the database engine is not MyISAM.
+- Fixed Compatibility issue with Rank Math sitemap.
+- Fixed parsing of URLs in MPG shortcodes.
+- Changed caching mechanisms for projects.
+- Hide this template from search engines and your site content setting is now respected only when the user is not logged in.
+- Enhanced overall security.
+- Improved Handling of source types.
+- Added WordPress hook option to Page Builders Compatibility Hooks.
+- Moved the tracking toggle to advanced settings.
+
+
+
 
 #####   Version 4.0.3 (2024-11-06)
 

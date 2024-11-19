@@ -6,6 +6,7 @@ require_once(realpath(__DIR__) . '/../helpers/Constant.php');
 
 class MPG_ProjectModel
 {
+	private static $projects = [];
 	/**
 	 * @var int $current_project_id The ID of the current project.
 	 */
@@ -56,6 +57,7 @@ class MPG_ProjectModel
 
             #Check to see if the table exists already, if not, then create it
 
+	        $charset_collate = $wpdb->get_charset_collate();
             if (!$wpdb->get_var($wpdb->prepare('SHOW TABLES LIKE %s', $wpdb->esc_like($mpg_projects_table))) == $mpg_projects_table) {
 
 
@@ -97,7 +99,7 @@ class MPG_ProjectModel
                 $sql .= " `updated_at` int(20) DEFAULT NULL, ";
 
                 $sql .= "  PRIMARY KEY (`id`) ";
-                $sql .= ") ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 AUTO_INCREMENT=1 ; ";
+                $sql .= ") $charset_collate; ";
 
                 dbDelta($sql);
                 $sql = null;
@@ -117,7 +119,7 @@ class MPG_ProjectModel
                 $sql .= "`project_id` INT(10) NULL ,";
                 $sql .= "`url` TEXT NOT NULL ,";
                 $sql .= "`spintax_string` TEXT NULL ,";
-                $sql .= "PRIMARY KEY (`id`), INDEX `url` (`url`(100))) ENGINE = MyISAM DEFAULT CHARSET=utf8mb4;";
+                $sql .= "PRIMARY KEY (`id`), INDEX `url` (`url`(100))) $charset_collate;";
 
                 dbDelta($sql);
                 $sql = null;
@@ -137,7 +139,7 @@ class MPG_ProjectModel
                 $sql .= "`project_id` INT(10) NOT NULL,";
                 $sql .= "`url` TEXT NOT NULL ,";
                 $sql .= "`cached_string` mediumtext NOT NULL,";
-                $sql .= "PRIMARY KEY (`id`), INDEX `url` (`url`(500))) ENGINE = MyISAM DEFAULT CHARSET=utf8mb4;";
+                $sql .= "PRIMARY KEY (`id`), INDEX `url` (`url`(500)))$charset_collate;";
 
                 dbDelta($sql);
                 $sql = null;
@@ -152,7 +154,7 @@ class MPG_ProjectModel
                 $sql .= "`url`  varchar(250) DEFAULT NULL, ";
                 $sql .= "`message` text NOT NULL, ";
                 $sql .= "`datetime` date NOT NULL, ";
-                $sql .= " PRIMARY KEY (`id`), INDEX `url` (`url`(250)))  ENGINE = MyISAM DEFAULT CHARSET=utf8mb4;";
+                $sql .= " PRIMARY KEY (`id`), INDEX `url` (`url`(250)))$charset_collate;";
 
                 dbDelta($sql);
                 $sql = null;
@@ -474,38 +476,32 @@ class MPG_ProjectModel
 	 * @return false|mixed
 	 * @throws Exception
 	 */
-	public static function get_project_by_id( $project_id ) {
-		$project_data = self::mpg_get_project_by_id( $project_id, true );
+	public static function get_project_by_id( int $project_id ) {
+		if ( isset( self::$projects[ $project_id ] ) ) {
+			return self::$projects[ $project_id ];
+		}
+		try {
 
-		return empty( $project_data ) ? false : reset( $project_data );
+			global $wpdb;
+			$project = $wpdb->get_results(
+				$wpdb->prepare("SELECT * FROM {$wpdb->prefix}" .  MPG_Constant::MPG_PROJECTS_TABLE . " WHERE id=%d", $project_id)
+			);
+			if ( empty( $project ) || empty( $project[0] ) ) {
+				return false;
+			}
+			if ( ! isset( $project[0]->source_type ) || empty( $project[0]->source_type ) ) {
+				$project[0]->source_type = isset( $project[0]->original_file_url ) && ! empty( $project[0]->original_file_url ) ? 'direct_link' : 'upload_file';
+			}
+			self::$projects[ $project_id ] = $project[0];
+
+			return self::$projects[ $project_id ];
+		} catch (Exception $e) {
+
+			do_action( 'themeisle_log_event', MPG_NAME, sprintf( 'Can\'t getproject by id. Details: %s', $e->getMessage() ), 'debug', __FILE__, __LINE__ );
+
+			throw new Exception(__('Can\'t getproject by id. Details:', 'mpg') . $e->getMessage());
+		}
 	}
-    public static function mpg_get_project_by_id($project_id, $force = false)
-    {
-
-        global $wpdb;
-
-        try {
-
-            $key_name = wp_hash( 'project_id_' . $project_id );
-            $project = get_transient( 'project_id_' . $project_id );
-            if ( false === $project ) {
-                $project = get_transient( $key_name );
-            }
-            if (!$project || $force) {
-                $project = $wpdb->get_results(
-                    $wpdb->prepare("SELECT * FROM {$wpdb->prefix}" .  MPG_Constant::MPG_PROJECTS_TABLE . " WHERE id=%d", $project_id)
-                );
-                set_transient( $key_name, $project );
-            }
-
-            return count($project) ? $project : null;
-        } catch (Exception $e) {
-
-            do_action( 'themeisle_log_event', MPG_NAME, sprintf( 'Can\'t getproject by id. Details: %s', $e->getMessage() ), 'debug', __FILE__, __LINE__ );
-
-            throw new Exception(__('Can\'t getproject by id. Details:', 'mpg') . $e->getMessage());
-        }
-    }
 	public static function update_last_check($project_id){
 
 		global $wpdb;
@@ -514,7 +510,7 @@ class MPG_ProjectModel
 		delete_transient( $key_name );
 	}
 
-    public static function mpg_update_project_by_id($project_id, $fields_array, $delete_dataset = false )
+    public static function mpg_update_project_by_id(int $project_id, $fields_array, $delete_dataset = false )
     {
 
         global $wpdb;
@@ -527,8 +523,9 @@ class MPG_ProjectModel
             if ($wpdb->last_error) {
                 throw new Exception($wpdb->last_error);
             }
-	        delete_transient( 'project_id_' . $project_id );
-            delete_transient( wp_hash( 'project_id_' . $project_id ) );
+	        if ( isset( self::$projects[ $project_id ] ) ) {
+		        unset( self::$projects[ $project_id ] );
+	        }
             if ( $delete_dataset ) {
 	            MPG_DatasetModel::delete_cache( $project_id );
             }
@@ -629,14 +626,14 @@ class MPG_ProjectModel
 
         try {
 
-            if ($project[0]->schedule_source_link && $project[0]->schedule_notificate_about && $project[0]->schedule_periodicity && $project[0]->schedule_notification_email) {
+            if ($project->schedule_source_link && $project->schedule_notificate_about && $project->schedule_periodicity && $project->schedule_notification_email) {
 
                 $cron_arguments = [
                     (int) $project_id,
-                    $project[0]->schedule_source_link,
-                    $project[0]->schedule_notificate_about,
-                    $project[0]->schedule_periodicity,
-                    $project[0]->schedule_notification_email
+                    $project->schedule_source_link,
+                    $project->schedule_notificate_about,
+                    $project->schedule_periodicity,
+                    $project->schedule_notification_email
                 ];
 
                 wp_clear_scheduled_hook('mpg_schedule_execution', $cron_arguments);

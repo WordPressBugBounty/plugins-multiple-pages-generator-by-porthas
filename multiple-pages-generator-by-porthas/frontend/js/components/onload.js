@@ -230,8 +230,6 @@ export async function doInit() {
             // =============== Sitemap ==========
             fillSitemapData(projectData);
 
-            // Cache
-            fillCacheData(projectData);
             if ( projectData.data.template_id ) {
                 jQuery('select#mpg_set_template_dropdown')
                 .parent('div')
@@ -291,27 +289,6 @@ function fillSitemapData(projectData) {
     mpgUpdateState('sitemapPriority', projectData.data.sitemap_priority);
 }
 
-function fillCacheData(projectData) {
-    const cacheType = projectData.data.cache_type;
-
-    if (cacheType !== 'none') {
-        jQuery('.cache-page .card-footer button.btn')
-        .attr('disabled', 'disabled');
-
-        jQuery(`.cache-page div[data-cache-type=${cacheType}] .enable-cache`)
-            .removeAttr('disabled')
-            .removeClass('btn-success enable-cache')
-            .addClass('btn-warning disable-cache')
-            .text('Disable');
-
-        jQuery(`.cache-page div[data-cache-type=${cacheType}] .flush-cache`)
-            .removeAttr('disabled')
-            .removeClass('btn-light')
-            .addClass('btn-danger');
-    } else {
-        jQuery('.cache-page .card-footer .enable-cache').removeAttr('disabled');
-    }
-}
 export function handleAdvance(){
     if (jQuery('.advanced-page').length) {
         jQuery

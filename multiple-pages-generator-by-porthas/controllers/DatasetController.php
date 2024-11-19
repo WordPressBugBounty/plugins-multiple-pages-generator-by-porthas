@@ -71,7 +71,7 @@ class MPG_DatasetController
 
             if ( ! empty( $dataset_config[5] ) ) {
                 $post_content = preg_replace( '/project-id=".*?"/', 'project-id="' . $project_id . '"', $dataset_config[5] );
-                $post_content = preg_replace( '/href=".*?"/', 'href="/' . $dataset_config[7] . '"', $post_content );
+                $post_content = preg_replace( '/href="(?!.*{{mpg_.*}}).*?"/', 'href="/' . $dataset_config[7] . '"', $post_content );
                 wp_update_post(
                     array(
                         'ID' => $entity_id,
@@ -274,13 +274,13 @@ class MPG_DatasetController
 			$length       = isset( $_POST['length'] ) ? (int) $_POST['length'] : 10;
 			$search_value = isset( $_POST['search']['value'] ) ? sanitize_text_field( $_POST['search']['value'] ) : '';
 
-			$project = MPG_ProjectModel::mpg_get_project_by_id( $project_id );
+			$project = MPG_ProjectModel::get_project_by_id( $project_id );
 
-			if ( ! $project[0] ) {
+			if ( empty($project) ) {
 				throw new Exception( __( 'Can\'t get project', 'mpg' ) );
 			}
 
-			$urls_array    = $project[0]->urls_array ? json_decode( $project[0]->urls_array ) : [];
+			$urls_array    = $project->urls_array ? json_decode( $project->urls_array ) : [];
 			$data          = [];
 			$search_string = trim( strtolower( $search_value ) );
 			$filtered      = 0;
@@ -294,7 +294,7 @@ class MPG_DatasetController
 					$filtered --;
 					continue;
 				}
-				if ( $project[0]->url_mode === 'without-trailing-slash' ) {
+				if ( $project->url_mode === 'without-trailing-slash' ) {
 					$row = rtrim( $row, '/' );
 				}
 				if ( $page_results > $length ) {
@@ -386,9 +386,9 @@ class MPG_DatasetController
 
             $project_id = (int) $_POST['projectId'];
 
-            $project = MPG_ProjectModel::mpg_get_project_by_id($project_id);
+            $project = MPG_ProjectModel::get_project_by_id($project_id);
 
-	        $path_to_dataset = MPG_DatasetModel::get_dataset_path_by_project( $project[0] );
+	        $path_to_dataset = MPG_DatasetModel::get_dataset_path_by_project( $project );
 
 	        if ( empty( $path_to_dataset ) ) {
 		        throw new Exception( __( 'Dataset path was not defined', 'mpg' ) );

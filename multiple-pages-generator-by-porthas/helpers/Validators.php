@@ -2,6 +2,8 @@
 
 class MPG_Validators
 {
+	const SOURCE_TYPE_URL = 'direct_link';
+	const SOURCE_TYPE_UPLOAD = 'upload_file';
 
     public static function mpg_match($current_project_id, $search_in_project_id, $current_header, $match_with)
     {
@@ -49,5 +51,18 @@ class MPG_Validators
 	public static function nonce_check(){
 		check_ajax_referer( MPG_BASENAME, 'securityNonce' );
 		current_user_can( MPG_MenuController::MENU_ROLE ) || 	wp_die( -1, 403 );;
+	}
+
+	public static function validate_source_type( $source_type, $default_input = self::SOURCE_TYPE_UPLOAD ) {
+		$available_sources = [ self::SOURCE_TYPE_UPLOAD, self::SOURCE_TYPE_URL ];
+		$default           = in_array( $default_input, $available_sources ) ? $default_input : self::SOURCE_TYPE_UPLOAD;
+		if ( empty( $source_type ) ) {
+			return $default;
+		}
+		if ( ! in_array( $source_type, $available_sources ) ) {
+			return $default;
+		}
+
+		return $source_type;
 	}
 }

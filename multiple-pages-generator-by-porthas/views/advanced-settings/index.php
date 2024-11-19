@@ -39,6 +39,7 @@
                         <option value="pre_handle_404">pre_handle_404</option>
                         <option value="posts_selection">posts_selection</option>
                         <option value="template_redirect">template_redirect</option>
+                        <option value="wp">wp</option>
                     </select>
 
                     <select id="mpg_hook_priority" required="required">
@@ -69,29 +70,6 @@
             </section>
 
 
-            <section>
-                <p class="mpg-subtitle"><?php _e('Cache hooks', 'mpg'); ?></p>
-                <p style="margin-top: 1rem;"><?php _e('Use these settings only if the generated page with enabled caching in MPG is displayed incorrectly. MPG has a universal default setting, but sometimes it does not work properly, because different users have different plugins, builders, versions of Wordpress, and so on. Therefore, if you see problems with the pages after few visits as guest - change these options to achieve the desired effect.', 'mpg'); ?></p>
-
-                <form class="mpg-cache-hooks-block">
-                    <select id="mpg_cache_hook_name" required="required">
-                        <option disabled="true" value="" selected><?php _e('Hook', 'mpg'); ?></option>
-                        <option value="get_footer">get_footer</option>
-                        <option value="wp_footer">wp_footer</option>
-                        <option value="wp_print_footer_scripts">wp_print_footer_scripts</option>
-                    </select>
-
-                    <select id="mpg_cache_hook_priority" required="required">
-                        <option disabled="true" value="" selected><?php _e('Priority', 'mpg'); ?></option>
-                        <option value="1"><?php _e('High', 'mpg'); ?></option>
-                        <option value="10"><?php _e('Normal', 'mpg'); ?></option>
-                        <option value="100"><?php _e('Low', 'mpg'); ?></option>
-                        <option value="10000"><?php _e('Very low', 'mpg'); ?></option>
-                    </select>
-
-                    <button type="submit" class="btn btn-primary"><?php _e('Update', 'mpg'); ?></button>
-                </form>
-            </section>
 
             <!-- Branding position -->
             <?php if (!mpg_app()->is_premium()) { ?>
@@ -109,6 +87,17 @@
                     </form>
                 </section>
             <?php } ?>
+
+            <!-- Help us improve -->
+            <section>
+                <p class="mpg-subtitle"><?php esc_html_e( 'Help us improve', 'mpg' ); ?></p>
+                <form class="mpg-help-us-improve">
+                    <label style="font-size: 13px;margin-top: 10px;">
+                        <input type="checkbox" name="mpg_enable_telemetry" value="1" <?php echo ( 'yes' === get_option('multi_pages_plugin_logger_flag', false) ) ? 'checked' : ''; ?> />
+                        <?php esc_html_e( 'Send data about plugin settings to measure the usage of the features. The data is private and not shared with third-party entities. Only plugin data is collected without sensitive information.', 'mpg' ); ?>
+                    </label>
+                </form>
+            </section>
         </div>
 
     </div>

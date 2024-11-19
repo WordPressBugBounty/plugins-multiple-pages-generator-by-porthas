@@ -266,6 +266,10 @@ class MPG_Helper
 			if ($index === array_key_last($strings)) {
 				continue;
 			}
+			//if the string is a URL, we ignore it.
+			if ( str_starts_with( $string, 'http' ) ) {
+				continue;
+			}
 			$strings[ $index ] = str_replace( ' ', $space_replacer, $string );
 			$strings[ $index ] = MPG_ProjectModel::mpg_processing_special_chars( $strings[ $index ], $space_replacer );
 		}
@@ -424,13 +428,15 @@ class MPG_Helper
 	    $worksheet_id       = isset( $project->worksheet_id ) ? $project->worksheet_id : '';
 	    $space_replacer     = isset( $project->space_replacer ) ? $project->space_replacer : '';
 	    $url_structure      = isset( $project->url_structure ) ? $project->url_structure : '';
-	    $source_type        = isset( $project->source_type ) ? $project->source_type : '';
+	    $source_type = MPG_Validators::validate_source_type( $project->source_type ?? '', ! empty( $source_direct_link ) ? MPG_Validators::SOURCE_TYPE_URL : MPG_Validators::SOURCE_TYPE_UPLOAD );
 
         $expiration = 0;
         if ( null === $periodicity ) {
             $expiration = self::get_live_update_interval();
         }
-
+	    if ( $source_type !== MPG_Validators::SOURCE_TYPE_URL ) {
+		    return $project;
+	    }
         $dataset_array = MPG_DatasetModel::get_cache( $project_id );
 
         if ( empty( $mpg_urls_array[ $project_id ] ) && empty( $dataset_array ) && $expiration > 0 ) {
@@ -546,8 +552,7 @@ class MPG_Helper
         }
         global $mpg_default_posts;
         foreach ( $project_ids as $project_id ) {
-            $project       = \MPG_ProjectModel::mpg_get_project_by_id( $project_id );
-            $project       = reset( $project );
+            $project       = \MPG_ProjectModel::get_project_by_id( $project_id );
             $dataset_array = MPG_Helper::mpg_get_dataset_array( $project );
             $urls_array    = $project->urls_array ? json_decode( $project->urls_array, true ) : array();
 
