@@ -131,6 +131,14 @@ E-mail us at [friends@themeisle.com](mailto:friends@themeisle.com)
 
 == Changelog ==
 
+#####   Version 4.0.5 (2024-11-19)
+
+- Resolved an issue where certain shortcodes were not being replaced correctly on the page.
+- Fixed a problem where the source type defaulted to upload when saving a project without changes to the source settings.
+
+
+
+
 #####   Version 4.0.4 (2024-11-19)
 
 - Fixed issue with table creation when the database engine is not MyISAM.

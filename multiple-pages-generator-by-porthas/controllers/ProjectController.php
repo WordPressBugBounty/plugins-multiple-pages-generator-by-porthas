@@ -234,28 +234,29 @@ class MPG_ProjectController
 
             $direct_link =        isset($_POST['directLink']) ? esc_url_raw($_POST['directLink']) : null;
 
-            $args = apply_filters('mpg_update_project_args', []);
-	        $periodicity = $args['periodicity'] ?? false;
-            $timezone = $args['timezone'] ?? false;
-            $fetch_date_time = $args['fetch_date_time'] ?? false;
-            $notificate_about = $args['notificate_about'] ?? false;
-            $notification_email = $args['notification_email'] ?? false;
+	        $args                    = apply_filters( 'mpg_update_project_args', [] );
+	        $periodicity             = $args['periodicity'] ?? false;
+	        $timezone                = $args['timezone'] ?? false;
+	        $fetch_date_time         = $args['fetch_date_time'] ?? false;
+	        $notificate_about        = $args['notificate_about'] ?? false;
+	        $notification_email      = $args['notification_email'] ?? false;
 	        $update_modified_on_sync = $args['update_modified_on_sync'] ?? 'no-update';
-            $update_modified_on_sync = $periodicity === 'once' ? 'no-update' : $update_modified_on_sync;
+	        $update_modified_on_sync = $periodicity === 'once' ? 'no-update' : $update_modified_on_sync;
+	        $source_type             = false;
+	        if ( isset( $_POST['sourceType'] ) ) {
+		        $source_type = MPG_Validators::validate_source_type( $_POST['sourceType'], ! empty( $direct_link ) ? MPG_Validators::SOURCE_TYPE_URL : MPG_Validators::SOURCE_TYPE_UPLOAD );
+	        }
+	        $worksheet_id = isset( $_POST['worksheetId'] ) ? (int) $_POST['worksheetId'] : null;
 
-	        $source_type = MPG_Validators::validate_source_type( $_POST['sourceType'] ?? '', ! empty( $direct_link ) ? MPG_Validators::SOURCE_TYPE_URL : MPG_Validators::SOURCE_TYPE_UPLOAD );
-            $worksheet_id =       isset($_POST['worksheetId']) ? (int) $_POST['worksheetId'] : null;
+	        $update_options_array = [
+		        'url_structure'  => str_replace( ' ', '_', $url_structure ),
+		        'space_replacer' => $space_replacer,
+		        'url_mode'       => $url_mode
+	        ];
 
-            $update_options_array = [
-                'url_structure'  => str_replace(' ', '_', $url_structure),
-                'space_replacer' => $space_replacer,
-                'url_mode'       => $url_mode
-            ];
-
-            if ($source_type) {
-                $update_options_array['source_type'] = $source_type;
-            }
-
+	        if ( ! empty( $source_type ) ) {
+		        $update_options_array['source_type'] = $source_type;
+	        }
             // Тут будет либо числовое значение, либо null. null полезен в том случае, если человек больше не хочет работать с вторым-третим листом, а хочет с первым
             // поэтому, удалив значение с поля на фронте, он имеет возможность поставить null в БД
             $update_options_array['worksheet_id'] = $worksheet_id !== 0 ? $worksheet_id : null;
