@@ -12,7 +12,7 @@ export async  function  initSearch(){
     let searchData = JSON.parse(search);
 
     if (!searchData.success) {
-        toastr.error(searchData.error, __('Failed', 'multi-pages-plugin'));
+        toastr.error(searchData.error, __('Failed', 'multiple-pages-generator-by-porthas'));
     } else {
 
         const template = searchData?.data?.mpg_ss_result_template;
@@ -56,9 +56,9 @@ export async  function  initSearch(){
         let searchData = JSON.parse(search);
 
         if (!searchData.success) {
-            toastr.error(searchData.error, __('Failed', 'multi-pages-plugin'));
+            toastr.error(searchData.error, __('Failed', 'multiple-pages-generator-by-porthas'));
         } else {
-            toastr.success(__('Success', 'multi-pages-plugin'), { timeOut: 5000 });
+            toastr.success(__('Success', 'multiple-pages-generator-by-porthas'), { timeOut: 5000 });
         }
     });
 }

@@ -318,9 +318,15 @@ class MPG_SitemapGenerator
 	    if ( empty( $content ) ) {
 		    return false;
 	    }
-        $file = fopen($filePath . $fileName, 'w');
-        fwrite($file, $content);
-        return fclose($file);
+	    global $wp_filesystem;
+	    require_once ABSPATH . 'wp-admin/includes/file.php';
+	    WP_Filesystem();
+
+	    $wp_filesystem->put_contents(
+		    $filePath . $fileName,
+		    $content,
+		    FS_CHMOD_FILE // predefined file permissions constant
+	    );
     }
     /**
      * Save GZipped file.
@@ -351,7 +357,11 @@ class MPG_SitemapGenerator
 		if ( get_option( 'mpg_site_basepath' ) ) {
 			$site_root_path = rtrim( get_option( 'mpg_site_basepath' )['value'], '/' ) . '/';
 		} else {
-			$site_root_path = ABSPATH;
+			$site_root_path = get_home_path();
+
+			if ( ! is_writable( $site_root_path ) && ! empty( $_SERVER['DOCUMENT_ROOT'] ) ) {
+				$site_root_path = $_SERVER['DOCUMENT_ROOT'] . DIRECTORY_SEPARATOR;
+			}
 		}
 
 		return $site_root_path;
@@ -384,7 +394,7 @@ class MPG_SitemapGenerator
             $project = MPG_ProjectModel::get_project_by_id($project_id);
             $site_root_path = self::get_basepath();
 	        if ( empty( $project->template_id ) ) {
-		        throw new Exception( __( 'Project has no template.', 'mpg' ) );
+		        throw new Exception( __( 'Project has no template.', 'multiple-pages-generator-by-porthas' ) );
 	        }
 	        $frenquency = ! empty( $sitemap_update_freq ) ? $sitemap_update_freq : 'monthly';
 	        $last_mod = get_the_modified_date( 'Y-m-d', $project->template_id );

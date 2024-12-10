@@ -210,14 +210,13 @@ class MPG_CoreController
 
             self::core($redirect_rules, $post, $template_post_id, $path);
         } else {
-            MPG_LogsController::mpg_write($redirect_rules['project_id'], 'warning', __('URL generated in MPG and some page or post slug is equal.', 'mpg'));
+            MPG_LogsController::mpg_write($redirect_rules['project_id'], 'warning', __('URL generated in MPG and some page or post slug is equal.', 'multiple-pages-generator-by-porthas'));
         }
     }
 
     // Create the virtual page with content from template and set settings for view this page like normal WP page
     public static function mpg_view_multipages_standard()
     {
-        global $mpg_dataset, $mpg_urls_array;
         $path = MPG_Helper::mpg_get_request_uri(); // это та часть что идет после папки установки WP. тпиа wp.com/xxx
         $redirect_rules = MPG_CoreModel::mpg_get_redirect_rules($path);
 
@@ -232,7 +231,7 @@ class MPG_CoreController
                 // echo 'DEFINE CONST';
                 self::core($redirect_rules, $post, $template_post_id, $path);
             } else {
-                MPG_LogsController::mpg_write($redirect_rules['project_id'], 'warning', __('URL generated in MPG and some page or post slug is equal.', 'mpg'));
+                MPG_LogsController::mpg_write($redirect_rules['project_id'], 'warning', __('URL generated in MPG and some page or post slug is equal.', 'multiple-pages-generator-by-porthas'));
             }
         }
     }
@@ -273,12 +272,30 @@ class MPG_CoreController
 	        echo '{"success": true, "data":"' . str_replace( "\n", '<br>', $results ) . '"}';
 	        wp_die();
         } catch (Exception $e) {
-
-            do_action( 'themeisle_log_event', MPG_NAME, sprintf( 'Can\'t show preview due to error. Details: %s', $e->getMessage() ), 'debug', __FILE__, __LINE__ );
+           
+            // translators: $s: the error message.
+            do_action(
+                'themeisle_log_event',
+                MPG_NAME,
+                printf(
+                    __('Can\'t show preview due to error.', 'multiple-pages-generator-by-porthas') + ' ' 
+                    // translators: %s: the error message.
+                    + __('Details: %s', 'multiple-pages-generator-by-porthas'),
+                    $e->getMessage()
+                ),
+                'debug',
+                __FILE__,
+                __LINE__
+            );
 
             echo json_encode([
                 'success' => false,
-                'error' => __('Can\'t show preview due to error. Details: ' . $e->getMessage())
+                'error' => sprintf(
+                    __('Can\'t show preview due to error.', 'multiple-pages-generator-by-porthas') + ' ' 
+                    // translators: %s: the error message.
+                    + __('Details: %s', 'multiple-pages-generator-by-porthas'),
+                    $e->getMessage()
+                )
             ]);
             wp_die();
         }

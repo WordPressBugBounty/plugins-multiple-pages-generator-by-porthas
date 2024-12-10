@@ -109,12 +109,12 @@ registerBlockType( name, {
         return (
 			<>
 				<InspectorControls>
-					<PanelBody className="mpg-loop-settings" title={__('Loop Settings', 'multi-pages-plugin')}>
+					<PanelBody className="mpg-loop-settings" title={__('Loop Settings', 'multiple-pages-generator-by-porthas')}>
 						<SelectControl
-							label={__('Select Project', 'multi-pages-plugin')}
+							label={__('Select Project', 'multiple-pages-generator-by-porthas')}
 							value={attributes.project_id}
 							options={[
-								{ value: 0, label: __('Select a project...', 'multi-pages-plugin') },
+								{ value: 0, label: __('Select a project...', 'multiple-pages-generator-by-porthas') },
 								...projectOptions
 							]}
 							onChange={(newProjectId) => {
@@ -125,50 +125,50 @@ registerBlockType( name, {
 						{project_id > 0 && (
 							<>
 								<TextControl
-									label={__('Limit', 'multi-pages-plugin')}
+									label={__('Limit', 'multiple-pages-generator-by-porthas')}
 									value={attributes.limit}
                                     type={'number'}
 									onChange={(limit) => setAttributes({ limit: parseInt(limit) })}
-									help={__('Number of maximum items to display.', 'multi-pages-plugin')}
+									help={__('Number of maximum items to display.', 'multiple-pages-generator-by-porthas')}
 								/>
 								<ToggleControl
-									label={__('Unique Rows', 'multi-pages-plugin')}
+									label={__('Unique Rows', 'multiple-pages-generator-by-porthas')}
 									checked={attributes.uniqueRows}
 									onChange={(uniqueRows) => setAttributes({ uniqueRows })}
-									help={__('Display only unique rows', 'multi-pages-plugin')}
+									help={__('Display only unique rows', 'multiple-pages-generator-by-porthas')}
 								/>
 								<SelectControl
-									label={__('Ordering', 'multi-pages-plugin')}
+									label={__('Ordering', 'multiple-pages-generator-by-porthas')}
 									value={attributes.direction}
 									options={[
-										{ value: '', label: __('...', 'multi-pages-plugin') },
+										{ value: '', label: '...' },
 										...ordersData
 									]}
 									onChange={(direction) => setAttributes({ direction })}
 								/>
 								{(direction === 'asc' || direction === 'desc') && (
 									<SelectControl
-										label={__('Order By', 'multi-pages-plugin')}
+										label={__('Order By', 'multiple-pages-generator-by-porthas')}
 										value={attributes.orderBy}
 										options={[
-											{ value: '', label: __('Select a column...', 'multi-pages-plugin') },
+											{ value: '', label: __('Select a column...', 'multiple-pages-generator-by-porthas') },
 											...headerOptions
 										]}
 										onChange={(orderBy) => setAttributes({ orderBy })}
-										help={__('Column name to order by', 'multi-pages-plugin')}
+										help={__('Column name to order by', 'multiple-pages-generator-by-porthas')}
 									/>
 								)}
 								<Button
 									isPrimary
 									onClick={handlePreviewClick}
 								>
-									{__('Preview Loop', 'multi-pages-plugin')}
+									{__('Preview Loop', 'multiple-pages-generator-by-porthas')}
 								</Button>
 							</>
 						)}
 					</PanelBody>
 					<PanelBody 
-						title={__('Loop Filters', 'multi-pages-plugin')} 
+						title={__('Loop Filters', 'multiple-pages-generator-by-porthas')} 
 						initialOpen={true}
 						className={`mpg-loop-filters ${project_id > 0 ? '' : 'hidden'}`}
 						insertAfter="mpg-loop-settings"

@@ -87,7 +87,7 @@ class Elementor extends Core {
 		$element->start_controls_section(
 			'mpg_visibility_section', // Section ID
 			[
-				'label' => __( 'MPG Visibility Conditions', 'mpg' ),
+				'label' => __( 'MPG Visibility Conditions', 'multiple-pages-generator-by-porthas' ),
 				'tab'   => \Elementor\Controls_Manager::TAB_ADVANCED, // Add to Advanced tab
 			]
 		);
@@ -95,12 +95,12 @@ class Elementor extends Core {
 
 		$element->add_control(
 			'mpgc_logic_show', [
-				'label'       => __( 'Show if', 'mpg' ),
+				'label'       => __( 'Show if', 'multiple-pages-generator-by-porthas' ),
 				'type'        => \Elementor\Controls_Manager::SELECT,
-				'description' => __( 'Select the logic to apply to the conditions', 'mpg' ),
+				'description' => __( 'Select the logic to apply to the conditions', 'multiple-pages-generator-by-porthas' ),
 				'options'     => [
-					self::LOGIC_AND => __( 'All', 'mpg' ),
-					self::LOGIC_OR  => __( 'Any', 'mpg' )
+					self::LOGIC_AND => __( 'All', 'multiple-pages-generator-by-porthas' ),
+					self::LOGIC_OR  => __( 'Any', 'multiple-pages-generator-by-porthas' )
 				],
 				'default'     => self::LOGIC_AND,
 			]
@@ -114,9 +114,9 @@ class Elementor extends Core {
 				'ai'          => [
 					'active' => false,
 				],
-				'label'       => __( 'Column name', 'mpg' ),
+				'label'       => __( 'Column name', 'multiple-pages-generator-by-porthas' ),
 				'type'        => \Elementor\Controls_Manager::TEXT,
-				'placeholder' => __( 'Column name to compare', 'mpg' ),
+				'placeholder' => __( 'Column name to compare', 'multiple-pages-generator-by-porthas' ),
 				'label_block' => true,
 			]
 		);
@@ -125,7 +125,7 @@ class Elementor extends Core {
 		$repeater->add_control(
 			'mpgc_operator', [
 
-				'label'   => __( 'Condition', 'mpg' ),
+				'label'   => __( 'Condition', 'multiple-pages-generator-by-porthas' ),
 				'type'    => \Elementor\Controls_Manager::SELECT,
 				'options' => $this->get_operators(),
 				'default' => self::OPERATOR_HAS_VALUE,
@@ -143,9 +143,9 @@ class Elementor extends Core {
 				'condition'   => [
 					'mpgc_operator' => array_keys( $operators ),
 				],
-				'label'       => __( 'Value', 'mpg' ),
+				'label'       => __( 'Value', 'multiple-pages-generator-by-porthas' ),
 				'type'        => \Elementor\Controls_Manager::TEXT,
-				'placeholder' => __( 'Value to compare with', 'mpg' ),
+				'placeholder' => __( 'Value to compare with', 'multiple-pages-generator-by-porthas' ),
 				'label_block' => true,
 			]
 		);
@@ -155,12 +155,12 @@ class Elementor extends Core {
 		$element->add_control(
 			'mpgc_conditions',
 			[
-				'label'       => __( 'Conditions', 'mpg' ),
+				'label'       => __( 'Conditions', 'multiple-pages-generator-by-porthas' ),
 				'type'        => \Elementor\Controls_Manager::REPEATER,
 				'fields'      => $repeater->get_controls(),
 				'max_items'   => 5,
-				'button_text' => esc_html__( 'Add Condition', 'mpg' ),
-				'placeholder' => __( 'Add condition', 'mpg' ),
+				'button_text' => esc_html__( 'Add Condition', 'multiple-pages-generator-by-porthas' ),
+				'placeholder' => __( 'Add condition', 'multiple-pages-generator-by-porthas' ),
 				'default'     => [],
 				'title_field' => '{{{ mpgc_column_name }}} ',
 			]

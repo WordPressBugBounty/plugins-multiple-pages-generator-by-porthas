@@ -34,7 +34,7 @@ jQuery('.copy-spintax-output').on('click', function () {
 
     const randomNumber = Math.floor(Math.random() * 1000) + 100;
     if (copyTextToClipboard(`[mpg_spintax  project_id="${mpgGetState('projectId')}" block_id="${randomNumber}"]${inputTextarea.val()}[/mpg_spintax]`)) {
-        toastr.success(__('Spintax code copied to clipboard!', 'multi-pages-plugin'), __('Success', 'multi-pages-plugin'), { timeOut: 3000 });
+        toastr.success(__('Spintax code copied to clipboard!', 'multiple-pages-generator-by-porthas'), __('Success', 'multiple-pages-generator-by-porthas'), { timeOut: 3000 });
     }
 });
 
@@ -43,7 +43,7 @@ jQuery('.spintax-page .cache-info button').on('click', async function (e) {
 
     e.preventDefault();
 
-    let decision = confirm(__('Are you sure, that you want to flush Spintax cache for current project? This action can not be undone.', 'multi-pages-plugin'));
+    let decision = confirm(__('Are you sure, that you want to flush Spintax cache for current project? This action can not be undone.', 'multiple-pages-generator-by-porthas'));
 
     if (decision) {
 
@@ -56,10 +56,10 @@ jQuery('.spintax-page .cache-info button').on('click', async function (e) {
         let projectData = JSON.parse(project)
 
         if (!projectData.success) {
-            toastr.error(projectData.error, __('Can not flush Spintax cache', 'multi-pages-plugin'));
+            toastr.error(projectData.error, __('Can not flush Spintax cache', 'multiple-pages-generator-by-porthas'));
         }
 
-        toastr.success(__('Spintax cache successfully flushed', 'multi-pages-plugin'), __('Done!', 'multi-pages-plugin'))
+        toastr.success(__('Spintax cache successfully flushed', 'multiple-pages-generator-by-porthas'), __('Done!', 'multiple-pages-generator-by-porthas'))
 
         // Заполним значение для поля количества записей в БД для Спинтакс, для текущего проекта
         jQuery('.cache-info .num-rows').text(0);

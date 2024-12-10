@@ -55,7 +55,7 @@ class MPG_ProjectController
             if (isset($_POST['projectName']) && isset($_POST['entityType']) && isset($_POST['templateId'])) {
 
                 $project_id            = isset($_POST['projectId'])      ?        (int) $_POST['projectId'] : null;
-                $project_name          = $_POST['projectName']           ?        sanitize_text_field($_POST['projectName']) :  __('New project', 'mpg');
+                $project_name          = $_POST['projectName']           ?        sanitize_text_field($_POST['projectName']) :  __('New project', 'multiple-pages-generator-by-porthas');
                 $entity_type           =                                          sanitize_text_field($_POST['entityType']);
                 $template_id           = (int) $_POST['templateId'];
                 $apply_condition       = $_POST['applyCondition']        ?        sanitize_text_field($_POST['applyCondition']) : null;
@@ -145,31 +145,30 @@ class MPG_ProjectController
 
 			$ext = MPG_Helper::mpg_get_extension_by_path( $folder_path );
 			if ( ! in_array( $ext, [ 'csv', 'xls', 'xlsx', 'ods' ], true ) ) {
-				throw new Exception( __( 'Unsupported file extension', 'mpg' ) );
+				throw new Exception( __( 'Unsupported file extension', 'multiple-pages-generator-by-porthas' ) );
 			}
 			// Ensure the file is within the intended directory and is readable.
 			if ( ! $folder_path || ( ! is_readable( $folder_path ) || ! str_contains( $folder_path, MPG_DatasetModel::uploads_base_path() ) ) ) {
-				throw new Exception( __( 'The file could not be uploaded. Double-check the file format and size, then try again.', 'mpg' ) );
+				throw new Exception( __( 'The file could not be uploaded. Double-check the file format and size, then try again.', 'multiple-pages-generator-by-porthas' ) );
 			}
 			$headers = MPG_DatasetController::get_headers( $folder_path );
 			if ( empty( $headers ) || ! is_array( $headers ) ) {
-				throw new Exception( __( 'The CSV file contains empty or invalid headers. Please check and ensure all headers are correct.', 'mpg' ) );
+				throw new Exception( __( 'The CSV file contains empty or invalid headers. Please check and ensure all headers are correct.', 'multiple-pages-generator-by-porthas' ) );
 			}
 
 			$rows = MPG_DatasetController::get_rows( $folder_path, 5 );
 			if ( empty( $rows ) || ! is_array( $rows ) ) {
-				throw new Exception( __( 'Some rows in the file are invalid. Double-check the data and try uploading once more.', 'mpg' ) );
+				throw new Exception( __( 'Some rows in the file are invalid. Double-check the data and try uploading once more.', 'multiple-pages-generator-by-porthas' ) );
 			}
 
             $sanitized_filename = sanitize_file_name( basename( $folder_path ) );
 			$new_path = self::get_project_path( $project_id, $sanitized_filename );
 
-            $project = MPG_ProjectModel::get_project_by_id($project_id);
-            $url_structure = ! empty( $project ) ? $project->url_structure : '';
 			// Move the file to mpg-uploads folder.
 			$success = rename( $folder_path, $new_path );
 			if ( ! $success ) {
-				throw new Exception( sprintf( __( 'The file cannot be moved to %s. Ensure the folder has the correct permissions.', 'mpg' ), $new_path ) );
+                // translators: $s the name of the new location.
+				throw new Exception( sprintf( __( 'The file cannot be moved to %s. Ensure the folder has the correct permissions.', 'multiple-pages-generator-by-porthas' ), $new_path ) );
 			}
 			// Delete any file with the same project_id but different extension, after sanitizing each filename.
 			$base_path = MPG_DatasetModel::uploads_base_path();
@@ -239,7 +238,7 @@ class MPG_ProjectController
 	        $timezone                = $args['timezone'] ?? false;
 	        $fetch_date_time         = $args['fetch_date_time'] ?? false;
 	        $notificate_about        = $args['notificate_about'] ?? false;
-	        $notification_email      = $args['notification_email'] ?? false;
+	        $notification_email      = $args['notification_email'] ?? null;
 	        $update_modified_on_sync = $args['update_modified_on_sync'] ?? 'no-update';
 	        $update_modified_on_sync = $periodicity === 'once' ? 'no-update' : $update_modified_on_sync;
 	        $source_type             = false;
@@ -266,13 +265,13 @@ class MPG_ProjectController
             $project = MPG_ProjectModel::get_project_by_id($project_id);
 
 	        if ( empty( $project ) ) {
-		        throw new Exception( __( 'Can\'t get project', 'mpg' ) );
+		        throw new Exception( __( 'Can\'t get project', 'multiple-pages-generator-by-porthas' ) );
 	        }
 
 	        $dataset_path = MPG_DatasetModel::get_dataset_path_by_project( $project );
 
 	        if ( empty( $dataset_path ) ) {
-		        throw new Exception( __( 'Can\'t get dataset path', 'mpg' ) );
+		        throw new Exception( __( 'Can\'t get dataset path', 'multiple-pages-generator-by-porthas' ) );
 	        }
             $urls_array = MPG_ProjectModel::mpg_generate_urls_from_dataset($dataset_path, $url_structure, $space_replacer,true );
             $update_options_array['urls_array'] = json_encode($urls_array['urls_array'], JSON_UNESCAPED_UNICODE);
@@ -282,8 +281,11 @@ class MPG_ProjectController
             // Это список аргументов которые надо передеать в хук.
 
             // now - это для тех случаев, когда человке хочет применить файл сейчас. И ему не нужно заводить крон-таб
-            if ($direct_link && $fetch_date_time && ! in_array( $periodicity, array( 'now', 'once','ondemand' ), true ) && $notificate_about && $notification_email) {
-
+	        if ( ! empty( $direct_link ) && ! empty( $fetch_date_time ) && ! in_array( $periodicity, array(
+			        'now',
+			        'once',
+			        'ondemand'
+		        ), true ) ) {
                 $datetime = DateTime::createFromFormat('Y/m/d H:i', $fetch_date_time, new DateTimeZone($timezone));
                 $hook_execution_time = $datetime->getTimestamp();
 
@@ -346,20 +348,20 @@ class MPG_ProjectController
             $project_id = isset($_POST['projectId']) ? (int) $_POST['projectId'] : null;
 
             if (!$project_id) {
-                throw new Exception(__('Missing project ID', 'mpg'));
+                throw new Exception(__('Missing project ID', 'multiple-pages-generator-by-porthas'));
             }
 
             $project = MPG_ProjectModel::get_project_by_id( $project_id);
 
             if (empty($project)) {
-                throw new Exception(__('Project not found', 'mpg'));
+                throw new Exception(__('Project not found', 'multiple-pages-generator-by-porthas'));
             }
 
             $response = (array) $project;
 
             $dataset_path = ! empty( $response['source_path'] ) ? $response['source_path'] : '';
 	        if ( empty( $dataset_path ) ) {
-		        throw new Exception( __( 'Project dataset not found', 'mpg' ) );
+		        throw new Exception( __( 'Project dataset not found', 'multiple-pages-generator-by-porthas' ) );
 	        }
 
             if ($project->schedule_periodicity && $project->schedule_source_link && $project->schedule_notificate_about) {
@@ -466,12 +468,12 @@ class MPG_ProjectController
             if (update_option('permalink_structure', '/%postname%/')) {
                 echo json_encode([
                     'success' => true,
-                    'data' => __('Permalink structure was changed to /postname/', 'mpg')
+                    'data' => __('Permalink structure was changed to /postname/', 'multiple-pages-generator-by-porthas')
                 ]);
             } else {
                 echo json_encode([
                     'success' => false,
-                    'error' => __('Permalink structure was not changed', 'mpg')
+                    'error' => __('Permalink structure was not changed', 'multiple-pages-generator-by-porthas')
                 ]);
             }
         } catch (Exception $e) {
@@ -508,11 +510,16 @@ class MPG_ProjectController
 		    ] );
 	    } catch ( Exception $e ) {
 
-		    do_action( 'themeisle_log_event', MPG_NAME, sprintf( __( 'Can\'t create sitemap, due to: %s', 'mpg' ), $e->getMessage() ), 'debug', __FILE__, __LINE__ );
+            // translators: %s: the error message.
+		    do_action( 'themeisle_log_event', MPG_NAME, sprintf( __( 'Can\'t create sitemap, due to: %s', 'multiple-pages-generator-by-porthas' ), $e->getMessage() ), 'debug', __FILE__, __LINE__ );
 
 		    echo json_encode( [
 			    'success' => false,
-			    'error'   => __( 'Can\'t create sitemap, due to: ', 'mpg' ) . $e->getMessage()
+			    'error'   => sprintf(
+                    // translators: %s: the error message.
+                    __( 'Can\'t create sitemap, due to: %s', 'multiple-pages-generator-by-porthas' ),
+                    $e->getMessage()
+                )
 		    ] );
 	    }
 
@@ -546,7 +553,7 @@ class MPG_ProjectController
 			$raw_urls_list = ! empty( $project ) ? $project->urls_array : null;
 
 			if ( empty( $raw_urls_list ) ) {
-				throw new Exception( __( 'Project don\'t have any URLs.', 'mpg' ) );
+				throw new Exception( __( 'Project don\'t have any URLs.', 'multiple-pages-generator-by-porthas' ) );
 			}
 
 			$urls_list = json_decode( $raw_urls_list, true );
@@ -597,11 +604,16 @@ class MPG_ProjectController
 			] );
 		} catch ( Exception $e ) {
 
-			do_action( 'themeisle_log_event', MPG_NAME, sprintf( __( 'Can\'t create sitemap, due to: %s', 'mpg' ), $e->getMessage() ), 'debug', __FILE__, __LINE__ );
+            // translators: %s: the error message.
+			do_action( 'themeisle_log_event', MPG_NAME, sprintf( __( 'Can\'t create sitemap, due to: %s', 'multiple-pages-generator-by-porthas' ), $e->getMessage() ), 'debug', __FILE__, __LINE__ );
 
 			echo json_encode( [
 				'success' => false,
-				'error'   => __( 'Can\'t create sitemap, due to: ', 'mpg' ) . $e->getMessage()
+				'error'   => sprintf(
+                    // translators: %s: the error message.
+                    __( 'Can\'t create sitemap, due to: %s', 'multiple-pages-generator-by-porthas' ),
+                    $e->getMessage()
+                )
 			] );
 		}
 
@@ -618,7 +630,7 @@ class MPG_ProjectController
 
 
 	        if ( empty( $project ) || empty( $project->source_path ) ) {
-		        throw new Exception( __( 'Your project has not properly configured source file', 'mpg' ) );
+		        throw new Exception( __( 'Your project has not properly configured source file', 'multiple-pages-generator-by-porthas' ) );
 	        }
 	        $source_path = MPG_DatasetModel::get_dataset_path_by_project( $project );
 
@@ -640,27 +652,42 @@ class MPG_ProjectController
 
 
             // Теперь, когда мы заменили файл с данными на тот, что пользователь указал по ссылке пользователь
-            if ($notificate_about === 'every-time') {
-                wp_mail(
-                    $notification_email,
-                    __('MPG schedule execution report: ok', 'mpg'),
-                    __('Hi. <br>Scheduled task was completed successfully. File was deployed: ', 'mpg') . $direct_link
-                );
-            }
+	        if ( $notificate_about === 'every-time' && ! empty( $notification_email ) ) {
+		        if ($notificate_about === 'every-time') {
+                    wp_mail(
+                        $notification_email,
+                        __('MPG schedule execution report: ok', 'multiple-pages-generator-by-porthas'),
+                        __('Hi.', 'multiple-pages-generator-by-porthas')
+                        . ' <br>'
+                        . __('Scheduled task was completed successfully.', 'multiple-pages-generator-by-porthas')
+                        . ' '
+                        . __('File was deployed:', 'multiple-pages-generator-by-porthas') . ' ' . $direct_link
+                    );
+                }
+	        }
 
         } catch (Exception $e) {
 
-            do_action( 'themeisle_log_event', MPG_NAME, sprintf( __( 'Hi. <br>In process of execution the next error occurred: %s', 'mpg' ), $e->getMessage() ), 'debug', __FILE__, __LINE__ );
+            // translators: %s: the error message.
+            do_action( 'themeisle_log_event', MPG_NAME, sprintf( __( 'Hi. <br>In process of execution the next error occurred: %s', 'multiple-pages-generator-by-porthas' ), $e->getMessage() ), 'debug', __FILE__, __LINE__ );
 
             if ($notificate_about === 'errors-only') {
                 wp_mail(
                     $notification_email,
-                    __('MPG schedule execution report: failed', 'mpg'),
-                    __('Hi. <br>In process of execution the next error occurred: ', 'mpg') . $e->getMessage()
+                    __('MPG schedule execution report: failed', 'multiple-pages-generator-by-porthas'),
+                    __('Hi.', 'multiple-pages-generator-by-porthas')
+                    . ' <br>'
+                    . __('In process of execution the next error occurred:', 'multiple-pages-generator-by-porthas')
+                    . ' '
+                    . $e->getMessage()
                 );
             }
 
-            MPG_LogsController::mpg_write($project_id, 'warning', __('Exception in scheduled execution: ', 'mpg') . $e->getMessage());
+            MPG_LogsController::mpg_write(
+                $project_id, 
+                'warning',
+                __('Exception in scheduled execution:', 'multiple-pages-generator-by-porthas') . ' ' . $e->getMessage()
+            );
         }
 
         // If cron task is repetitive - we should't delete this option. Because task still isn't completed
@@ -685,7 +712,7 @@ class MPG_ProjectController
 
             $project_id = isset($_POST['projectId']) ? (int) $_POST['projectId'] : null;
 
-            $project = (array) MPG_ProjectModel::get_project_by_id($project_id);
+            $project = MPG_ProjectModel::get_project_by_id($project_id);
 
             MPG_ProjectModel::mpg_remove_cron_task_by_project_id($project_id, $project);
 
@@ -715,11 +742,11 @@ class MPG_ProjectController
             $hook_priority = sanitize_text_field($_POST['hook_priority']);
 
             if ($hook_name !== 'pre_handle_404' && $hook_name !== 'posts_selection' && $hook_name !== 'template_redirect' && $hook_name !== 'wp') {
-                throw new Exception(__('Hook name is not correct', 'mpg'));
+                throw new Exception(__('Hook name is not correct', 'multiple-pages-generator-by-porthas'));
             }
 
             if ($hook_priority !== '1' && $hook_priority !== '10' && $hook_priority !== '100') {
-                throw new Exception(__('Hook priority is not correct', 'mpg'));
+                throw new Exception(__('Hook priority is not correct', 'multiple-pages-generator-by-porthas'));
             }
 
             update_option('mpg_hook_name', $hook_name);
@@ -768,11 +795,11 @@ class MPG_ProjectController
             $hook_priority = sanitize_text_field($_POST['cache_hook_priority']);
 
             if ($hook_name !== 'get_footer' && $hook_name !== 'wp_footer' && $hook_name !== 'wp_print_footer_scripts') {
-                throw new Exception(__('Hook name is not correct', 'mpg'));
+                throw new Exception(__('Hook name is not correct', 'multiple-pages-generator-by-porthas'));
             }
 
             if ($hook_priority !== '1' && $hook_priority !== '10' && $hook_priority !== '100' &&  $hook_priority !== '10000') {
-                throw new Exception(__('Hook priority is not correct', 'mpg'));
+                throw new Exception(__('Hook priority is not correct', 'multiple-pages-generator-by-porthas'));
             }
 
             update_option('mpg_cache_hook_name', $hook_name);
@@ -821,7 +848,7 @@ class MPG_ProjectController
             $basepath = sanitize_text_field($_POST['basepath']);
 
             if ($basepath !== 'abspath' && $basepath !== 'wp-content') {
-                throw new Exception(__('Basepath is not correct', 'mpg'));
+                throw new Exception(__('Basepath is not correct', 'multiple-pages-generator-by-porthas'));
             }
 
             switch ($basepath) {
@@ -879,7 +906,7 @@ class MPG_ProjectController
 
             if ( 'delete_project' === $action && $project_id ) {
 	            if ( empty( $nonce ) || false === wp_verify_nonce( $nonce, 'mpg-delete-project' ) ) {
-		            wp_die( __( 'Security check failed', 'mpg' ) );
+		            wp_die( __( 'Security check failed', 'multiple-pages-generator-by-porthas' ) );
 	            }
 
 	            $redirect = false;
@@ -896,12 +923,12 @@ class MPG_ProjectController
 	            $redirect = admin_url( 'admin.php?page=mpg-project-builder' );
             }elseif ( 'clone_project' === $action && $project_id){
 	            if ( empty( $nonce ) || false === wp_verify_nonce( $nonce, 'mpg-clone-project' ) ) {
-		            wp_die( __( 'Security check failed', 'mpg' ) );
+		            wp_die( __( 'Security check failed', 'multiple-pages-generator-by-porthas' ) );
 	            }
 
 	            $cloned_id = $projects_list_manage->clone_project( $project_id );
 	            if ( empty( $cloned_id ) ) {
-		            wp_die( __( 'Error while cloning project', 'mpg' ) );
+		            wp_die( __( 'Error while cloning project', 'multiple-pages-generator-by-porthas' ) );
 	            }
 	            wp_redirect( admin_url( add_query_arg(
 		            array(
@@ -914,7 +941,7 @@ class MPG_ProjectController
                 die();
             }elseif ( 'export_all_projects' === $action){
                 if ( empty( $nonce ) || false === wp_verify_nonce( $nonce, 'mpg-export-projects' ) ) {
-                    wp_die( __( 'Security check failed', 'mpg' ) );
+                    wp_die( __( 'Security check failed', 'multiple-pages-generator-by-porthas' ) );
                 }
 
                 $projects_list_manage->export_projects( $project_id );
@@ -928,7 +955,7 @@ class MPG_ProjectController
                 die();
             } elseif ( 'mpg_import_projects' === $action){
                 if ( empty( $nonce ) || false === wp_verify_nonce( $nonce, 'mpg_import_projects' ) ) {
-                    wp_die( __( 'Security check failed', 'mpg' ) );
+                    wp_die( __( 'Security check failed', 'multiple-pages-generator-by-porthas' ) );
                 }
 
                 $projects_list_manage->import_projects();
@@ -958,7 +985,7 @@ class MPG_ProjectController
 
             $option = 'per_page';
             $args   = array(
-                'label'   => __( 'Number of items Per Page : ', 'mpg' ),
+                'label'   => __( 'Number of items Per Page', 'multiple-pages-generator-by-porthas' ) . ' : ',
                 'default' => 20,
                 'option'  => 'mpg_projects_per_page',
             );
@@ -977,13 +1004,13 @@ class MPG_ProjectController
         if ( ! empty( $_GET['deleted'] ) ) {
         ?>
         <div class="notice notice-success is-dismissible">
-            <p><?php esc_html_e( 'Successfully deleted.', 'mpg' ); ?></p>
+            <p><?php esc_html_e( 'Successfully deleted.', 'multiple-pages-generator-by-porthas' ); ?></p>
         </div>
         <?php
         } elseif( ! empty( $_GET['imported'] ) ) {
             ?>
             <div class="notice notice-success is-dismissible">
-                <p><?php esc_html_e( 'Successfully imported.', 'mpg' ); ?></p>
+                <p><?php esc_html_e( 'Successfully imported.', 'multiple-pages-generator-by-porthas' ); ?></p>
             </div>
             <?php
         }
@@ -999,7 +1026,7 @@ class MPG_ProjectController
             if ( ! isset( $_POST['license_key'] ) || ! isset( $_POST['_action'] ) ) {
                 wp_send_json(
                     array(
-                        'message' => __( 'Invalid Action. Please refresh the page and try again.', 'neve-pro-addon' ),
+                        'message' => __( 'Invalid Action. Please refresh the page and try again.', 'multiple-pages-generator-by-porthas' ),
                         'success' => false,
                     )
                 );
@@ -1022,10 +1049,10 @@ class MPG_ProjectController
 
             echo json_encode([
                 'success' => true,
-                'message' => $action === 'activate' ? esc_html__( 'Activated', 'mpg' ) : esc_html__( 'Deactivated', 'mpg' ),
+                'message' => $action === 'activate' ? esc_html__( 'Activated', 'multiple-pages-generator-by-porthas' ) : esc_html__( 'Deactivated', 'multiple-pages-generator-by-porthas' ),
                 'key'     =>  'valid' === $status ? str_repeat( '*', 30 ) . substr( $key, - 5 ) : '',
-                'button_text' => $action === 'activate' ? esc_html__( 'Deactivate', 'mpg' ) : esc_html__( 'Activate', 'mpg' ),
-                'expiration'  => '<span class="dashicons dashicons-yes-alt"></span>' . esc_html__( 'Valid — Expires', 'mpg' ) . ' ' . mpg_app()->get_license_expiration_date() . '</p>',
+                'button_text' => $action === 'activate' ? esc_html__( 'Deactivate', 'multiple-pages-generator-by-porthas' ) : esc_html__( 'Activate', 'multiple-pages-generator-by-porthas' ),
+                'expiration'  => '<span class="dashicons dashicons-yes-alt"></span>' . esc_html__( 'Valid — Expires', 'multiple-pages-generator-by-porthas' ) . ' ' . mpg_app()->get_license_expiration_date() . '</p>',
                 'action'      => $action,
             ]);
             wp_die();
@@ -1083,14 +1110,14 @@ class MPG_ProjectController
                 wp_send_json(
                     array(
                         'status'  => 0,
-                        'message' => __( 'Something went wrong please try again.', 'mpg' ),
+                        'message' => __( 'Something went wrong please try again.', 'multiple-pages-generator-by-porthas' ),
                     )
                 );
             } else {
                 wp_send_json(
                     array(
                         'status'  => 0,
-                        'message' => __( 'Please enter a valid email address.', 'mpg' ),
+                        'message' => __( 'Please enter a valid email address.', 'multiple-pages-generator-by-porthas' ),
                     )
                 );
             }

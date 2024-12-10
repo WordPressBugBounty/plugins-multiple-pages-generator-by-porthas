@@ -15,18 +15,18 @@ const FilterRepeater = ({
 
     // Default labels
     const defaultLabels = {
-        applyFilters: __('How to Apply Filters', 'multi-pages-plugin'),
-        matchAll: __('Show items that match all filters', 'multi-pages-plugin'),
-        matchAny: __('Show items that match any filter', 'multi-pages-plugin'),
-        emptyFilter: __('Empty filter', 'multi-pages-plugin'),
-        collapse: __('Collapse', 'multi-pages-plugin'),
-        expand: __('Expand', 'multi-pages-plugin'),
-        removeFilter: __('Remove filter', 'multi-pages-plugin'),
-        column: __('Column', 'multi-pages-plugin'),
-        selectColumn: __('Select a column...', 'multi-pages-plugin'),
-        operator: __('Operator', 'multi-pages-plugin'),
-        value: __('Value', 'multi-pages-plugin'),
-        addFilter: __('Add filter', 'multi-pages-plugin'),
+        applyFilters: __('How to Apply Filters', 'multiple-pages-generator-by-porthas'),
+        matchAll: __('Show items that match all filters', 'multiple-pages-generator-by-porthas'),
+        matchAny: __('Show items that match any filter', 'multiple-pages-generator-by-porthas'),
+        emptyFilter: __('Empty filter', 'multiple-pages-generator-by-porthas'),
+        collapse: __('Collapse', 'multiple-pages-generator-by-porthas'),
+        expand: __('Expand', 'multiple-pages-generator-by-porthas'),
+        removeFilter: __('Remove filter', 'multiple-pages-generator-by-porthas'),
+        column: __('Column', 'multiple-pages-generator-by-porthas'),
+        selectColumn: __('Select a column...', 'multiple-pages-generator-by-porthas'),
+        operator: __('Operator', 'multiple-pages-generator-by-porthas'),
+        value: __('Value', 'multiple-pages-generator-by-porthas'),
+        addFilter: __('Add filter', 'multiple-pages-generator-by-porthas'),
     };
 
     // Merge default labels with provided labels

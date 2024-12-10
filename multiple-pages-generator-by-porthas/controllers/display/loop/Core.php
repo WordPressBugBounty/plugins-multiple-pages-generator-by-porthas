@@ -53,20 +53,20 @@ abstract class Core extends Base_Display {
 	 */
 	public function render( int $project_id, array $args, string $content ): string {
 		if ( empty( $project_id ) || ( $project_data = \MPG_ProjectModel::get_project_by_id( $project_id ) ) === false ) {
-			throw new \Exception( __( 'Invalid or empty project id provided.', 'mpg' ) );
+			throw new \Exception( __( 'Invalid or empty project id provided.', 'multiple-pages-generator-by-porthas' ) );
 		}
 		if ( ! empty( $args['direction'] ) && ! in_array( $args['direction'], array_keys( $this->get_order() ) ) ) {
-			throw new \Exception( __( 'Attribute "direction" may be equals to "asc", "desc" or "random"', 'mpg' ) );
+			throw new \Exception( __( 'Attribute "direction" may be equals to "asc", "desc" or "random"', 'multiple-pages-generator-by-porthas' ) );
 		}
 
 		if ( ! empty( $args['order_by'] ) && empty( $args['direction'] ) && $args['direction'] !== self::ORDER_BY_RANDOM ) {
-			throw new \Exception( __( 'Attribute `direction` must be used with `order-by` attribute. Exclusion: if direction is random', 'mpg' ) );
+			throw new \Exception( __( 'Attribute `direction` must be used with `order-by` attribute. Exclusion: if direction is random', 'multiple-pages-generator-by-porthas' ) );
 		}
 
 		$headers       = \MPG_ProjectModel::get_headers_from_project( $project_data );
 		$dataset_array = \MPG_Helper::mpg_get_dataset_array( $project_data );
 		if ( empty( $dataset_array ) ) {
-			throw new \Exception( __( 'No dataset found for project.', 'mpg' ) );
+			throw new \Exception( __( 'No dataset found for project.', 'multiple-pages-generator-by-porthas' ) );
 		}
 		$limit = ! empty( $args['limit'] ) ? intval( $args['limit'] ) : 10000; // We really don't need to show more than this items on a page.
 
@@ -89,7 +89,7 @@ abstract class Core extends Base_Display {
 			}
 		}
 		if ( empty( $filtered_dataset_index ) && ! empty( $args['conditions']['conditions'] ) ) {
-			throw new \Exception( __( 'No data found for the provided conditions.', 'mpg' ) );
+			throw new \Exception( __( 'No data found for the provided conditions.', 'multiple-pages-generator-by-porthas' ) );
 		}
 
 		if ( empty( $filtered_dataset_index ) ) {
@@ -101,7 +101,7 @@ abstract class Core extends Base_Display {
 				shuffle( $filtered_dataset_index );
 			} elseif ( ! empty( $args['order_by'] ) ) {
 				if ( ( $order_index = \MPG_ProjectModel::headers_have_column( $headers, $args['order_by'] ) ) === false ) {
-					throw new \Exception( __( 'Invalid column to order by.', 'mpg' ) );
+					throw new \Exception( __( 'Invalid column to order by.', 'multiple-pages-generator-by-porthas' ) );
 				}
 				$dataset_to_order = [];
 				//We extract the data from the column we want to sort by.
@@ -164,9 +164,9 @@ abstract class Core extends Base_Display {
 	 */
 	public function get_order() {
 		return [
-			self::ORDER_BY_RANDOM => __( 'Random', 'mpg' ),
-			self::ORDER_BY_ASC    => __( 'Ascending', 'mpg' ),
-			self::ORDER_BY_DESC   => __( 'Descending', 'mpg' ),
+			self::ORDER_BY_RANDOM => __( 'Random', 'multiple-pages-generator-by-porthas' ),
+			self::ORDER_BY_ASC    => __( 'Ascending', 'multiple-pages-generator-by-porthas' ),
+			self::ORDER_BY_DESC   => __( 'Descending', 'multiple-pages-generator-by-porthas' ),
 		];
 	}
 }

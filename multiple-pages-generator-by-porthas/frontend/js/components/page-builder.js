@@ -10,7 +10,7 @@ import {
     rebuildSandboxShortcode,
     getProjectIdFromUrl,
 } from '../helper.js';
-import {__} from '@wordpress/i18n';
+import {__, sprintf} from '@wordpress/i18n';
 import {Upload} from '../../libs/jquery.ajaxFileUpload.js';
 import {
     fillCustomTypeDropdown,
@@ -36,8 +36,8 @@ var projectSourceBlockSave = async function (pid = 0) {
 
     if (!fileUrl) {
         toastr.warning(
-            __('You need to paste link to file before using it', 'multi-pages-plugin'),
-            __('Missing URL', 'multi-pages-plugin')
+            __('You need to paste link to file before using it', 'multiple-pages-generator-by-porthas'),
+            __('Missing URL', 'multiple-pages-generator-by-porthas')
         );
         return;
     }
@@ -60,14 +60,17 @@ var projectSourceBlockSave = async function (pid = 0) {
     if (!uploadFileRawResponse) {
         toastr.error(
             __(
-                'Something went wrong while saving project data. Try reload page', 'multi-pages-plugin')
+                'Something went wrong while saving project data. Try reload page', 'multiple-pages-generator-by-porthas')
         );
         return;
     }
     let uploadFileResponse = JSON.parse(uploadFileRawResponse);
 
     if (uploadFileResponse.success !== true) {
-        throw uploadFileResponse.error;
+        toastr.error(
+            uploadFileResponse.error
+        );
+        return;
     }
 
     mpgUpdateState('source', {
@@ -76,8 +79,8 @@ var projectSourceBlockSave = async function (pid = 0) {
     });
 
     toastr.success(
-        __('We will use this link to file as source', 'multi-pages-plugin'),
-        __('Uploaded successfully!', 'multi-pages-plugin'),
+        __('We will use this link to file as source', 'multiple-pages-generator-by-porthas'),
+        __('Uploaded successfully!', 'multiple-pages-generator-by-porthas'),
         {timeOut: 5000}
     );
 
@@ -95,8 +98,8 @@ var projectSourceBlockSave = async function (pid = 0) {
         toastr.error(
             __(
                 'Something went wrong while saving project data. Try reload page'
-                , 'multi-pages-plugin'),
-            __('Can not update project', 'multi-pages-plugin')
+                , 'multiple-pages-generator-by-porthas'),
+            __('Can not update project', 'multiple-pages-generator-by-porthas')
         );
         return;
     }
@@ -161,10 +164,11 @@ var mainProjectSave = async function () {
 
     if (!project.success) {
         toastr.error(
-            __(
-                'Something went wrong while saving project data. Details:'
-                , 'multi-pages-plugin') + project.error,
-            __('Can not update project', 'multi-pages-plugin')
+            __( 'Something went wrong while saving project data.' , 'multiple-pages-generator-by-porthas')
+            + ' '
+            // translators: %s: the error message.
+            + sprintf( __( 'Details: %s' , 'multiple-pages-generator-by-porthas'), project.error ),
+            __('Can not update project', 'multiple-pages-generator-by-porthas')
         );
         return;
     }
@@ -214,8 +218,8 @@ var projectUrlBlockSave = async function (pid = 0) {
 
     if (!parsedUrlStructure.includes('{{mpg_')) {
         toastr.warning(
-            __('Your URL must contain at least one shortcode', 'multi-pages-plugin'),
-            __('Wrong URL structure', 'multi-pages-plugin')
+            __('Your URL must contain at least one shortcode', 'multiple-pages-generator-by-porthas'),
+            __('Wrong URL structure', 'multiple-pages-generator-by-porthas')
         );
         return;
     }
@@ -276,15 +280,15 @@ var projectUrlBlockSave = async function (pid = 0) {
         toastr.error(
             __(
                 'Something went wrong while saving project data. Try reload page'
-                , 'multi-pages-plugin'),
-            __('Can not update project', 'multi-pages-plugin')
+                , 'multiple-pages-generator-by-porthas'),
+            __('Can not update project', 'multiple-pages-generator-by-porthas')
         );
         return;
     }
 
     toastr.success(
-        __('Project saved sucessully', 'multi-pages-plugin'),
-        __('Success', 'multi-pages-plugin')
+        __('Project saved successfully', 'multiple-pages-generator-by-porthas'),
+        __('Success', 'multiple-pages-generator-by-porthas')
     );
 
     delete dataObject.securityNonce;
@@ -317,9 +321,7 @@ export function pageBuilderInit() {
         e.preventDefault();
 
         let decision = confirm(
-            __(
-                'Are you sure, that you want to delete project? This action can not be undone.'
-                , 'multi-pages-plugin')
+            __('Are you sure, that you want to delete project? This action can not be undone.', 'multiple-pages-generator-by-porthas')
         );
 
         if (decision) {
@@ -336,8 +338,8 @@ export function pageBuilderInit() {
             }
 
             toastr.success(
-                __('Your project was successfully deleted', 'multi-pages-plugin'),
-                __('Deleted!', 'multi-pages-plugin')
+                __('Your project was successfully deleted', 'multiple-pages-generator-by-porthas'),
+                __('Deleted!', 'multiple-pages-generator-by-porthas')
             );
 
             setTimeout(() => {
@@ -435,8 +437,8 @@ export function pageBuilderInit() {
         });
 
         toastr.success(
-            __('We will use this file as source', 'multi-pages-plugin'),
-            __('Got it!', 'multi-pages-plugin'),
+            __('We will use this file as source', 'multiple-pages-generator-by-porthas'),
+            __('Got it!', 'multiple-pages-generator-by-porthas'),
             {timeOut: 5000}
         );
 
@@ -458,13 +460,13 @@ export function pageBuilderInit() {
         if (!sourceBlockResponse.success) {
             toastr.error(
                 __(
-                    'Something went wrong while saving project data. Try reload page', 'multi-pages-plugin'),
-                __('Can not update project', 'multi-pages-plugin')
+                    'Something went wrong while saving project data. Try reload page', 'multiple-pages-generator-by-porthas'),
+                __('Can not update project', 'multiple-pages-generator-by-porthas')
             );
         }
 
         if (!setHeaders(sourceBlockResponse)) {
-            throw __('Can not get headers form source file', 'multi-pages-plugin');
+            throw __('Can not get headers form source file', 'multiple-pages-generator-by-porthas');
         }
 
         const headers = mpgGetState('headers');
@@ -505,8 +507,8 @@ export function pageBuilderInit() {
         if (fieldValue === '0') {
             toastr.warning(
                 __(
-                    'Worksheet ID cannot be zero. If your document has one sheet or you would like to use the first sheet - just keep this field empty', 'multi-pages-plugin'),
-                __('Wrong worksheet id', 'multi-pages-plugin'),
+                    'Worksheet ID cannot be zero. If your document has one sheet or you would like to use the first sheet - just keep this field empty', 'multiple-pages-generator-by-porthas'),
+                __('Wrong worksheet id', 'multiple-pages-generator-by-porthas'),
                 {timeOut: 10000}
             );
         }
@@ -548,7 +550,8 @@ export function pageBuilderInit() {
                 // success: function (res) {  Может пригодится чтобы прятать лоадер }
             },
             language: {
-                "lengthMenu": "Show _MENU_ entries",
+                // translators: _MENU_ will be replaced with length (a number) of the entries.
+                "lengthMenu": __( "Show _MENU_ entries",  'multiple-pages-generator-by-porthas' )
             }
         };
 
@@ -621,7 +624,7 @@ export function pageBuilderInit() {
         toastr.options.preventDuplicates = true;
         if (deniedChars.includes(event.key)) {
             toastr.warning(
-                __('Unsupported char. Supported only _, -, /, ~, ., =', 'multi-pages-plugin'),
+                __('Unsupported char. Supported only _, -, /, ~, ., =', 'multiple-pages-generator-by-porthas'),
                 'Warning'
             );
             return false;
@@ -672,7 +675,7 @@ export function pageBuilderInit() {
 
     jQuery('#mpg_unschedule_task').on('click', async function () {
         let decision = confirm(
-            __('Are you sure, that you want to unschedule task?', 'multi-pages-plugin')
+            __('Are you sure, that you want to unschedule task?', 'multiple-pages-generator-by-porthas')
         );
 
         if (decision) {
@@ -687,14 +690,14 @@ export function pageBuilderInit() {
             if (!projectData.success) {
                 toastr.error(
                     projectData.error,
-                    __('Can not unschedule task', 'multi-pages-plugin')
+                    __('Can not unschedule task', 'multiple-pages-generator-by-porthas')
                 );
                 return false;
             }
 
             toastr.success(
-                __('Task was successfully unschedule', 'multi-pages-plugin'),
-                __('Unscheduled!', 'multi-pages-plugin')
+                __('Task was successfully unschedule', 'multiple-pages-generator-by-porthas'),
+                __('Unscheduled!', 'multiple-pages-generator-by-porthas')
             );
 
             setTimeout(() => {
@@ -773,9 +776,9 @@ export function pageBuilderInit() {
 
             if (!data.success) {
                 event.target.checked = !event.target.checked;
-                toastr.error(data.error, __('Error', 'multi-pages-plugin'));
+                toastr.error(data.error, __('Error', 'multiple-pages-generator-by-porthas'));
             }else{
-                toastr.success(__('Success', 'multi-pages-plugin'), { timeOut: 5000 });
+                toastr.success(__('Success', 'multiple-pages-generator-by-porthas'), { timeOut: 5000 });
             }
         });
 

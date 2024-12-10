@@ -331,7 +331,7 @@ class MPG_ProjectModel
                 $ext = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
 
 	            if ( ! in_array( $ext, [ 'csv', 'xls', 'xlsx', 'ods' ] ) ) {
-		            throw new Exception( __( 'Unsupported file extension', 'mpg' ) );
+		            throw new Exception( __( 'Unsupported file extension', 'multiple-pages-generator-by-porthas' ) );
 	            }
 
                 $destination = MPG_DatasetModel::uploads_base_path() . 'temp-unlinked_file.' . $ext;
@@ -345,8 +345,8 @@ class MPG_ProjectModel
                     echo json_encode(['success' => true, 'data' => ['path' => $destination, 'original_file_url' => $filename]]);
                     wp_die();
                 } else {
-                    do_action( 'themeisle_log_event', MPG_NAME, __('Error while uploading file', 'mpg'), 'debug', __FILE__, __LINE__ );
-	                throw new Exception( __( 'Error while uploading file', 'mpg' ) );
+                    do_action( 'themeisle_log_event', MPG_NAME, __('Error while uploading file', 'multiple-pages-generator-by-porthas'), 'debug', __FILE__, __LINE__ );
+	                throw new Exception( __( 'Error while uploading file', 'multiple-pages-generator-by-porthas' ) );
                 }
             }
         } catch (Exception $e) {
@@ -497,9 +497,26 @@ class MPG_ProjectModel
 			return self::$projects[ $project_id ];
 		} catch (Exception $e) {
 
-			do_action( 'themeisle_log_event', MPG_NAME, sprintf( 'Can\'t getproject by id. Details: %s', $e->getMessage() ), 'debug', __FILE__, __LINE__ );
+			do_action(
+                'themeisle_log_event',
+                MPG_NAME,
+                __('Can\'t get project by id.', 'multiple-pages-generator-by-porthas') . ' ' . sprintf(
+                    // translators: %s: the error message.
+                    __('Details: %s', 'multiple-pages-generator-by-porthas'),
+                    $e->getMessage()
+                ),
+                'debug',
+                __FILE__,
+                __LINE__
+            );
 
-			throw new Exception(__('Can\'t getproject by id. Details:', 'mpg') . $e->getMessage());
+			throw new Exception(
+                __('Can\'t get project by id.', 'multiple-pages-generator-by-porthas') . ' ' . sprintf(
+                    // translators: %s: the error message.
+                    __('Details: %s', 'multiple-pages-generator-by-porthas'),
+                    $e->getMessage()
+                )
+            );
 		}
 	}
 	public static function update_last_check($project_id){
@@ -537,9 +554,26 @@ class MPG_ProjectModel
             return true;
         } catch (Exception $e) {
 
-            do_action( 'themeisle_log_event', MPG_NAME, sprintf( 'Can\'t update project by ID. Details: %s', $e->getMessage() ), 'debug', __FILE__, __LINE__ );
+            do_action(
+                'themeisle_log_event',
+                MPG_NAME,
+                __('Can\'t update project by ID.', 'multiple-pages-generator-by-porthas') . ' ' . sprintf(
+                    // translators: %s: the error message.
+                    __('Details: %s', 'multiple-pages-generator-by-porthas'),
+                    $e->getMessage()
+                ),
+                'debug',
+                __FILE__,
+                __LINE__
+            );
 
-            throw new Exception(__('Can\'t update project by ID. Details:', 'mpg') . $e->getMessage());
+            throw new Exception(
+                __('Can\'t update project by ID.', 'multiple-pages-generator-by-porthas') . ' ' . sprintf(
+                    // translators: %s: the error message.
+                    __('Details: %s', 'multiple-pages-generator-by-porthas'),
+                    $e->getMessage()
+                )
+            );
         }
     }
 
@@ -558,9 +592,26 @@ class MPG_ProjectModel
             ]);
         } catch (Exception $e) {
 
-            do_action( 'themeisle_log_event', MPG_NAME, sprintf( 'Can\'t get all projects Details: %s', $e->getMessage() ), 'debug', __FILE__, __LINE__ );
+            do_action(
+                'themeisle_log_event',
+                MPG_NAME,
+                __('Can\'t get all projects.', 'multiple-pages-generator-by-porthas') . ' ' . sprintf(
+                    // translators: %s: the error message.
+                    __('Details: %s', 'multiple-pages-generator-by-porthas'),
+                    $e->getMessage()
+                ),
+                'debug',
+                __FILE__,
+                __LINE__
+            );
 
-            throw new Exception(__('Can\'t get all projects Details:', 'mpg') . $e->getMessage());
+            throw new Exception(
+                __('Can\'t get all projects.', 'multiple-pages-generator-by-porthas') . ' ' . sprintf(
+                    // translators: %s: the error message.
+                    __('Details: %s', 'multiple-pages-generator-by-porthas'),
+                    $e->getMessage()
+                )
+            );
         }
 
         wp_die();
@@ -576,9 +627,26 @@ class MPG_ProjectModel
             return $wpdb->delete($wpdb->prefix . MPG_Constant::MPG_PROJECTS_TABLE, ['id' => $project_id], ['%d']);
         } catch (Exception $e) {
 
-            do_action( 'themeisle_log_event', MPG_NAME, sprintf( 'Can\'t delete project. Details: %s', $e->getMessage() ), 'debug', __FILE__, __LINE__ );
+            do_action(
+                'themeisle_log_event',
+                MPG_NAME,
+                __('Can\'t delete project.', 'multiple-pages-generator-by-porthas') . ' ' . sprintf(
+                    // translators: %s: the error message.
+                    __('Details: %s', 'multiple-pages-generator-by-porthas'),
+                    $e->getMessage()
+                ),
+                'debug',
+                __FILE__,
+                __LINE__
+            );
 
-            throw new Exception(__('Can\'t delete project. Details:', 'mpg') . $e->getMessage());
+            throw new Exception(
+                __('Can\'t delete project.', 'multiple-pages-generator-by-porthas') . ' ' . sprintf(
+                    // translators: %s: the error message.
+                    __('Details: %s', 'multiple-pages-generator-by-porthas'),
+                    $e->getMessage()
+                )
+            );
         }
     }
 
@@ -590,16 +658,18 @@ class MPG_ProjectModel
             if (file_exists($path)) {
 
                 if (!unlink($path)) {
-                    throw new Exception(__('Can\'t delete file.', 'mpg'));
+                    throw new Exception(__('Can\'t delete file.', 'multiple-pages-generator-by-porthas'));
                 }
             }
 
             return true;
         } catch (Exception $e) {
 
-            do_action( 'themeisle_log_event', MPG_NAME, sprintf( 'Details: %s', $e->getMessage() ), 'debug', __FILE__, __LINE__ );
+            // translators: %s: the error message.
+            do_action( 'themeisle_log_event', MPG_NAME, sprintf( __('Details: %s', 'multiple-pages-generator-by-porthas'), $e->getMessage() ), 'debug', __FILE__, __LINE__ );
 
-            throw new Exception(__('Details: ' . $e->getMessage()));
+            // translators: %s: the error message.
+            throw new Exception( sprintf( __('Details: %s', 'multiple-pages-generator-by-porthas'), $e->getMessage() ));
         }
     }
 
@@ -625,9 +695,7 @@ class MPG_ProjectModel
     {
 
         try {
-
-            if ($project->schedule_source_link && $project->schedule_notificate_about && $project->schedule_periodicity && $project->schedule_notification_email) {
-
+            if ($project->schedule_source_link && $project->schedule_notificate_about && $project->schedule_periodicity) {
                 $cron_arguments = [
                     (int) $project_id,
                     $project->schedule_source_link,
@@ -635,7 +703,6 @@ class MPG_ProjectModel
                     $project->schedule_periodicity,
                     $project->schedule_notification_email
                 ];
-
                 wp_clear_scheduled_hook('mpg_schedule_execution', $cron_arguments);
 
                 MPG_ProjectModel::mpg_update_project_by_id($project_id, [
@@ -648,8 +715,8 @@ class MPG_ProjectModel
 
                 return true;
             } else {
-                do_action( 'themeisle_log_event', MPG_NAME, __('Some of needed values is missing, please, recreate task.', 'mpg'), 'debug', __FILE__, __LINE__ );
-                throw new Exception(__('Some of needed values is missing, please, recreate task.', 'mpg'));
+                do_action( 'themeisle_log_event', MPG_NAME, __('Some of needed values is missing, please, recreate task.', 'multiple-pages-generator-by-porthas'), 'debug', __FILE__, __LINE__ );
+                throw new Exception(__('Some of needed values is missing, please, recreate task.', 'multiple-pages-generator-by-porthas'));
             }
         } catch (Exception $e) {
             do_action( 'themeisle_log_event', MPG_NAME, $e->getMessage(), 'debug', __FILE__, __LINE__ );
@@ -723,8 +790,8 @@ class MPG_ProjectModel
             $start_end_slashes_trimed
         );
 
-        // Заменяем все спец. символы, типа ' & * @ # $ % в
-        $special_chars_trimmed =  preg_replace('/\W/mu', '', $escaped_spaces);
+
+        $special_chars_trimmed =  preg_replace('/[^\w\?\&]/mu', '', $escaped_spaces);
 
         // То что раньше было пробелом - заменяем на space_replacer
         $back_to_allowed_chars = str_replace(
@@ -754,9 +821,26 @@ class MPG_ProjectModel
             return $storage;
         } catch (Exception $e) {
 
-            do_action( 'themeisle_log_event', MPG_NAME, sprintf( 'Can\'t get all projects Details: %s', $e->getMessage() ), 'debug', __FILE__, __LINE__ );
+            do_action(
+                'themeisle_log_event',
+                MPG_NAME,
+                __('Can\'t get all projects.', 'multiple-pages-generator-by-porthas') . ' ' . sprintf(
+                    // translators: %s: the error message.
+                    __('Details: %s', 'multiple-pages-generator-by-porthas'),
+                    $e->getMessage()
+                ),
+                'debug',
+                __FILE__,
+                __LINE__
+            );
 
-            throw new Exception(__('Can\'t get all projects Details:', 'mpg') . $e->getMessage());
+            throw new Exception(
+                __('Can\'t get all projects.', 'multiple-pages-generator-by-porthas') . ' ' . sprintf(
+                    // translators: %s: the error message.
+                    __('Details: %s', 'multiple-pages-generator-by-porthas'),
+                    $e->getMessage()
+                ),
+            );
         }
     }
 
@@ -847,9 +931,26 @@ class MPG_ProjectModel
             return array_map( 'intval', array_column( $ids, 'id' ) );
         } catch (Exception $e) {
 
-            do_action( 'themeisle_log_event', MPG_NAME, sprintf( 'Can\'t get all projects Details: %s', $e->getMessage() ), 'debug', __FILE__, __LINE__ );
+            do_action(
+                'themeisle_log_event',
+                MPG_NAME,
+                __('Can\'t get all projects.', 'multiple-pages-generator-by-porthas') . ' ' . sprintf(
+                    // translators: %s: the error message.
+                    __('Details: %s', 'multiple-pages-generator-by-porthas'),
+                    $e->getMessage()
+                ),
+                'debug',
+                __FILE__,
+                __LINE__
+            );
 
-            throw new Exception(__('Can\'t get all projects Details:', 'mpg') . $e->getMessage());
+            throw new Exception(
+                __('Can\'t get all projects.', 'multiple-pages-generator-by-porthas') . ' ' . sprintf(
+                    // translators: %s: the error message.
+                    __('Details: %s', 'multiple-pages-generator-by-porthas'),
+                    $e->getMessage()
+                )
+            );
         }
     }
     /**

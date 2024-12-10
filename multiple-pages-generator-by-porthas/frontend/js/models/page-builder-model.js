@@ -35,7 +35,7 @@ async function fillCustomTypeDropdown(projectData) {
         } else {
             if (entity.is_home) {
                 let option = new Option(
-                    `${entity.title} (${__('Front page', 'multi-pages-plugin')})`,
+                    `${entity.title} (${__('Front page', 'multiple-pages-generator-by-porthas')})`,
                     entity.id
                 );
                 option.disabled = true;
@@ -69,7 +69,11 @@ async function fillCustomTypeDropdown(projectData) {
         jQuery('#direct_link').click();
     }
     setTemplateDropdown.select2({
-        placeholder: projectData.data.entity_type === 'post' ? __('+ Add new post', 'multi-pages-plugin') : `${__('+ Add new', 'multi-pages-plugin')} ${projectData.data.entity_type}`,
+        placeholder: '+ ' + (
+            projectData.data.entity_type === 'post'
+            ? __('Add new post', 'multiple-pages-generator-by-porthas')
+            : `${__('Add new', 'multiple-pages-generator-by-porthas')} ${projectData.data.entity_type}`
+        ),
         width: '100%',
         minimumInputLength: 3,
         ajax: {
@@ -89,7 +93,7 @@ async function fillCustomTypeDropdown(projectData) {
                 if (projectData.data.entity_type === 'post') {
                     res.data.push({
                         id: backendData.mpgAdminPageUrl + 'post-new.php',
-                        title: __('+ Add new post', 'multi-pages-plugin'),
+                        title: '+ ' + __('Add new post', 'multiple-pages-generator-by-porthas'),
                     });
                 } else if (projectData.data.entity_type) {
                     res.data.push({
@@ -98,7 +102,7 @@ async function fillCustomTypeDropdown(projectData) {
                             'post-new.php?post_type=' +
                             projectData.data.entity_type,
                         title:
-                            __('+ Add new', 'multi-pages-plugin') +
+                            '+ ' + __('Add new', 'multiple-pages-generator-by-porthas') +
                             ' ' +
                             projectData.data.entity_type,
                     });
@@ -154,7 +158,8 @@ function fillDataPreviewAndUrlGeneration(project, headers) {
         ordering: false,
         retrieve: true,
         language: {
-            "lengthMenu": "Show _MENU_ entries",
+            // translators: _MENU_ will be replaced with length (a number) of the entries.
+            "lengthMenu": __( "Show _MENU_ entries",  'multiple-pages-generator-by-porthas' )
         },
         responsive: true,
     };
@@ -229,7 +234,8 @@ function renderTableWithAllURLs(e) {
             // success: function (res) {  Может пригодится чтобы прятать лоадер }
         },
         language: {
-            "lengthMenu": "Show _MENU_ entries",
+            // translators: _MENU_ will be replaced with length (a number) of the entries.
+            "lengthMenu": __( "Show _MENU_ entries",  'multiple-pages-generator-by-porthas' )
         }
     };
     // Перед тем как отрисовать новую таблицу, сначала удалим старую

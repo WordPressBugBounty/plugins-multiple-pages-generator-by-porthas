@@ -59,11 +59,11 @@ jQuery(document).ready(function () {
         let permalinkData = JSON.parse(permalink)
 
         if (!permalinkData.success) {
-            toastr.error(permalinkData.error, 'Checking permalink structure');
+            toastr.error(permalinkData.error, __( 'Checking permalink structure', 'multiple-pages-generator-by-porthas') );
         }
 
         if (permalinkData.data === '') {
-            toastr.warning(`${__('Your permailnk structure is Plain. MPG needed to change permalink structure to any other, like a /postname/. Do you want to', 'multi-pages-plugin')} <a href="#" style="color:green;" class="fix-permalink-structure">${__('fix it?', 'multi-pages-plugin')}</a>`, __('Wrong permalink structure', 'multi-pages-plugin'), { timeOut: 10000 });
+            toastr.warning(`${__('Your permalink structure is Plain. MPG needed to change permalink structure to any other, like a /postname/. Do you want to', 'multiple-pages-generator-by-porthas')} <a href="#" style="color:green;" class="fix-permalink-structure">${__('fix it?', 'multiple-pages-generator-by-porthas')}</a>`, __('Wrong permalink structure', 'multiple-pages-generator-by-porthas'), { timeOut: 10000 });
         }
     });
 
@@ -98,9 +98,11 @@ jQuery(document).on('click', '.fix-permalink-structure', function (e) {
         let permalinkData = JSON.parse(permalink)
 
         if (!permalinkData.success) {
-            toastr.error(__('Checking permalink structure failed, due to: ', 'multi-pages-plugin') + permalinkData.error, __('Failed', 'multi-pages-plugin'));
+            toastr.error(
+                __('Checking permalink structure failed, due to:', 'multiple-pages-generator-by-porthas') + ' ' + permalinkData.error, __('Failed', 'multiple-pages-generator-by-porthas')
+            );
         } else {
-            toastr.success(permalinkData.data, __('Success', 'multi-pages-plugin'));
+            toastr.success(permalinkData.data, __('Success', 'multiple-pages-generator-by-porthas'));
         }
     });
 });

@@ -11,9 +11,9 @@ jQuery('#mpg_update_tables_structure').on('click', async function () {
     let eventData = JSON.parse(event);
 
     if (!eventData.success) {
-        toastr.error(eventData.error, __('Failed', 'multi-pages-plugin'));
+        toastr.error(eventData.error, __('Failed', 'multiple-pages-generator-by-porthas'));
     } else {
-        toastr.success(__('MPG tables structure updated successfully', 'multi-pages-plugin'), __('Success', 'multi-pages-plugin'), { timeOut: 5000 });
+        toastr.success(__('MPG tables structure updated successfully', 'multiple-pages-generator-by-porthas'), __('Success', 'multiple-pages-generator-by-porthas'), { timeOut: 5000 });
     }
 })
 
@@ -34,9 +34,9 @@ jQuery('.advanced-page .mpg-hooks-block').on('submit', async function (e) {
     let eventData = JSON.parse(event);
 
     if (!eventData.success) {
-        toastr.error(eventData.error, __('Failed', 'multi-pages-plugin'));
+        toastr.error(eventData.error, __('Failed', 'multiple-pages-generator-by-porthas'));
     } else {
-        toastr.success(__('Hook settings updated sucessfully', 'multi-pages-plugin'), __('Success', 'multi-pages-plugin'), { timeOut: 5000 });
+        toastr.success(__('Hook settings updated successfully', 'multiple-pages-generator-by-porthas'), __('Success', 'multiple-pages-generator-by-porthas'), { timeOut: 5000 });
     }
 });
 
@@ -55,9 +55,9 @@ jQuery('.advanced-page .mpg-path-block').on('submit', async function (e) {
     let eventData = JSON.parse(event);
 
     if (!eventData.success) {
-        toastr.error(eventData.error, __('Failed', 'multi-pages-plugin'));
+        toastr.error(eventData.error, __('Failed', 'multiple-pages-generator-by-porthas'));
     } else {
-        toastr.success(__('Basepath settings updated sucessfully', 'multi-pages-plugin'), __('Success', 'multi-pages-plugin'), { timeOut: 5000 });
+        toastr.success(__('Basepath settings updated successfully', 'multiple-pages-generator-by-porthas'), __('Success', 'multiple-pages-generator-by-porthas'), { timeOut: 5000 });
     }
 });
 
@@ -81,9 +81,9 @@ jQuery('.advanced-page .mpg-cache-hooks-block').on('submit', async function (e) 
     let eventData = JSON.parse(event);
 
     if (!eventData.success) {
-        toastr.error(eventData.error, __('Failed', 'multi-pages-plugin'));
+        toastr.error(eventData.error, __('Failed', 'multiple-pages-generator-by-porthas'));
     } else {
-        toastr.success(__('Hook settings updated sucessfully', 'multi-pages-plugin'), __('Success', 'multi-pages-plugin'), { timeOut: 5000 });
+        toastr.success(__('Hook settings updated successfully', 'multiple-pages-generator-by-porthas'), __('Success', 'multiple-pages-generator-by-porthas'), { timeOut: 5000 });
     }
 });
 
@@ -104,9 +104,9 @@ jQuery('.advanced-page .mpg-branding-position-block').on('submit', async functio
     let eventData = JSON.parse(event);
 
     if (!eventData.success) {
-        toastr.error(eventData.error, __('Failed', 'multi-pages-plugin'));
+        toastr.error(eventData.error, __('Failed', 'multiple-pages-generator-by-porthas'));
     } else {
-        toastr.success(__('Hook settings updated sucessfully', 'multi-pages-plugin'), __('Success', 'multi-pages-plugin'), { timeOut: 5000 });
+        toastr.success(__('Hook settings updated successfully', 'multiple-pages-generator-by-porthas'), __('Success', 'multiple-pages-generator-by-porthas'), { timeOut: 5000 });
     }
 });
 

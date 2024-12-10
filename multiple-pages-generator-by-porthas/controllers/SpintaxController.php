@@ -55,7 +55,7 @@ class MPG_SpintaxController
             $project_id = isset($atts['project_id']) ? (int) $atts['project_id']  : null;
             $block_id = isset($atts['block_id']) ? sanitize_title( $atts['block_id'] ) : "1";
             if (!$project_id) {
-                throw new Exception(__('"project_id" is not specified in shortcode. Please, make the shortcode like [mpg_spintax project_id="1" block_id="any-string"]...[/mpg_spintax]', 'mpg'));
+                throw new Exception(__('"project_id" is not specified in shortcode. Please, make the shortcode like [mpg_spintax project_id="1" block_id="any-string"]...[/mpg_spintax]', 'multiple-pages-generator-by-porthas'));
             }
 
             // 1. Проверим, есть ли для запрашиваемого УРЛа и блока уже сгенерированная Spintax строка.

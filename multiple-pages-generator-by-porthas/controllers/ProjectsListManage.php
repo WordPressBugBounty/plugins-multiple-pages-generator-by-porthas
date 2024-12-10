@@ -77,7 +77,7 @@ if ( ! class_exists( 'ProjectsListManage' ) ) {
 
 
 			if ( ! $project_id ) {
-				throw new Exception( __( 'Project ID is missing', 'mpg' ) );
+				throw new Exception( __( 'Project ID is missing', 'multiple-pages-generator-by-porthas' ) );
 			}
 
 			$project = MPG_ProjectModel::get_project_by_id( $project_id );
@@ -159,7 +159,8 @@ if ( ! class_exists( 'ProjectsListManage' ) ) {
 
 			if ( $original_row ) {
 				// Modify the 'name' column to add the "clone of #id" suffix
-				$original_row['name'] .= ' ' .sanitize_text_field( sprintf( __( '(clone of #%d)', 'mpg' ), $project_id ) );
+				// translators: %d: the value of project ID.
+				$original_row['name'] .= ' ' .sanitize_text_field( sprintf( __( '(clone of #%d)', 'multiple-pages-generator-by-porthas' ), $project_id ) );
 				$original_path = MPG_DatasetModel::get_dataset_path_by_project( $project_id );
 				$original_row['source_path'] = '';
 				// Insert the cloned row into the table
@@ -209,14 +210,9 @@ if ( ! class_exists( 'ProjectsListManage' ) ) {
 				'headers',
 			);
 
-			foreach ( $exclude_fields as $exclude_field ) {
-				if ( isset( $project_data->$exclude_field ) ) {
-					unset( $project_data->$exclude_field );
-				}
-			}
-
 			if ( ! empty( $project_data->template_id ) ) {
-				$project_data->template_name = get_the_title( $project_data->template_id );
+				$project_data->template_name    = get_the_title( $project_data->template_id );
+				$project_data->template_content = get_the_content( null, false, $project_data->template_id );
 				unset( $project_data->template_id );
 			}
 
@@ -224,6 +220,12 @@ if ( ! class_exists( 'ProjectsListManage' ) ) {
 			if ( ! empty( $project_data->source_path ) ) {
 				$source_path = MPG_DatasetModel::get_dataset_path_by_project( $project_data );
 				unset( $project_data->source_path );
+			}
+
+			foreach ( $exclude_fields as $exclude_field ) {
+				if ( isset( $project_data->$exclude_field ) ) {
+					unset( $project_data->$exclude_field );
+				}
 			}
 
 			if ( isset( $project_data->source_type ) && 'upload_file' === $project_data->source_type ) {
@@ -285,7 +287,7 @@ if ( ! class_exists( 'ProjectsListManage' ) ) {
 			$import_data = $wp_filesystem->get_contents( $json_file );
 			$import_data = $import_data ? json_decode( $import_data, true ) : array();
 			if ( empty( $import_data ) ) {
-				wp_die( __( 'Invalid Project JSON file', 'mpg' ) );
+				wp_die( __( 'Invalid Project JSON file', 'multiple-pages-generator-by-porthas' ) );
 			}
 			$template_id = 0;
 
@@ -295,13 +297,14 @@ if ( ! class_exists( 'ProjectsListManage' ) ) {
 				if ( ! $template_id ) {
 					$template_id = wp_insert_post(
 						array(
-							'post_title'  => $template_name,
-							'post_type'   => $import_data['entity_type'],
-							'post_status' => 'publish',
+							'post_title'   => $template_name,
+							'post_type'    => $import_data['entity_type'],
+							'post_status'  => 'publish',
+							'post_content' => isset( $import_data['template_content'] ) ? $import_data['template_content'] : '',
 						)
 					);
 				}
-				unset( $import_data['template_name'] );
+				unset( $import_data['template_name'], $import_data['template_content'] );
 			}
 			$import_data['template_id'] = $template_id;
 
@@ -330,6 +333,23 @@ if ( ! class_exists( 'ProjectsListManage' ) ) {
 
 				MPG_ProjectModel::mpg_update_project_by_id( $new_id, $update_options_array );
 			}
+
+			// Check if the 'source_type' key exists in the $import_data array and if its value is 'upload_file'.
+			if ( isset( $import_data['source_type'] ) && 'upload_file' === $import_data['source_type'] ) {
+				require_once ABSPATH . 'wp-admin/includes/file.php';
+				WP_Filesystem();
+				global $wp_filesystem;
+				$file_path = MPG_DatasetModel::uploads_base_path() . $new_id . '.csv';
+				$wp_filesystem->touch( $file_path );
+
+				MPG_ProjectModel::mpg_update_project_by_id(
+					$new_id,
+					array(
+						'source_path' => basename( $file_path ),
+					)
+				);
+			}
+
 			return 1;
 		}
 	}

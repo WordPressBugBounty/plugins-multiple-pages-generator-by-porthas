@@ -43,9 +43,11 @@ class MPG_HookController
 
                 if ( $is_mpg_page === true ) {
                     $footer_text = sprintf(
-                        __('Enjoying %1$s? %2$s %3$s rating. Thank you.', 'mpg'),
+                        // translators: %1$s: the name of the plugin, %2$s: the opening of tag strong, %3$s the closing of tag strong, %4$s the link with five stars emoji to rate the plugin.
+                        __('Enjoying %1$s? %2$sPlease leave us a%3$s %4$s rating. Thank you.', 'multiple-pages-generator-by-porthas'),
                         MPG_NAME,
-                        '<strong>' . esc_html__('Please leave us a', 'mpg') . '</strong>',
+                        '<strong>', 
+                        '</strong>',
                         '<a href="https://wordpress.org/support/plugin/multiple-pages-generator-by-porthas/reviews/" target="_blank">&#9733;&#9733;&#9733;&#9733;&#9733;</a>'
                     );
                 }
@@ -81,9 +83,6 @@ class MPG_HookController
         }, 1 );
 
         $mpg_index_file = plugin_dir_path(__DIR__) . 'porthas-multi-pages-generator.php';
-
-        // Подключает .mo файл перевода из указанной папки.
-        add_action('plugins_loaded', array('MPG_Helper', 'mpg_set_language_folder_path'));
 
         // Register additional (weekly) interval for cron because WP hasn't weekly period
         add_filter('cron_schedules', array('MPG_Helper', 'mpg_cron_weekly'));
@@ -515,16 +514,20 @@ class MPG_HookController
 		$mpg_project = MPG_ProjectModel::get_project_by_id( $project_id );
 
 		if ( empty( $mpg_project ) || ! $mpg_project->schedule_source_link ) {
-			return new WP_Error( 'invalid_project', __( 'Your project has not properly configured source.', 'mpg' ) );
+			return new WP_Error( 'invalid_project', __( 'Your project has not properly configured source.', 'multiple-pages-generator-by-porthas' ) );
 		}
 		if ( $mpg_project->schedule_periodicity !== 'ondemand' ) {
-			return new WP_Error( 'invalid_project', __( 'Your project is not configured to be updated on demand.', 'mpg' ) );
+			return new WP_Error( 'invalid_project', __( 'Your project is not configured to be updated on demand.', 'multiple-pages-generator-by-porthas' ) );
 		}
 		MPG_ProjectController::mpg_scheduled_cron_handler( $project_id, $mpg_project->schedule_source_link, $mpg_project->schedule_notificate_about, $mpg_project->schedule_periodicity, $mpg_project->schedule_notification_email );
 
 		return rest_ensure_response( [
 			'code'    => 'success',
-			'message' => sprintf( __( 'Project %s has been updated.' ), $mpg_project->name )
+			'message' => sprintf(
+                // translators: %s the name of the project.
+                __( 'Project %s has been updated.', 'multiple-pages-generator-by-porthas' ),
+                $mpg_project->name
+            )
 		] );
 	}
     public static function init_replacement()

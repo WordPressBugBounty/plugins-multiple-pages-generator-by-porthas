@@ -18,7 +18,7 @@ async function mpgGenerateSitempa(filename, maxUrlPerFile, frequency, addToRobot
     let sitemapData = JSON.parse(sitemap);
 
     if (!sitemapData.success) {
-        toastr.error(sitemapData.error, __('Failed', 'multi-pages-plugin'));
+        toastr.error(sitemapData.error, __('Failed', 'multiple-pages-generator-by-porthas'));
     } else {
         // Безем название карты сайта из ссылки, которая пришла из сервака. Там может быть просто file.xml, а может быть file-index.xml
         // В случае, если в дотасете данных больше чем установлен лимит.
@@ -26,7 +26,7 @@ async function mpgGenerateSitempa(filename, maxUrlPerFile, frequency, addToRobot
 
         jQuery('#mpg_sitemap_url').html(`<a target="_blank" href="${sitemapData.data}">${sitemapData.data}</a>`);
 
-        toastr.success(sitemapData.data, __('Success', 'multi-pages-plugin'), { timeOut: 5000 });
+        toastr.success(sitemapData.data, __('Success', 'multiple-pages-generator-by-porthas'), { timeOut: 5000 });
     }
 }
 export function initSiteMapEvents(){
@@ -49,7 +49,7 @@ jQuery('#sitemap-form').on('submit', async function (event) {
     let iSNiU = JSON.parse(isSitemapNameUniq)
 
     if (!iSNiU.success) {
-        toastr.error(iSNiU.error, __('Failed', 'multi-pages-plugin'));
+        toastr.error(iSNiU.error, __('Failed', 'multiple-pages-generator-by-porthas'));
     }
 
     if (iSNiU.unique) {
@@ -57,7 +57,7 @@ jQuery('#sitemap-form').on('submit', async function (event) {
         await mpgGenerateSitempa(filename, maxUrlPerFile, frequency, addToRobotsTxt, priority)
 
     } else {
-        if (confirm(`"${filename}" ${__('is already in use. Click "Ok" to override the sitemap, or "Cancel" to change name', 'multi-pages-plugin')}`)) {
+        if (confirm(`"${filename}" ${__('is already in use. Click "Ok" to override the sitemap, or "Cancel" to change name', 'multiple-pages-generator-by-porthas')}`)) {
             await mpgGenerateSitempa(filename, maxUrlPerFile, frequency, addToRobotsTxt, priority)
 
         }
@@ -86,6 +86,6 @@ jQuery('#sitemap-tab').on('click', function () {
     if (mpgGetState('sitemapUrl')) {
         jQuery('#mpg_sitemap_url').html(`<a target="_blank" href="${mpgGetState('sitemapUrl')}">${filename.val()}</a>`);
     } else {
-        jQuery('#mpg_sitemap_url').html(__('Not created yet', 'multi-pages-plugin'));
+        jQuery('#mpg_sitemap_url').html(__('Not created yet', 'multiple-pages-generator-by-porthas'));
     }
 });}

@@ -58,7 +58,7 @@ const withConditions = createHigherOrderComponent( BlockEdit => {
             setAttributes({ mpgConditions: newConditions });
         };
         const transformedOperators = Object.entries(operators).map(([value, label]) => ({
-            label: __(label, 'multi-pages-plugin'),
+            label,
             value
         }));
         const CompareOperators = Object.keys(window.mpgCondData.compareOperators) || [];
@@ -68,7 +68,7 @@ const withConditions = createHigherOrderComponent( BlockEdit => {
                 <BlockEdit { ...props } />
 
                 <InspectorControls>
-                    <PanelBody title={__('MPG Visibility Conditions', 'multi-pages-plugin')}>
+                    <PanelBody title={__('MPG Visibility Conditions', 'multiple-pages-generator-by-porthas')}>
                         
                         
                         <FilterRepeater
@@ -78,15 +78,15 @@ const withConditions = createHigherOrderComponent( BlockEdit => {
 							operators={transformedOperators}
 							CompareOperators={CompareOperators}
                             labels={{ 
-                                addFilter: __('Add Condition', 'multi-pages-plugin'),
-                                applyFilters: __('Show If', 'multi-pages-plugin'),
-                                matchAll: __('All conditions are met', 'multi-pages-plugin'),
-                                matchAny: __('Any condition is met', 'multi-pages-plugin'),
-                                removeFilter: __('Remove Condition', 'multi-pages-plugin'),
-                                filterTitle: __('Condition', 'multi-pages-plugin'),
-                                column: __('Column name', 'multi-pages-plugin'),
-                                operator: __('Condition', 'multi-pages-plugin'),
-                                value: __('Value', 'multi-pages-plugin'),
+                                addFilter: __('Add Condition', 'multiple-pages-generator-by-porthas'),
+                                applyFilters: __('Show If', 'multiple-pages-generator-by-porthas'),
+                                matchAll: __('All conditions are met', 'multiple-pages-generator-by-porthas'),
+                                matchAny: __('Any condition is met', 'multiple-pages-generator-by-porthas'),
+                                removeFilter: __('Remove Condition', 'multiple-pages-generator-by-porthas'),
+                                filterTitle: __('Condition', 'multiple-pages-generator-by-porthas'),
+                                column: __('Column name', 'multiple-pages-generator-by-porthas'),
+                                operator: __('Condition', 'multiple-pages-generator-by-porthas'),
+                                value: __('Value', 'multiple-pages-generator-by-porthas'),
                             }}
                         />
                     </PanelBody>
@@ -111,7 +111,7 @@ const withConditionsIndicator = createHigherOrderComponent( BlockListBlock => {
             }) }
             wrapperProps={{
                 ...props.wrapperProps,
-                'data-mpg-label': hasConditions ? __('MPG Conditioned', 'multi-pages-plugin') : undefined
+                'data-mpg-label': hasConditions ? __('MPG Conditioned', 'multiple-pages-generator-by-porthas') : undefined
             }}
         />
     );

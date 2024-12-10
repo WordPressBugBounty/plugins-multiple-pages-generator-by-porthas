@@ -44,7 +44,7 @@ class MPG_SpintaxModel
             global $wpdb;
 
             if (!$project_id) {
-                throw new Exception(__('Project ID is missing', 'mpg'));
+                throw new Exception(__('Project ID is missing', 'multiple-pages-generator-by-porthas'));
             }
 
             $table_name = $wpdb->prefix . MPG_Constant::MPG_SPINTAX_TABLE;

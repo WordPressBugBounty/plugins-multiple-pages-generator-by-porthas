@@ -7,7 +7,7 @@
 
 ?>
 <div class="wrap">
-	<h2 style="display:inline-block; margin-right: 5px;"><?php esc_html_e( 'Projects', 'mpg' ); ?></h2>
+	<h2 style="display:inline-block; margin-right: 5px;"><?php esc_html_e( 'Projects', 'multiple-pages-generator-by-porthas' ); ?></h2>
 	<?php
 		$new_project_url = add_query_arg(
 			'page',
@@ -16,25 +16,25 @@
 		);
 		?>
 	<div class="mpg-header-action">
-        <a href="<?php echo esc_url_raw( $new_project_url ); ?>" class="page-title-action"><?php esc_html_e( 'Add New Project', 'mpg' ); ?></a>
-        <a href="#" id="mpg_import" class="page-title-action mpg-export-import-btn<?php echo ! mpg_app()->is_premium() ? ' mpg-export-import-btn-pro' : ''; ?>"><?php echo ! mpg_app()->is_premium() ? '<span class="dashicons dashicons-lock"></span>' : '<span class="dashicons dashicons-upload"></span>'; ?><?php esc_html_e( 'Import projects', 'mpg' ); ?></a>   
+        <a href="<?php echo esc_url_raw( $new_project_url ); ?>" class="page-title-action"><?php esc_html_e( 'Add New Project', 'multiple-pages-generator-by-porthas' ); ?></a>
+        <a href="#" id="mpg_import" class="page-title-action mpg-export-import-btn<?php echo ! mpg_app()->is_premium() ? ' mpg-export-import-btn-pro' : ''; ?>"><?php echo ! mpg_app()->is_premium() ? '<span class="dashicons dashicons-lock"></span>' : '<span class="dashicons dashicons-upload"></span>'; ?><?php esc_html_e( 'Import projects', 'multiple-pages-generator-by-porthas' ); ?></a>   
     </div>
 	<hr class="wp-header-end">
     <div id="tsdk_banner" class="mpg-banner"></div>
     <div class="mpg-import-field hidden">
         <form method="post" enctype="multipart/form-data" action="<?php echo esc_url( add_query_arg( array( 'page' => 'mpg-project-builder', 'action' => 'mpg_import_projects', '_wpnonce' => wp_create_nonce( 'mpg_import_projects' ) ), admin_url( 'admin.php' ) ) ); ?>">
-            <h4> <?php _e( "Choose the project's .json file to import.", 'mpg' ); ?></h4><input type="file" accept=".json" name="mpg_import" required>
-            <button type="submit" class="button button-primary"><?php esc_html_e( 'Import', 'mpg' ); ?></button>
+            <h4> <?php _e( "Choose the project's .json file to import.", 'multiple-pages-generator-by-porthas' ); ?></h4><input type="file" accept=".json" name="mpg_import" required>
+            <button type="submit" class="button button-primary"><?php esc_html_e( 'Import', 'multiple-pages-generator-by-porthas' ); ?></button>
         </form>
     </div>
 	<form method="get">
 		<?php $projects_list->prepare_items(); ?>
 		<p class="search-box">
-			<input type="hidden" name="page" value="<?php esc_attr_e( 'mpg-project-builder', 'mpg' ); ?>">
-			<label class="screen-reader-text" for="search_email-search-input"><?php esc_html_e( 'Search:', 'mpg' ); ?></label>
-			<input type="search" id="search_email-search-input" name="s" value="<?php echo isset( $_GET['s'] ) ? esc_attr( sanitize_text_field( wp_unslash( $_GET['s'] ) ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification ?>" placeholder="<?php esc_attr_e( 'Search by project name', 'mpg' ); ?>">
+			<input type="hidden" name="page" value="<?php esc_attr_e( 'mpg-project-builder', 'multiple-pages-generator-by-porthas' ); ?>">
+			<label class="screen-reader-text" for="search_email-search-input"><?php esc_html_e( 'Search:', 'multiple-pages-generator-by-porthas' ); ?></label>
+			<input type="search" id="search_email-search-input" name="s" value="<?php echo isset( $_GET['s'] ) ? esc_attr( sanitize_text_field( wp_unslash( $_GET['s'] ) ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification ?>" placeholder="<?php esc_attr_e( 'Search by project name', 'multiple-pages-generator-by-porthas' ); ?>">
 			<input type="hidden" name="_mpg_nonce" value="<?php echo esc_attr( wp_create_nonce( MPG_BASENAME ) ); ?>">
-			<input type="submit" id="search-submit" class="button" value="<?php esc_attr_e( 'Search', 'mpg' ); ?>">
+			<input type="submit" id="search-submit" class="button" value="<?php esc_attr_e( 'Search', 'multiple-pages-generator-by-porthas' ); ?>">
 		</p>
 		<?php $projects_list->display(); ?>
 	</form>
@@ -42,16 +42,16 @@
 <!-- HTML for the modal -->
 <div id="mpg-modal" class="wp-core-ui mpg-modal" style="display:none;">
     <div class="modal-content"><button type="button" class="notice-dismiss close-modal">
-            <span class="screen-reader-text"><?php esc_html_e( 'Dismiss this dialog', 'mpg' ); ?></span>
+            <span class="screen-reader-text"><?php esc_html_e( 'Dismiss this dialog', 'multiple-pages-generator-by-porthas' ); ?></span>
         </button>
         <div class="modal-header">
-            <h2><span class="dashicons dashicons-lock"></span> <?php esc_html_e( 'Cloning projects is a PRO feature', 'mpg' ); ?></h2>
+            <h2><span class="dashicons dashicons-lock"></span> <?php esc_html_e( 'Cloning projects is a PRO feature', 'multiple-pages-generator-by-porthas' ); ?></h2>
         </div>
         <div class="modal-body">
-            <p><?php esc_html_e( 'We\'re sorry, cloning projects is not available on your plan. Please upgrade to the Pro plan to unlock all these features and enhance your product fields management capabilities.', 'mpg' ); ?></p>
+            <p><?php esc_html_e( 'We\'re sorry, cloning projects is not available on your plan. Please upgrade to the Pro plan to unlock all these features and enhance your product fields management capabilities.', 'multiple-pages-generator-by-porthas' ); ?></p>
         </div>
         <div class="modal-footer">
-            <div class="button-container"><a href="<?php echo esc_url(mpg_app()->get_upgrade_url('clone')); ?>" target="_blank" rel="noopener " class="button button-primary button-large"><?php esc_html_e( 'Upgrade to PRO', 'mpg' ); ?><span aria-hidden="true" class="dashicons dashicons-external"></span></a></div>
+            <div class="button-container"><a href="<?php echo esc_url(mpg_app()->get_upgrade_url('clone')); ?>" target="_blank" rel="noopener " class="button button-primary button-large"><?php esc_html_e( 'Upgrade to PRO', 'multiple-pages-generator-by-porthas' ); ?><span aria-hidden="true" class="dashicons dashicons-external"></span></a></div>
         </div>
     </div>
 </div>
@@ -69,22 +69,22 @@ if ( ! empty( $license ) && ( is_object( $license ) && isset( $license->key ) ) 
 <div id="mpg-modal-edit" class="wp-core-ui mpg-modal" style="display:none;">
     <div class="modal-content">
         <button type="button" class="notice-dismiss close-modal">
-            <span class="screen-reader-text"><?php esc_html_e( 'Dismiss this dialog', 'mpg' ); ?></span>
+            <span class="screen-reader-text"><?php esc_html_e( 'Dismiss this dialog', 'multiple-pages-generator-by-porthas' ); ?></span>
         </button>
         <div class="modal-header">
-            <h2><span class="dashicons dashicons-lock"></span> <?php esc_html_e( 'Alert!', 'mpg' ); ?></h2>
+            <h2><span class="dashicons dashicons-lock"></span> <?php esc_html_e( 'Alert!', 'multiple-pages-generator-by-porthas' ); ?></h2>
         </div>
         <div class="modal-body">
-            <p><?php esc_html_e( 'In order to edit premium projects, benefit from updates and support for MPG Premium plugin, please renew your license code or activate it.', 'mpg' ); ?></p>
+            <p><?php esc_html_e( 'In order to edit premium projects, benefit from updates and support for MPG Premium plugin, please renew your license code or activate it.', 'multiple-pages-generator-by-porthas' ); ?></p>
         </div>
         <div class="modal-footer">
             <div class="button-container">
                 <a href="<?php echo esc_url( $renew_license_url ); ?>" target="_blank" rel="noopener "
-                   class="button button-primary button-large"><?php esc_html_e( 'Renew License', 'mpg' ); ?><span
+                   class="button button-primary button-large"><?php esc_html_e( 'Renew License', 'multiple-pages-generator-by-porthas' ); ?><span
                             aria-hidden="true" class="dashicons dashicons-external"></span></a>
                 <a href="<?php echo esc_url( admin_url( 'admin.php?page=mpg-advanced-settings' ) ); ?>" target="_blank"
                    rel="noopener "
-                   class="button button-secondary button-large"><?php esc_html_e( 'Activate License', 'mpg' ); ?></a>
+                   class="button button-secondary button-large"><?php esc_html_e( 'Activate License', 'multiple-pages-generator-by-porthas' ); ?></a>
             </div>
         </div>
     </div>
@@ -92,7 +92,7 @@ if ( ! empty( $license ) && ( is_object( $license ) && isset( $license->key ) ) 
 
 <div id="mpg_preview_all_urls" class="wp-core-ui mpg-modal" style="display:none;">
     <div class="modal-content"><button type="button" class="notice-dismiss close-modal">
-            <span class="screen-reader-text"><?php esc_html_e( 'Dismiss this dialog', 'mpg' ); ?></span>
+            <span class="screen-reader-text"><?php esc_html_e( 'Dismiss this dialog', 'multiple-pages-generator-by-porthas' ); ?></span>
         </button>
         <div class="modal-body">
             <table id="mpg_mpg_preview_all_urls_table" class="display" width="100%">
@@ -106,16 +106,16 @@ if ( ! empty( $license ) && ( is_object( $license ) && isset( $license->key ) ) 
 
 <div id="mpg_import_export" class="wp-core-ui mpg-modal" style="display:none;">
     <div class="modal-content"><button type="button" class="notice-dismiss close-modal">
-            <span class="screen-reader-text"><?php esc_html_e( 'Dismiss this dialog', 'mpg' ); ?></span>
+            <span class="screen-reader-text"><?php esc_html_e( 'Dismiss this dialog', 'multiple-pages-generator-by-porthas' ); ?></span>
         </button>
         <div class="modal-header">
-            <h2><span class="dashicons dashicons-lock"></span> <?php esc_html_e( 'Import/Export projects is a PRO feature', 'mpg' ); ?></h2>
+            <h2><span class="dashicons dashicons-lock"></span> <?php esc_html_e( 'Import/Export projects is a PRO feature', 'multiple-pages-generator-by-porthas' ); ?></h2>
         </div>
         <div class="modal-body">
-            <p><?php esc_html_e( 'We\'re sorry, import/export projects is not available on your plan. Please upgrade to the Pro plan to unlock all these features and enhance your product fields management capabilities.', 'mpg' ); ?></p>
+            <p><?php esc_html_e( 'We\'re sorry, import/export projects is not available on your plan. Please upgrade to the Pro plan to unlock all these features and enhance your product fields management capabilities.', 'multiple-pages-generator-by-porthas' ); ?></p>
         </div>
         <div class="modal-footer">
-            <div class="button-container"><a href="<?php echo esc_url(mpg_app()->get_upgrade_url('import-export')); ?>" target="_blank" rel="noopener " class="button button-primary button-large"><?php esc_html_e( 'Upgrade to PRO', 'mpg' ); ?><span aria-hidden="true" class="dashicons dashicons-external"></span></a></div>
+            <div class="button-container"><a href="<?php echo esc_url(mpg_app()->get_upgrade_url('import-export')); ?>" target="_blank" rel="noopener " class="button button-primary button-large"><?php esc_html_e( 'Upgrade to PRO', 'multiple-pages-generator-by-porthas' ); ?><span aria-hidden="true" class="dashicons dashicons-external"></span></a></div>
         </div>
     </div>
 </div>

@@ -162,7 +162,7 @@ class MPG_SearchController
             }
 
             $response = '<div class="mpg-search-results">';
-            $response .= '<span class="mpg-search-results-count">' . __('Total results:', 'mpg') . ' ' . $search['total'] . '</span>';
+            $response .= '<span class="mpg-search-results-count">' . __('Total results:', 'multiple-pages-generator-by-porthas') . ' ' . $search['total'] . '</span>';
             foreach ($search['results'] as $index => $result) {
 
                 $response .= '<div class="mpg-search-results-row">';

@@ -63,7 +63,7 @@ class MPG_LogsController
 
 	    MPG_Validators::nonce_check();
 		if( ! current_user_can('editor') && ! current_user_can('administrator') ) {
-			$response = rest_ensure_response( new WP_Error( 'rest_forbidden', esc_html__( 'You cannot view the logs.', 'mpg' ), array( 'status' => 401 ) ) );
+			$response = rest_ensure_response( new WP_Error( 'rest_forbidden', esc_html__( 'You cannot view the logs.', 'multiple-pages-generator-by-porthas' ), array( 'status' => 401 ) ) );
 			wp_send_json( $response );
 		}
 

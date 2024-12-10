@@ -12,13 +12,22 @@ class MPG_DatasetModel
 
 	public static function download_file( $link, $destination_path ): bool {
 		try {
+			if ( empty( $destination_path ) ) {
+				throw new Exception( 'Destination path is empty' );
+			}
 			require_once ABSPATH . 'wp-admin/includes/file.php';
+			if ( wp_http_validate_url( $link ) !== false ) {
+				$tmp_path = download_url( $link );
+				// Make sure there were no errors.
+				if ( is_wp_error( $tmp_path ) ) {
+					throw new Exception( $tmp_path->get_error_message() );
+				}
+			} else {
+				$tmp_path = $link;
+			}
+
 			WP_Filesystem();
 			global $wp_filesystem;
-			$content = $wp_filesystem->get_contents( $link );
-			if ( empty( $content ) ) {
-				return false;
-			}
 			// Make dir if not exists.
 			if ( ! $wp_filesystem->exists( MPG_UPLOADS_DIR ) ) {
 				$wp_filesystem->mkdir( MPG_UPLOADS_DIR, FS_CHMOD_DIR );
@@ -26,14 +35,14 @@ class MPG_DatasetModel
 			if ( ! $wp_filesystem->exists( dirname($destination_path) ) ) {
 				$wp_filesystem->mkdir( dirname($destination_path), FS_CHMOD_DIR );
 			}
-			// Update project source file.
-			$updated = $wp_filesystem->put_contents( $destination_path, $content, FS_CHMOD_FILE );
+
+			// Move temp file to final destination.
+			$updated = $wp_filesystem->move( $tmp_path, $destination_path, true );
 
 			// File delete and re-fetch in case of the file is not writeable.
 			if ( ! $updated && is_readable( $destination_path ) ) {
 				$wp_filesystem->delete( $destination_path );
-				$updated = $wp_filesystem->put_contents( $destination_path, $content, FS_CHMOD_FILE );
-				return $updated;
+				return $wp_filesystem->move( $tmp_path, $destination_path, true );
 			}
 
 			return true;

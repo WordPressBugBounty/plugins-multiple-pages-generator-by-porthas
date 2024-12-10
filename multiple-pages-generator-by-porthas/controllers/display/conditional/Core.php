@@ -28,14 +28,14 @@ abstract class Core extends Base_Display {
 	 */
 	public function should_render( array $conditions, string $logic ): bool {
 		if ( empty( $conditions ) || ! isset( $conditions[0] ) || ! is_array( $conditions[0] ) || ! isset( $conditions[0]['column'] ) || empty( $conditions[0]['column'] ) ) {
-			throw new \Exception( __( 'No conditions defined.', 'mpg' ) );
+			throw new \Exception( __( 'No conditions defined.', 'multiple-pages-generator-by-porthas' ) );
 		}
 		if($logic !== self::LOGIC_AND && $logic !== self::LOGIC_OR){
-			throw new \Exception( __( 'Invalid logic value provided.', 'mpg' ) );
+			throw new \Exception( __( 'Invalid logic value provided.', 'multiple-pages-generator-by-porthas' ) );
 		}
 
 		if ( empty( \MPG_ProjectModel::get_current_project_id() ) ) {
-			throw new \Exception( __( 'No MPG project found to check data for.', 'mpg' ) );
+			throw new \Exception( __( 'No MPG project found to check data for.', 'multiple-pages-generator-by-porthas' ) );
 		}
 		$current_project_id = (int)\MPG_ProjectModel::get_current_project_id();
 		$project_data = \MPG_ProjectModel::get_project_by_id( $current_project_id );

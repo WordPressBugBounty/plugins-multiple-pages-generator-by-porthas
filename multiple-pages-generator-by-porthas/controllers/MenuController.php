@@ -23,14 +23,14 @@ class MPG_MenuController {
 
 			add_menu_page( 'MPG', 'MPG', MPG_MenuController::MENU_ROLE    , 'mpg-project-builder', '__return_null', plugin_dir_url( __FILE__ ) . '/../../frontend/images/logo_mpg.svg' );
 
-			add_submenu_page( 'mpg-project-builder', __( 'Create new', 'mpg' ), __( 'Create New +', 'mpg' ), MPG_MenuController::MENU_ROLE , 'mpg-dataset-library', array( 'MPG_DatasetController', 'get_all' ) );
+			add_submenu_page( 'mpg-project-builder', __( 'Create new', 'multiple-pages-generator-by-porthas' ), __( 'Create New', 'multiple-pages-generator-by-porthas' ) . ' +', MPG_MenuController::MENU_ROLE , 'mpg-dataset-library', array( 'MPG_DatasetController', 'get_all' ) );
 
-			$hook = add_submenu_page( 'mpg-project-builder', __( 'All Projects', 'mpg' ), __( 'All Projects', 'mpg' ), MPG_MenuController::MENU_ROLE , 'mpg-project-builder', array( 'MPG_ProjectController', 'builder' ) );
+			$hook = add_submenu_page( 'mpg-project-builder', __( 'All Projects', 'multiple-pages-generator-by-porthas' ), __( 'All Projects', 'multiple-pages-generator-by-porthas' ), MPG_MenuController::MENU_ROLE , 'mpg-project-builder', array( 'MPG_ProjectController', 'builder' ) );
 			add_action( 'load-' . $hook, array( 'MPG_ProjectController', 'handle_project_builder' ) );
 
-			add_submenu_page( 'mpg-project-builder', __( 'Advanced settings', 'mpg' ), __( 'Advanced settings', 'mpg' ), MPG_MenuController::MENU_ROLE , 'mpg-advanced-settings', array( 'MPG_AdvancedSettingsController', 'render' ) );
+			add_submenu_page( 'mpg-project-builder', __( 'Advanced settings', 'multiple-pages-generator-by-porthas' ), __( 'Advanced settings', 'multiple-pages-generator-by-porthas' ), MPG_MenuController::MENU_ROLE , 'mpg-advanced-settings', array( 'MPG_AdvancedSettingsController', 'render' ) );
 
-			add_submenu_page( 'mpg-project-builder', __( 'Search settings', 'mpg' ), __( 'Search settings', 'mpg' ), MPG_MenuController::MENU_ROLE , 'mpg-search-settings', array( 'MPG_SearchController', 'render' ) );
+			add_submenu_page( 'mpg-project-builder', __( 'Search settings', 'multiple-pages-generator-by-porthas' ), __( 'Search settings', 'multiple-pages-generator-by-porthas' ), MPG_MenuController::MENU_ROLE , 'mpg-search-settings', array( 'MPG_SearchController', 'render' ) );
 
 		}
 

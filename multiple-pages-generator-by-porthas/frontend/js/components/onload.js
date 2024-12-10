@@ -10,7 +10,7 @@ import {
     fillUrlStructureShortcodes,
 } from '../helper.js';
 
-import { __ } from '@wordpress/i18n';
+import { __, sprintf } from '@wordpress/i18n';
 
 import {
     fillCustomTypeDropdown,
@@ -37,11 +37,12 @@ export async function doInit() {
             statusCode: {
                 500: function (xhr) {
                     toastr.error(
-                        __(
-                            'Looks like you attempt to use large source file, that reached memory allocated to PHP or reached max_post_size. Please, increase memory limit according to documentation for your web server. For additional information, check .log files of web server or', 'multi-pages-plugin')
-                         +
-                            `<a target="_blank" style="text-decoration: underline" href="https://docs.themeisle.com/article/1443-500-internal-server-error"> ${__('read our article', 'multi-pages-plugin')}</a>.`,
-                        __('Server settings limitation', 'multi-pages-plugin'),
+                        sprintf(
+                            // translators: %s: the documentation link.
+                            __('Looks like you attempt to use large source file, that reached memory allocated to PHP or reached max_post_size. Please, increase memory limit according to documentation for your web server. For additional information, check .log files of web server or %s', 'multiple-pages-generator-by-porthas'),
+                            `<a target="_blank" style="text-decoration: underline" href="https://docs.themeisle.com/article/1443-500-internal-server-error"> ${__('read our article','multiple-pages-generator-by-porthas')}</a>.`
+                        ),
+                        __('Server settings limitation', 'multiple-pages-generator-by-porthas'),
                         { timeOut: 30000 }
                     );
                 },
@@ -53,7 +54,7 @@ export async function doInit() {
         if (!projectData.success) {
             toastr.error(
                 projectData.error,
-                __('Can not get project data', 'multi-pages-plugin')
+                __('Can not get project data', 'multiple-pages-generator-by-porthas')
             );
             return;
         }
@@ -158,7 +159,7 @@ export async function doInit() {
                 jQuery('#mpg_in_use_dataset_link')
                     .attr('href', `${projectData.data.source_url_full}`)
                     .removeClass('disabled')
-                    .text(__('Download', 'multi-pages-plugin'));
+                    .text(__('Download', 'multiple-pages-generator-by-porthas'));
             }
 
             if (projectData.data.source_type) {
@@ -300,7 +301,7 @@ export function handleAdvance(){
                 let hooksData = JSON.parse(hooksRawData);
 
                 if (!hooksData.success) {
-                    toastr.error(hooksData.error, __('Failed', 'multi-pages-plugin'));
+                    toastr.error(hooksData.error, __('Failed', 'multiple-pages-generator-by-porthas'));
                     return;
                 } else {
                     if (hooksData.data.hook_name && hooksData.data.hook_priority) {
@@ -321,7 +322,7 @@ export function handleAdvance(){
                 let basepathData = JSON.parse(basepathRawData);
 
                 if (!basepathData.success) {
-                    toastr.error(basepathData.error, __('Failed', 'multi-pages-plugin'));
+                    toastr.error(basepathData.error, __('Failed', 'multiple-pages-generator-by-porthas'));
                     return;
                 } else {
                     if (basepathData.data) {
@@ -339,7 +340,7 @@ export function handleAdvance(){
                 let cacheHooksData = JSON.parse(cacheHooksRawData);
 
                 if (!cacheHooksData.success) {
-                    toastr.error(cacheHooksData.error, __('Failed', 'multi-pages-plugin'));
+                    toastr.error(cacheHooksData.error, __('Failed', 'multiple-pages-generator-by-porthas'));
                     return;
                 } else {
                     if (
@@ -365,7 +366,7 @@ export function handleAdvance(){
                 let brandingPositionData = JSON.parse(brandingPositionRawData);
 
                 if (!brandingPositionData.success) {
-                    toastr.error(brandingPositionData.error, __('Failed', 'multi-pages-plugin'));
+                    toastr.error(brandingPositionData.error, __('Failed', 'multiple-pages-generator-by-porthas'));
                     return;
                 } else {
                     if (brandingPositionData.data) {

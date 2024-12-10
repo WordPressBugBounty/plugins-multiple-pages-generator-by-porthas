@@ -8,7 +8,7 @@
  *
  * Author: Themeisle
  * Author URI: https://themeisle.com
- * Version: 4.0.5
+ * Version: 4.0.6
  */
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -24,7 +24,9 @@ defined( 'MPG_CACHE_URL' ) || define( 'MPG_CACHE_URL', WP_CONTENT_URL . DIRECTOR
 defined( 'MPG_NAME' ) || define( 'MPG_NAME', 'Multiple Pages Generator' );
 defined( 'MPG_BASE_IMG_PATH' ) || define( 'MPG_BASE_IMG_PATH', plugin_dir_url( __FILE__ ) . 'frontend/images' );
 defined( 'MPG_DATABASE_VERSION' ) || define( 'MPG_DATABASE_VERSION', '1.0.0' );
-defined( 'MPG_PLUGIN_VERSION' ) || define( 'MPG_PLUGIN_VERSION', '4.0.5' );
+defined( 'MPG_PLUGIN_VERSION' ) || define( 'MPG_PLUGIN_VERSION', '4.0.6' );
+defined( 'MPG_FREE_SLUG' ) || define( 'MPG_FREE_SLUG', 'multiple-pages-generator-by-porthas' );
+defined( 'MPG_TRANSLATION_CACHE_KEY_PREFIX' ) || define( 'MPG_TRANSLATION_CACHE_KEY_PREFIX', 'mpg_translation_check' );
 
 // to redirect all themeisle_log_event to error log.
 if ( ! defined( 'MPG_LOCAL_DEBUG' ) ) {
@@ -48,11 +50,11 @@ add_action( 'admin_init', function () {
 			printf(
 				'<div class="notice notice-warning"><p><strong>%s</strong><br>%s</p><p></p></div>',
 				sprintf(
-				/* translators: %s: Name of deactivated plugin */
-					__( '%s plugin deactivated.' ),
-					'Multiple Pages Generator(Free)'
+					/* translators: %s: Name of deactivated plugin */
+					__( '%s plugin deactivated.', 'multiple-pages-generator-by-porthas'),
+					__( 'Multiple Pages Generator (Free)', 'multiple-pages-generator-by-porthas' )
 				),
-				'Using the Premium version of Multiple Pages Generator is not requiring using the Free version anymore.'
+				__( 'Using the Premium version of Multiple Pages Generator is not requiring using the Free version anymore.', 'multiple-pages-generator-by-porthas' )
 			);
 		} );
 	}
@@ -64,6 +66,7 @@ if ( ! function_exists( 'mpg_run' ) ) {
 		if ( $has_run ) {
 			return;
 		}
+		require_once 'helpers/I18n.php';
 		$has_run = true;
 		// ... Your plugin's main file logic ...
 		if ( is_readable( MPG_MAIN_DIR . '/pro/load.php' ) ) {
@@ -115,12 +118,12 @@ if ( ! function_exists( 'mpg_run' ) ) {
 			function () {
 				return wpautop(
 					sprintf(
-						__( 'Thanks for using %1$s for the past 7 days! To help you get even more from it, we’re offering an exclusive deal: upgrade to %2$s within the next 5 days and save up to 60%%. Unlock unlimited rows and projects — %3$s Upgrade now %4$s and access all the powerful features of %5$s!', 'mpg' ),
-						'<b>MPG</b>',
-						'<b>MPG PRO</b>',
-						'<a href="{cta_link}" target="_blank">',
-						'</a>',
-						'<b>MPG PRO</b>'
+						// translators: %1$s: the shortname name of the plugin (MPG), %2$s: the shortname of the PRO version (MPG PRO), %3$s: the upgrade link (with label 'Upgrade now'), %4$s: the shortname of the PRO version (MPG PRO).
+						__( 'Thanks for using %1$s for the past 7 days! To help you get even more from it, we’re offering an exclusive deal: upgrade to %2$s within the next 5 days and save up to 60%. Unlock unlimited rows and projects — %3$s and access all the powerful features of %4$s!', 'multiple-pages-generator-by-porthas' ),
+						'<b>' . __( 'MPG', 'multiple-pages-generator-by-porthas' ) . '</b>',
+						'<b>' . __( 'MPG PRO', 'multiple-pages-generator-by-porthas' ) . '</b>',
+						'<a href="{cta_link}" target="_blank">' . __( 'Upgrade now', 'multiple-pages-generator-by-porthas' ) . '</a>',
+						'<b>' . __( 'MPG PRO', 'multiple-pages-generator-by-porthas' ) . '</b>'
 					),
 					true
 				);

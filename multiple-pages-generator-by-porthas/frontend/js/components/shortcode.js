@@ -23,7 +23,7 @@ function renderConditionRowDom(dropdownOptions) {
         <option value="<=" ><=</option>
     </select>
   <select disabled="disabled" class=" mpg_headers_condition_value_dropdown input-data">
-    <option disabled selected>${__('Choose header at first', 'multi-pages-plugin')}</option>
+    <option disabled selected>${__('Choose header at first', 'multiple-pages-generator-by-porthas')}</option>
   </select>
   <button class="add-new-condition" style="display: inline-flex;"><span class="dashicons dashicons-no-alt"></span></button>
 </div>`;
@@ -156,8 +156,8 @@ function initEvents(){
 jQuery('.shortcode-copy').on('click', function () {
     if (copyTextToClipboard(jQuery('#mpg_shortcode_sandbox_textarea').val())) {
         toastr.success(
-            __('Shortcode copied to clipboard!', 'multi-pages-plugin'),
-            __('Success', 'multi-pages-plugin'),
+            __('Shortcode copied to clipboard!', 'multiple-pages-generator-by-porthas'),
+            __('Success', 'multiple-pages-generator-by-porthas'),
             { timeOut: 3000 }
         );
     }
@@ -178,14 +178,14 @@ jQuery('.copy-shortcode-btn').on('click', function () {
 
     if (copyTextToClipboard(`${shortcodeText}`)) {
         toastr.success(
-            __('Shortcode copied to clipboard!', 'multi-pages-plugin'),
-            __('Success', 'multi-pages-plugin'),
+            __('Shortcode copied to clipboard!', 'multiple-pages-generator-by-porthas'),
+            __('Success', 'multiple-pages-generator-by-porthas'),
             { timeOut: 3000 }
         );
     } else {
         toastr.warning(
-            __('Looks like something went wrong while copying shortcode', 'multi-pages-plugin'),
-            __('Hmm', 'multi-pages-plugin'),
+            __('Looks like something went wrong while copying shortcode', 'multiple-pages-generator-by-porthas'),
+            __('Hmm', 'multiple-pages-generator-by-porthas'),
             { timeOut: 3000 }
         );
     }
@@ -366,8 +366,8 @@ jQuery('#mpg_direction').on('change', function () {
         jQuery('#mpg_order_by').attr('disabled', directionValue === 'random');
     } else {
         toastr.warning(
-            __('Choosed wrong direction', 'multi-pages-plugin'),
-            __('Error', 'multi-pages-plugin')
+            __('Chosen wrong direction', 'multiple-pages-generator-by-porthas'),
+            __('Error', 'multiple-pages-generator-by-porthas')
         );
     }
 });
@@ -409,7 +409,7 @@ jQuery('#shortcode .shortcode-preview').on('click', async function () {
         if (contentMatches && contentMatches[1]) {
             content = contentMatches[1];
         } else {
-            throw __('You need to fill some static content with shortcodes beetwen [mpg] [/mpg]', 'multi-pages-plugin');
+            throw __('You need to fill some static content with shortcodes between [mpg] [/mpg]', 'multiple-pages-generator-by-porthas');
         }
 
         // =================  ProjectId  =================
@@ -495,7 +495,7 @@ jQuery('#shortcode .shortcode-preview').on('click', async function () {
         let shortcodePreviewData = JSON.parse(shortcodePreview);
 
         if (!shortcodePreviewData.success) {
-            toastr.error(shortcodePreviewData.error, __('Error', 'multi-pages-plugin'));
+            toastr.error(shortcodePreviewData.error, __('Error', 'multiple-pages-generator-by-porthas'));
             return;
         }
 
@@ -517,7 +517,7 @@ jQuery('#shortcode .shortcode-preview').on('click', async function () {
             jQuery('.mpg_list_preview-block').html(shortcodePreviewData.data);
         }
     } catch (error) {
-        toastr.warning(error, __('Incorrect input', 'multi-pages-plugin'));
+        toastr.warning(error, __('Incorrect input', 'multiple-pages-generator-by-porthas'));
     }
 });
 }

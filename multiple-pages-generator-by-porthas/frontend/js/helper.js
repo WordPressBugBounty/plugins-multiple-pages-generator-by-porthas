@@ -1,4 +1,4 @@
-import { __ } from '@wordpress/i18n';
+import { __, sprintf } from '@wordpress/i18n';
 import { getMpgWhereState } from './components/shortcode.js';
 (function () {
 
@@ -160,7 +160,7 @@ function fillUrlStructureShortcodes(headers) {
 
 function renderShortCodesDropdown(headers, selector) {
 
-    let option = new Option(__('Insert shortcode', 'multi-pages-plugin'), null, false, true);
+    let option = new Option(__('Insert shortcode', 'multiple-pages-generator-by-porthas'), null, false, true);
     option.disabled = true;
     selector.append(option);
 
@@ -263,7 +263,8 @@ function convertTimestampToDateTime(unix_timestamp) {
 
     let formattedDate = `${date.getFullYear()} ${month} ${date.getDate()}`;
 
-    return `${formattedDate} ${__('at', 'multi-pages-plugin')} ${formattedTime}`;
+    // translators: %s: the time (e.g.: 12:30).
+    return `${formattedDate} ${ sprintf( __('at %s', 'multiple-pages-generator-by-porthas'), formattedTime)}`;
 }
 
 

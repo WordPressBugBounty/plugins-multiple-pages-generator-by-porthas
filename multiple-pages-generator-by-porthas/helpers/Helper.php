@@ -14,7 +14,7 @@ class MPG_Helper
     // Подключает .mo файл перевода из указанной папки.
     public static function mpg_set_language_folder_path()
     {
-        load_plugin_textdomain('mpg', false, dirname(plugin_basename(__DIR__)) . '/lang/');
+        load_plugin_textdomain('multiple-pages-generator-by-porthas', false, dirname(plugin_basename(__DIR__)) . '/lang/');
     }
 
     // Register additional (monthly) interval for cron because WP hasn't weekly period
@@ -22,7 +22,7 @@ class MPG_Helper
     {
         $schedules['monthly'] = array(
             'interval' => 60 * 60 * 24 * 30,
-            'display' => __('Monthly', 'mpg')
+            'display' => __('Monthly', 'multiple-pages-generator-by-porthas')
         );
 
         return $schedules;
@@ -33,7 +33,7 @@ class MPG_Helper
     {
         $schedules['weekly'] = array(
             'interval' => 60 * 60 * 24 * 7,
-            'display' => __('Weekly', 'mpg')
+            'display' => __('Weekly', 'multiple-pages-generator-by-porthas')
         );
 
         return $schedules;
@@ -164,6 +164,8 @@ class MPG_Helper
                 'isPro'             => mpg_app()->is_premium(),
             ]);
 
+            load_script_textdomain( 'mpg_main_js', 'multiple-pages-generator-by-porthas' );
+
             wp_enqueue_style('mpg_datatable',                   plugins_url('frontend/libs/dataTables/jquery.dataTables.min.css', __DIR__) , array(), MPG_PLUGIN_VERSION);
             wp_enqueue_style('mpg_bootstrap_css',               plugins_url('frontend/libs/bootstrap/bootstrap.min.css', __DIR__) , array(), MPG_PLUGIN_VERSION);
             wp_enqueue_style('mpg_datetimepicker_css',          plugins_url('frontend/libs/datetimepicker/jquery.datetimepicker.full.min.css', __DIR__) , array(), MPG_PLUGIN_VERSION);
@@ -267,7 +269,7 @@ class MPG_Helper
 				continue;
 			}
 			//if the string is a URL, we ignore it.
-			if ( str_starts_with( $string, 'http' ) ) {
+			if ( preg_match( '/^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?(\?.*)?$/', $string ) ) {
 				continue;
 			}
 			$strings[ $index ] = str_replace( ' ', $space_replacer, $string );
@@ -283,26 +285,84 @@ class MPG_Helper
         echo $code;
     }
 
+	/**
+	 * Extracts the worksheet ID from a given Google Sheets URL.
+	 *
+	 * This function parses the URL components and checks for the presence of the 'gid' parameter
+	 * in the query string or fragment. If found, it returns the 'gid' value.
+	 *
+	 * @param string $url The URL from which to extract the worksheet ID.
+	 * @return string|false The extracted worksheet ID, or false if no 'gid' is found.
+	 */
+	public static function extract_worksheet_from_url($url) {
+		// Parse the URL components
+		$urlComponents = parse_url($url);
+
+		// Check if the query string exists
+		if (isset($urlComponents['query'])) {
+			parse_str($urlComponents['query'], $queryParams);
+
+			// Check and return the gid parameter if it exists
+			if (isset($queryParams['gid'])) {
+				return $queryParams['gid'];
+			}
+		}
+
+		// Check for gid in the fragment (after #)
+		if (isset($urlComponents['fragment'])) {
+			parse_str($urlComponents['fragment'], $fragmentParams);
+
+			if (isset($fragmentParams['gid'])) {
+				return $fragmentParams['gid'];
+			}
+		}
+
+		// If no gid is found
+		return false;
+	}
+	/**
+	 * Extracts the document ID from a given Google Docs URL.
+	 *
+	 * This function parses the URL components and checks if the path exists.
+	 * If the path exists, it uses a regular expression to match and extract the document ID.
+	 *
+	 * @param string $url The URL from which to extract the document ID.
+	 * @return string The extracted document ID, or a message indicating no document ID was found.
+	 */
+	public static function extract_documentid_from_url($url) {
+		// Parse the URL components
+		$urlComponents = parse_url($url);
+
+		// Check if the path exists in the URL
+		if (isset($urlComponents['path'])) {
+			// Match the document ID using a regex
+			if (preg_match('/\/d\/([a-zA-Z0-9-_]+)/', $urlComponents['path'], $matches)) {
+				return $matches[1]; // Return the matched document ID
+			}
+		}
+
+		// If no document ID is found
+		return false;
+	}
     public static function mpg_get_direct_csv_link($raw_link, $worksheet_id = null)
     {
 
         // false = substring was not found in target string
-        if (strpos($raw_link, 'docs.google.com') !== false or strpos($raw_link, 'drive.google.com') !== false) {
+	    if ( strpos( $raw_link, 'docs.google.com' ) !== false or strpos( $raw_link, 'drive.google.com' ) !== false ) {
+		    $worksheet_from_url = self::extract_worksheet_from_url( $worksheet_id );
+		    $documentId         = self::extract_documentid_from_url( $raw_link );
+		    if ( empty( $documentId ) ) {
+			    return false;
+		    }
+		    $final_url          = 'https://docs.google.com/spreadsheets/d/' . $documentId . '/export?format=csv&id=' . $documentId;
 
-            $documentId = str_replace([
-                'https://docs.google.com/spreadsheets/d/',
-                'https://drive.google.com/file/d/',
-                '/view?usp=sharing',
-                '/edit?usp=sharing'
-            ], ['', '', '', ''], $raw_link);
-
-            $final_url = 'https://docs.google.com/spreadsheets/d/' . $documentId . '/export?format=csv&id=' . $documentId;
-
-            if ($worksheet_id) {
-                $final_url .=  '&gid=' . $worksheet_id;
-            }
-            return $final_url;
-        }
+		    if ( ! empty( $worksheet_id ) ) {
+			    $final_url .= '&gid=' . $worksheet_id;
+		    } elseif ( ! empty( $worksheet_from_url ) ) {
+			    $final_url .= '&gid=' . $worksheet_from_url;
+		    }
+		    return $final_url;
+	    }
 
         return $raw_link;
     }
@@ -317,7 +377,8 @@ class MPG_Helper
         } elseif ($ext === 'ods') {
             $reader = ReaderFactory::createFromType(Type::ODS); // for ODS files
         } else {
-            throw new Exception(__('Unsupported file extension:' . ' ' . $ext, 'mpg'));
+            // translators: %s: the name of file extension.
+            throw new Exception( sprintf( __('Unsupported file extension: %s', 'multiple-pages-generator-by-porthas'), $ext ) );
         }
 
 	    $reader->setShouldFormatDates(true);
@@ -329,11 +390,6 @@ class MPG_Helper
 	    $project_id         = isset( $project->id ) ? $project->id : 0;
 	    $dataset_path       = MPG_DatasetModel::get_dataset_path_by_project( $project );
 	    $periodicity        = isset( $project->schedule_periodicity ) ? $project->schedule_periodicity : null;
-	    $source_direct_link = isset( $project->original_file_url ) ? $project->original_file_url : '';
-	    $worksheet_id       = isset( $project->worksheet_id ) ? $project->worksheet_id : '';
-	    $space_replacer     = isset( $project->space_replacer ) ? $project->space_replacer : '';
-	    $url_structure      = isset( $project->url_structure ) ? $project->url_structure : '';
-	    $source_type        = isset( $project->source_type ) ? $project->source_type : '';
 
         global $mpg_dataset;
         if ( ! empty( $mpg_dataset[ $project_id ] ) ) {
@@ -419,7 +475,6 @@ class MPG_Helper
      * Live project data update.
      */
     public static function mpg_live_project_data_update( stdClass $project = null ) {
-        global $mpg_urls_array;
 
 	    $project_id         = isset( $project->id ) ? $project->id : 0;
 	    $dataset_path       = MPG_DatasetModel::get_dataset_path_by_project( $project );
@@ -438,30 +493,26 @@ class MPG_Helper
 		    return $project;
 	    }
         $dataset_array = MPG_DatasetModel::get_cache( $project_id );
+	    if ( empty( $dataset_path ) ) {
+		    return $project;
+	    }
+		if ( empty( $source_direct_link ) ) {
+		    return $project;
+	    }
 
-        if ( empty( $mpg_urls_array[ $project_id ] ) && empty( $dataset_array ) && $expiration > 0 ) {
-            if ( ! empty( $source_direct_link ) ) {
-                if ( 'upload_file' === $source_type ) {
-                    $source_direct_link = $dataset_path;
-                }
-                $direct_link = MPG_Helper::mpg_get_direct_csv_link( $source_direct_link, $worksheet_id );
-                $ext = MPG_Helper::mpg_get_extension_by_path( $direct_link );
-                $download_file = MPG_DatasetModel::download_file( $direct_link, $dataset_path );
-                $urls_array = MPG_ProjectModel::mpg_generate_urls_from_dataset( $dataset_path, $url_structure, $space_replacer, true );
-                $dataset_array = $urls_array['dataset_array'];
-                $urls_array = $urls_array['urls_array'];
-
-                if ( ! doing_action( 'wp_ajax_mpg_get_search_results' ) ) {
-                    $mpg_urls_array[ $project_id ] = $urls_array;
-                }
-
-                $fields_array = array();
-                self::$urls_array = $urls_array;
-                $fields_array['urls_array'] = wp_json_encode( $urls_array );
-                MPG_ProjectModel::mpg_update_project_by_id( $project_id, $fields_array, true );
-                $project->urls_array = $fields_array['urls_array'];
-	            MPG_SitemapGenerator::maybe_create_sitemap( $urls_array, $project );
-            }
+        if ( empty( $dataset_array ) && $expiration > 0 ) {
+            $direct_link = MPG_Helper::mpg_get_direct_csv_link( $source_direct_link, $worksheet_id );
+            MPG_DatasetModel::download_file( $direct_link, $dataset_path );
+            $urls_array = MPG_ProjectModel::mpg_generate_urls_from_dataset( $dataset_path, $url_structure, $space_replacer, true );
+	        $dataset_array = $urls_array['dataset_array'];
+            $urls_array = $urls_array['urls_array'];
+            $fields_array = array();
+            self::$urls_array = $urls_array;
+            $fields_array['urls_array'] = wp_json_encode( $urls_array );
+            MPG_ProjectModel::mpg_update_project_by_id( $project_id, $fields_array, true );
+	        MPG_DatasetModel::set_cache( $project_id, $dataset_array, $expiration );
+            $project->urls_array = $fields_array['urls_array'];
+            MPG_SitemapGenerator::maybe_create_sitemap( $urls_array, $project );
         }
         return $project;
     }
@@ -785,7 +836,7 @@ class MPG_Helper
             'MPGSamplePreview',
             array(
                 'previewUrl' => reset( $urls ),
-                'buttonText' => __( 'View Sample MPG URL', 'mpg' ),
+                'buttonText' => __( 'View Sample MPG URL', 'multiple-pages-generator-by-porthas' ),
             )
         );
     }

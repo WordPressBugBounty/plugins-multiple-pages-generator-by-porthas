@@ -20,7 +20,7 @@ class MPG_DatasetController
         try {
 
             if (!extension_loaded('zip')) {
-                echo __("You haven't installed or enabled ZIP extension for PHP, so MPG may not work properly", 'mpg');
+                echo __("You haven't installed or enabled ZIP extension for PHP, so MPG may not work properly", 'multiple-pages-generator-by-porthas');
             }
 
             // dataset_hub - it's a file from Google Sheets with datasets list (configs)
@@ -29,9 +29,9 @@ class MPG_DatasetController
             return MPG_DatasetLibraryView::render($datasets_list);
         } catch (Exception $e) {
 
-            do_action( 'themeisle_log_event', MPG_NAME, __('Error occured in process of getting datasets. More detail in logs.', 'mpg'), 'debug', __FILE__, __LINE__ );
+            do_action( 'themeisle_log_event', MPG_NAME, __('Error occurred in process of getting datasets. More detail in logs.', 'multiple-pages-generator-by-porthas'), 'debug', __FILE__, __LINE__ );
 
-            echo __('Error occured in process of getting datasets. More detail in logs.', 'mpg');
+            echo __('Error occurred in process of getting datasets. More detail in logs.', 'multiple-pages-generator-by-porthas');
         }
     }
 
@@ -44,7 +44,7 @@ class MPG_DatasetController
             $dataset_id = isset($_POST['datasetId']) ? (int) ($_POST['datasetId']) : null;
 
             if (!$dataset_id) {
-                throw new Exception(__('Wrong or missing dataset ID', 'mpg'));
+                throw new Exception(__('Wrong or missing dataset ID', 'multiple-pages-generator-by-porthas'));
             }
 
             // 1. Надо получить "конфиг" выбранного датасета
@@ -54,7 +54,7 @@ class MPG_DatasetController
             $dataset_config = isset( $datasets_list[ $_dataset_id ] ) ? $datasets_list[ $_dataset_id ] : null;
 
             if (!$dataset_config) {
-                throw new Exception(__('Needed dataset was not found', 'mpg'));
+                throw new Exception(__('Needed dataset was not found', 'multiple-pages-generator-by-porthas'));
             }
 
             // 2. Надо создать страницу (или пост), дать ей название и получить id
@@ -95,12 +95,12 @@ class MPG_DatasetController
             $download_dataset = MPG_DatasetModel::download_file($source_path, $destination_path);
 
             if ($download_dataset !== true) {
-                throw new Exception($download_dataset, 'mpg');
+                throw new Exception($download_dataset, 'multiple-pages-generator-by-porthas');
             }
             if ( ! file_exists( $destination_path ) ) {
                 $download_dataset = MPG_DatasetModel::download_file($source_path, $destination_path);
                 if ($download_dataset !== true) {
-                    throw new Exception($download_dataset, 'mpg');
+                    throw new Exception($download_dataset, 'multiple-pages-generator-by-porthas');
                 }
             }
 
@@ -277,7 +277,7 @@ class MPG_DatasetController
 			$project = MPG_ProjectModel::get_project_by_id( $project_id );
 
 			if ( empty($project) ) {
-				throw new Exception( __( 'Can\'t get project', 'mpg' ) );
+				throw new Exception( __( 'Can\'t get project', 'multiple-pages-generator-by-porthas' ) );
 			}
 
 			$urls_array    = $project->urls_array ? json_decode( $project->urls_array ) : [];
@@ -342,7 +342,7 @@ class MPG_DatasetController
 				// default to csv as file extension for non-matches to prevent
 	            // security issues
 				if ( ! in_array( strtolower( $ext ), ['csv', 'xls', 'xlsx', 'ods'] ) ) {
-					throw new Exception(__('Unsupported file extension', 'mpg'));
+					throw new Exception(__('Unsupported file extension', 'multiple-pages-generator-by-porthas'));
 				}
 
                 $destination = MPG_DatasetModel::uploads_base_path() . 'temp-unlinked_file.' . $ext;
@@ -360,17 +360,34 @@ class MPG_DatasetController
                             'path' => $destination
                         ]
                     ]);
+                }else{
+					throw new Exception(__('Document is not accesible.', 'multiple-pages-generator-by-porthas'));
                 }
             } else {
-                throw new Exception(__('Link or project ID is missing', 'mpg'));
+                throw new Exception(__('Link or project ID is missing', 'multiple-pages-generator-by-porthas'));
             }
         } catch (Exception $e) {
 
-            do_action( 'themeisle_log_event', MPG_NAME, sprintf( 'Can\'t download file by URL. Details: %s', $e->getMessage() ), 'debug', __FILE__, __LINE__ );
+            do_action(
+                'themeisle_log_event',
+                MPG_NAME,
+                __('Can\'t download file by URL.', 'multiple-pages-generator-by-porthas') . ' ' . sprintf(
+                    // translators: %s: the error message.
+                    __('Details: %s', 'multiple-pages-generator-by-porthas'),
+                    $e->getMessage()
+                ),
+                'debug',
+                __FILE__,
+                __LINE__
+            );
 
             echo json_encode([
                 'success' => false,
-                'error' => __('Can\'t download file by URL. Details:', 'mpg') . $e->getMessage()
+                'error' => __('Can\'t download file by URL.', 'multiple-pages-generator-by-porthas') . ' ' . sprintf(
+                    // translators: %s: the error message.
+                    __('Details: %s', 'multiple-pages-generator-by-porthas'),
+                    $e->getMessage()
+                )
             ]);
         }
 
@@ -391,7 +408,7 @@ class MPG_DatasetController
 	        $path_to_dataset = MPG_DatasetModel::get_dataset_path_by_project( $project );
 
 	        if ( empty( $path_to_dataset ) ) {
-		        throw new Exception( __( 'Dataset path was not defined', 'mpg' ) );
+		        throw new Exception( __( 'Dataset path was not defined', 'multiple-pages-generator-by-porthas' ) );
 	        }
 
             $choosed_culumn_number = (int) $_POST['choosedColumnNumber'];
@@ -407,11 +424,16 @@ class MPG_DatasetController
             ]);
         } catch (Exception $e) {
 
-            do_action( 'themeisle_log_event', MPG_NAME, sprintf( 'Details: %s', $e->getMessage() ), 'debug', __FILE__, __LINE__ );
+            // translators: %s: the error message.
+            do_action( 'themeisle_log_event', MPG_NAME, __('Details: %s', 'multiple-pages-generator-by-porthas'), $e->getMessage(), 'debug', __FILE__, __LINE__ );
 
             echo json_encode([
                 'success' => false,
-                'error' => __('Details:', 'mpg') . $e->getMessage()
+                'error' => sprintf(
+                    // translators: %s: the error message.
+                    __('Details: %s', 'multiple-pages-generator-by-porthas'),
+                    $e->getMessage()
+                )
             ]);
         }
 

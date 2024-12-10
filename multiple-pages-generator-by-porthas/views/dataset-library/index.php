@@ -16,7 +16,7 @@ class MPG_DatasetLibraryView
 ?>
 		<div class="page-header-top">
 			<div class="page-title d-flex flex-wrap align-items-center justify-content-between">
-	            <h1><?php esc_html_e( 'New Project', 'mpg' ); ?></h1>
+	            <h1><?php esc_html_e( 'New Project', 'multiple-pages-generator-by-porthas' ); ?></h1>
 	            <?php
 	            $plugin_data = get_plugin_data( MPG_BASENAME );
 	            if ( ! empty( $plugin_data['Version'] ) ) {
@@ -43,8 +43,11 @@ class MPG_DatasetLibraryView
 				<div class="mpg-notice mpg-notice-top">
 						<?php
 						echo wp_kses(
-							// translators: %1$s to upgrade URL, %2$s to button label.
-							sprintf( __( 'Project limit reached! Create unlimited projects, by <a href="%1$s" target="_blank">%2$s</a>', 'mpg' ), esc_url( mpg_app()->get_upgrade_url( 'setupProject' ) ), __( 'upgrading to MPG Pro', 'mpg' ) ),
+							sprintf( 
+								// translators: %1$s the upgrade URL (with label "upgrading to MPG Pro").
+								__( 'Project limit reached! Create unlimited projects, by %1$s', 'multiple-pages-generator-by-porthas' ),
+								'<a href="' . esc_url( mpg_app()->get_upgrade_url( 'setupProject' ) ) . '" target="_blank">' . __( 'upgrading to MPG Pro', 'multiple-pages-generator-by-porthas' ) . '</a>'
+							),
 							array(
 								'a' => array(
 									'href'   => true,
@@ -60,11 +63,11 @@ class MPG_DatasetLibraryView
                     <div class="top-content">
                         <form name="filterform" onsubmit="return false;">
                             <div class="left-block">
-                                <h2><?php _e('How would you like to start?', 'mpg'); ?></h2>
+                                <h2><?php _e('How would you like to start?', 'multiple-pages-generator-by-porthas'); ?></h2>
                                 
                             </div>
                             <div class="right-block">
-                                <input type="search" name="filterinput" id="filterinput" placeholder="<?php _e('Search for template', 'mpg'); ?>" />
+                                <input type="search" name="filterinput" id="filterinput" placeholder="<?php _e('Search for template', 'multiple-pages-generator-by-porthas'); ?>" />
                             </div>
                         </form>
                     </div>
@@ -78,8 +81,11 @@ class MPG_DatasetLibraryView
                     				<div class="mpg-notice mpg-inner-notice">
                     					<?php
                     					echo wp_kses(
-											// translators: %1$s to upgrade URL, %2$s to button label.
-                    						sprintf( __( 'Unlock all templates and create unlimited projects, by <a href="%1$s" target="_blank">%2$s</a>', 'mpg' ), esc_url( mpg_app()->get_upgrade_url( 'setupProject' ) ), __( 'upgrading to MPG Pro', 'mpg' ) ),
+											sprintf(
+												// translators: %1$s the upgrade URL (with label "upgrading to MPG Pro").
+												__( 'Unlock all templates and create unlimited projects, by %1$s', 'multiple-pages-generator-by-porthas' ), 
+												'<a href="' . esc_url( mpg_app()->get_upgrade_url( 'setupProject' ) ) . '" target="_blank">' . __( 'upgrading to MPG Pro', 'multiple-pages-generator-by-porthas' ) .'</a>'
+											),
                     						array(
                     							'a' => array(
                     								'href'   => true,
@@ -95,7 +101,7 @@ class MPG_DatasetLibraryView
                     		<ul id="dataset_list">
                     			<?php
                             	// Replace headers row to "From scratch"
-                    			$datasets_list[0] = array(1 => __('From scratch', 'mpg'), 2 => 'fa fa-file');
+                    			$datasets_list[0] = array(1 => __('From scratch', 'multiple-pages-generator-by-porthas'), 2 => 'fa fa-file');
                     			foreach ($datasets_list as $index => $dataset) {
                                 // Избавляемся от пустых рядов
                     				if (isset($dataset[0]) && !$dataset[0]) {
@@ -149,7 +155,7 @@ class MPG_DatasetLibraryView
                     </div>
 
                     <div class="load-more-container">
-                        <a href="#" class="load-more hide"><?php _e('Load more', 'mpg'); ?></a>
+                        <a href="#" class="load-more hide"><?php _e('Load more', 'multiple-pages-generator-by-porthas'); ?></a>
                     </div>
                 </div>
 

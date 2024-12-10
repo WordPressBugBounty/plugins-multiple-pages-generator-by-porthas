@@ -159,17 +159,17 @@ abstract class Base_Display implements DisplayInterface {
 	 */
 	public function get_operators(): array {
 		return [
-			self::OPERATOR_HAS_VALUE           => __( 'Has Any Value', 'mpg' ),
-			self::OPERATOR_EQUALS              => __( 'Equals', 'mpg' ),
-			self::OPERATOR_NOT_EQUALS          => __( 'Not Equals', 'mpg' ),
-			self::OPERATOR_EMPTY               => __( 'Is Empty', 'mpg' ),
-			self::OPERATOR_CONTAINS            => __( 'Contains', 'mpg' ),
-			self::OPERATOR_NOT_CONTAINS        => __( 'Not Contains', 'mpg' ),
-			self::OPERATOR_GREATER_THAN        => __( 'Greater Than', 'mpg' ),
-			self::OPERATOR_GREATER_THAN_EQUALS => __( 'Greater Than or Equals', 'mpg' ),
-			self::OPERATOR_LESS_THAN           => __( 'Less Than', 'mpg' ),
-			self::OPERATOR_LESS_THAN_EQUALS    => __( 'Less Than or Equals', 'mpg' ),
-			self::OPERATOR_REGEX               => __( 'Matches Regular Expression', 'mpg' ),
+			self::OPERATOR_HAS_VALUE           => __( 'Has Any Value', 'multiple-pages-generator-by-porthas' ),
+			self::OPERATOR_EQUALS              => __( 'Equals', 'multiple-pages-generator-by-porthas' ),
+			self::OPERATOR_NOT_EQUALS          => __( 'Not Equals', 'multiple-pages-generator-by-porthas' ),
+			self::OPERATOR_EMPTY               => __( 'Is Empty', 'multiple-pages-generator-by-porthas' ),
+			self::OPERATOR_CONTAINS            => __( 'Contains', 'multiple-pages-generator-by-porthas' ),
+			self::OPERATOR_NOT_CONTAINS        => __( 'Not Contains', 'multiple-pages-generator-by-porthas' ),
+			self::OPERATOR_GREATER_THAN        => __( 'Greater Than', 'multiple-pages-generator-by-porthas' ),
+			self::OPERATOR_GREATER_THAN_EQUALS => __( 'Greater Than or Equals', 'multiple-pages-generator-by-porthas' ),
+			self::OPERATOR_LESS_THAN           => __( 'Less Than', 'multiple-pages-generator-by-porthas' ),
+			self::OPERATOR_LESS_THAN_EQUALS    => __( 'Less Than or Equals', 'multiple-pages-generator-by-porthas' ),
+			self::OPERATOR_REGEX               => __( 'Matches Regular Expression', 'multiple-pages-generator-by-porthas' ),
 		];
 	}
 
@@ -332,17 +332,18 @@ abstract class Base_Display implements DisplayInterface {
 			if ( ! isset( $condition['value'] ) || empty( $condition['value'] ) ) {
 				continue;
 			}
-			if ( str_starts_with( $condition['value'], '{{' ) && str_ends_with( $condition['value'], '}}' ) ) {
+			preg_match_all('/{{mpg_\S+}}/m', $condition['value'], $matches, PREG_SET_ORDER, 0);
 
-				$column_index = \MPG_ProjectModel::headers_have_column( $headers, $condition['value'] );
-
-				if ( $column_index === false ) {
-					continue;
+			if ( ! empty( $matches )  ) {
+				foreach ( $matches[0] as $match ) {
+					$column_index = \MPG_ProjectModel::headers_have_column( $headers, $match );
+					if ( $column_index === false ) {
+						continue;
+					}
+					$conditions[ $index ]['value'] = str_replace( $match, $data_row[ $column_index ],$conditions[ $index ]['value'] );
 				}
-				$conditions[ $index ]['value'] = $data_row[ $column_index ];
 			}
 		}
-
 		return $conditions;
 	}
 
@@ -375,7 +376,8 @@ abstract class Base_Display implements DisplayInterface {
 			$column       = $condition['column'];
 			$column_index = \MPG_ProjectModel::headers_have_column( $headers, $column );
 			if ( $column_index === false ) {
-				throw new \Exception( sprintf( __( 'Column: %s is not found in project #%s.', 'mpg' ), $condition['column'], $current_project_id ) );
+				// translators: %1$s: the name of the colum, %2$s: the name of the project.
+				throw new \Exception( sprintf( __( 'Column: %1$s is not found in project #%2$s.', 'multiple-pages-generator-by-porthas' ), $condition['column'], $current_project_id ) );
 			}
 			$conditions[ $condition_index ]['column_index'] = $column_index;
 		}
@@ -383,7 +385,7 @@ abstract class Base_Display implements DisplayInterface {
 		foreach ( $conditions as $condition ) {
 			$column_index = $condition['column_index'] ?? false;
 			if ( $column_index === false ) {
-				throw new \Exception( __( 'No column index provided to compare data for. Please ensure that the condition array includes a valid column index.', 'mpg' ) );
+				throw new \Exception( __( 'No column index provided to compare data for. Please ensure that the condition array includes a valid column index.', 'multiple-pages-generator-by-porthas' ) );
 			}
 			$value         = $current_row[ $column_index ] ?? '';
 			$condition_met = $this->evaluate_condition( $value, $condition['value'] ?? '', $condition['operator'] ?? self::OPERATOR_HAS_VALUE );

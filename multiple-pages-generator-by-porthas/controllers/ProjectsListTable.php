@@ -79,11 +79,11 @@ if ( ! class_exists( 'Projects_List_Table' ) ) {
 		public function get_columns() {
 			$columns = array(
 				'cb'          => '<input type="checkbox" />',
-				'name'        => __( 'Project Name', 'mpg' ),
-				'pages'       => __( 'Pages', 'mpg' ),
-				'next_sync'   => __( 'Next Sync', 'mpg' ),
-				'source_type' => __( 'Source Type', 'mpg' ),
-				'created_at'  => __( 'Date', 'mpg' ),
+				'name'        => __( 'Project Name', 'multiple-pages-generator-by-porthas' ),
+				'pages'       => __( 'Pages', 'multiple-pages-generator-by-porthas' ),
+				'next_sync'   => __( 'Next Sync', 'multiple-pages-generator-by-porthas' ),
+				'source_type' => __( 'Source Type', 'multiple-pages-generator-by-porthas' ),
+				'created_at'  => __( 'Date', 'multiple-pages-generator-by-porthas' ),
 			);
 			return $columns;
 		}
@@ -101,13 +101,13 @@ if ( ! class_exists( 'Projects_List_Table' ) ) {
 					return $item->$column_name;
 				case 'pages':
 					$total_pages = isset( $item->urls_array ) ? count( json_decode( $item->urls_array, true ) ) : 0;
-					// phpcs:ignore WordPress.WP.I18n.MissingTranslatorsComment
-					return '<a href="#" class="mpg-preview-urls" data-project_id="' . esc_attr( $item->id ). '" class="">' . sprintf( esc_html__( 'See All %d URLs', 'mpg' ), $total_pages ) . '</a>';
+					// translators: %d: the number of total page.
+					return '<a href="#" class="mpg-preview-urls" data-project_id="' . esc_attr( $item->id ). '" class="">' . sprintf( esc_html__( 'See All %d URLs', 'multiple-pages-generator-by-porthas' ), $total_pages ) . '</a>';
 				case 'next_sync':
 					if ( 'direct_link' !== $item->source_type ) {
 						return '—';
 					}
-					$next_sync = esc_html__( 'Live', 'mpg' );
+					$next_sync = esc_html__( 'Live', 'multiple-pages-generator-by-porthas' );
 					if ( ! empty( $item->schedule_periodicity ) && ! in_array( $item->schedule_periodicity, array( 'now', 'once', 'ondemand' ), true ) ) {
 						$next_sync = wp_next_scheduled(
 							'mpg_schedule_execution',
@@ -122,15 +122,15 @@ if ( ! class_exists( 'Projects_List_Table' ) ) {
 						$next_sync = date_i18n( 'Y m d \a\t H:i:s', $next_sync );
 					} elseif ( ! empty( $item->schedule_periodicity ) ) {
 						if ( 'once' === $item->schedule_periodicity ) {
-							$next_sync = esc_html__( 'Manual', 'mpg' );
+							$next_sync = esc_html__( 'Manual', 'multiple-pages-generator-by-porthas' );
 						} elseif ( 'now' === $item->schedule_periodicity ) {
-							$next_sync = esc_html__( 'Live', 'mpg' );
+							$next_sync = esc_html__( 'Live', 'multiple-pages-generator-by-porthas' );
 						} elseif ( 'ondemand' === $item->schedule_periodicity ) {
-							$next_sync = esc_html__( 'On Demand', 'mpg' );
+							$next_sync = esc_html__( 'On Demand', 'multiple-pages-generator-by-porthas' );
 						}
 					}
-					// phpcs:ignore WordPress.WP.I18n.MissingTranslatorsComment
-					return sprintf( esc_html__( 'Next scheduled execution: %s', 'mpg' ), esc_html( $next_sync ) );
+					// translators: %d: the date of the next schedule.
+					return sprintf( esc_html__( 'Next scheduled execution: %s', 'multiple-pages-generator-by-porthas' ), esc_html( $next_sync ) );
 				case 'created_at':
 					return date_i18n( 'd M, Y, H:i a', $item->$column_name );
 				case 'source_type':
@@ -138,7 +138,7 @@ if ( ! class_exists( 'Projects_List_Table' ) ) {
 					$source_type = str_replace( '_', ' ', $column_name );
 					return esc_html( ucwords( $source_type ) );
 				default:
-					return __( 'No Data Found', 'mpg' );
+					return __( 'No Data Found', 'multiple-pages-generator-by-porthas' );
 			}
 		}
 
@@ -167,7 +167,7 @@ if ( ! class_exists( 'Projects_List_Table' ) ) {
 					esc_url( $edit_url ),
 					mpg_app()->can_edit() ? 'mpg-edit-btn' : 'mpg-edit-btn-pro',
 					! mpg_app()->can_edit() ? 'opacity:0.5;' : '',
-					esc_html__( 'Edit', 'mpg' ),
+					esc_html__( 'Edit', 'multiple-pages-generator-by-porthas' ),
 				),
 				'delete' => sprintf(
 					'<a href="%s" onclick="return confirm(\'%s\');">%s</a>',
@@ -182,8 +182,8 @@ if ( ! class_exists( 'Projects_List_Table' ) ) {
 							admin_url( 'admin.php' )
 						)
 					),
-					esc_html__( 'Are you sure you want to delete this project?', 'mpg' ),
-					esc_html__( 'Delete', 'mpg' )
+					esc_html__( 'Are you sure you want to delete this project?', 'multiple-pages-generator-by-porthas' ),
+					esc_html__( 'Delete', 'multiple-pages-generator-by-porthas' )
 				),
 			);
 			$clone_action = sprintf(
@@ -201,7 +201,7 @@ if ( ! class_exists( 'Projects_List_Table' ) ) {
 				                ) : '#',
 				                mpg_app()->is_premium() ? 'mpg-clone-btn' : 'mpg-clone-btn-pro',
 				                ! mpg_app()->is_premium() ? 'opacity:0.5;' : '',
-				                ( ! mpg_app()->is_premium() ? '<span style="font-size: 13px;line-height: 1.5em;width: 13px;height: 13px;" class="dashicons dashicons-lock"></span>' : '' )  . esc_html__( 'Clone', 'mpg' )
+				                ( ! mpg_app()->is_premium() ? '<span style="font-size: 13px;line-height: 1.5em;width: 13px;height: 13px;" class="dashicons dashicons-lock"></span>' : '' )  . esc_html__( 'Clone', 'multiple-pages-generator-by-porthas' )
 			);
 
 			$export_action = sprintf(
@@ -219,7 +219,7 @@ if ( ! class_exists( 'Projects_List_Table' ) ) {
 				                ) : '#',
 				                mpg_app()->is_premium() ? 'mpg-export-btn' : 'mpg-export-btn-pro',
 				                ! mpg_app()->is_premium() ? 'opacity:0.5;' : '',
-				                ( ! mpg_app()->is_premium() ? '<span style="font-size: 13px;line-height: 1.5em;width: 13px;height: 13px;" class="dashicons dashicons-lock"></span>' : '' )  . esc_html__( 'Export', 'mpg' )
+				                ( ! mpg_app()->is_premium() ? '<span style="font-size: 13px;line-height: 1.5em;width: 13px;height: 13px;" class="dashicons dashicons-lock"></span>' : '' )  . esc_html__( 'Export', 'multiple-pages-generator-by-porthas' )
 			);
 
 			if(mpg_app()->is_premium()){
@@ -242,7 +242,7 @@ if ( ! class_exists( 'Projects_List_Table' ) ) {
 		 */
 		public function get_bulk_actions() {
 			$delete_action = array(
-				'bulk-delete' => __( 'Delete', 'mpg' ),
+				'bulk-delete' => __( 'Delete', 'multiple-pages-generator-by-porthas' ),
 			);
 			return $delete_action;
 		}
@@ -261,7 +261,7 @@ if ( ! class_exists( 'Projects_List_Table' ) ) {
 		 * No projects found.
 		 */
 		public function no_items() {
-			esc_html_e( 'No projects found.', 'mpg' );
+			esc_html_e( 'No projects found.', 'multiple-pages-generator-by-porthas' );
 		}
 
 		/**
@@ -305,7 +305,7 @@ if ( ! class_exists( 'Projects_List_Table' ) ) {
 				static $cb_counter = 1;
 				$columns['cb']     = '<label class="screen-reader-text" for="cb-select-all-' . $cb_counter . '">' .
 					/* translators: Hidden accessibility text. */
-					__( 'Select All', 'mpg' ) .
+					__( 'Select All', 'multiple-pages-generator-by-porthas' ) .
 				'</label>' .
 				'<input id="cb-select-all-' . $cb_counter . '" type="checkbox" />';
 				$cb_counter++;

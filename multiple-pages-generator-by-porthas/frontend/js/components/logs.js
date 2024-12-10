@@ -22,7 +22,8 @@ jQuery('a[href="#logs"]').on('click', function () {
         searching: false,
         retrieve: true,
         language: {
-            "lengthMenu": "Show _MENU_ entries",
+            // translators: _MENU_ will be replaced with length (a number) of the entries.
+            "lengthMenu": __( "Show _MENU_ entries",  'multiple-pages-generator-by-porthas' )
         }
     }
 
@@ -42,18 +43,17 @@ jQuery('a[href="#logs"]').on('click', function () {
         let projectData = JSON.parse(project)
 
         if (!projectData.success) {
-            toastr.error(projectData.error, __('Can not clear log for current project', 'multi-pages-plugin'));
+            toastr.error(projectData.error, __('Can not clear log for current project', 'multiple-pages-generator-by-porthas'));
             return false;
         }
 
-        toastr.success(__('Log was cleared', 'multi-pages-plugin'), __('Done!', 'multi-pages-plugin'));
+        toastr.success(__('Log was cleared', 'multiple-pages-generator-by-porthas'), __('Done!', 'multiple-pages-generator-by-porthas'));
 
         const logsTable = jQuery('#mpg_logs_table');
 
         logsTable.DataTable(initObject).clear().destroy();
         logsTable.empty();
         logsTable.DataTable(initObject);
-
     });
 })
 }
