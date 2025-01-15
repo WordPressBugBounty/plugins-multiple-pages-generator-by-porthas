@@ -113,5 +113,5 @@
   },
   "editorScript": "file:./index.js",
   "editorStyle": "file:./editor.css",
-  "textdomain": "multi-pages-plugin"
+  "textdomain": "multiple-pages-generator-by-porthas"
 }

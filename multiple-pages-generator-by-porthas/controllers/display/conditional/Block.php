@@ -108,6 +108,7 @@ class Block extends Core {
 			'operators'        => $this->get_operators(),
 			'compareOperators' => $compare_operators
 		] );
+		wp_set_script_translations( 'mpg-conditional-block' , 'multiple-pages-generator-by-porthas' );
 	}
 
 }

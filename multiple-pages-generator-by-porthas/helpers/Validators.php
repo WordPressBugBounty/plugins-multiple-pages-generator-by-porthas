@@ -50,7 +50,9 @@ class MPG_Validators
 
 	public static function nonce_check(){
 		check_ajax_referer( MPG_BASENAME, 'securityNonce' );
-		current_user_can( MPG_MenuController::MENU_ROLE ) || 	wp_die( -1, 403 );;
+		if ( is_user_logged_in() ) {
+			current_user_can( MPG_MenuController::MENU_ROLE ) || wp_die( -1, 403 );
+		}
 	}
 
 	public static function validate_source_type( $source_type, $default_input = self::SOURCE_TYPE_UPLOAD ) {

@@ -48,7 +48,7 @@
             <h2><span class="dashicons dashicons-lock"></span> <?php esc_html_e( 'Cloning projects is a PRO feature', 'multiple-pages-generator-by-porthas' ); ?></h2>
         </div>
         <div class="modal-body">
-            <p><?php esc_html_e( 'We\'re sorry, cloning projects is not available on your plan. Please upgrade to the Pro plan to unlock all these features and enhance your product fields management capabilities.', 'multiple-pages-generator-by-porthas' ); ?></p>
+            <p><?php esc_html_e( 'We\'re sorry, cloning projects is not available on your plan. Please upgrade to the Pro plan to unlock all these features and enhance your project workflow.', 'multiple-pages-generator-by-porthas' ); ?></p>
         </div>
         <div class="modal-footer">
             <div class="button-container"><a href="<?php echo esc_url(mpg_app()->get_upgrade_url('clone')); ?>" target="_blank" rel="noopener " class="button button-primary button-large"><?php esc_html_e( 'Upgrade to PRO', 'multiple-pages-generator-by-porthas' ); ?><span aria-hidden="true" class="dashicons dashicons-external"></span></a></div>

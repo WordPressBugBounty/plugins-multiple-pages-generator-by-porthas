@@ -131,11 +131,11 @@ E-mail us at [friends@themeisle.com](mailto:friends@themeisle.com)
 
 == Changelog ==
 
-#####   Version 4.0.6 (2024-12-10)
+#####   Version 4.0.7 (2025-01-15)
 
-- Fixed issues with exporting/importing MPG projects [PRO]
-- Fixed issue with sitemap creation
-- Fixed an edge case problem when source URLs were not being fetched
+- Improved translations
+- Fixed issue with the Cache tab being available
+- Fixed issue with generated pages not appearing in Search
 
 
 

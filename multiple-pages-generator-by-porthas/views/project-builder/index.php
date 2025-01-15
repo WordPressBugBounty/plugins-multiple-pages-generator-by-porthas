@@ -45,9 +45,6 @@ class MPG_ProjectBuilderView
                             <a class="nav-link disabled" id="spintax-tab" data-toggle="tab" href="#spintax" role="tab" aria-controls="spintax" aria-selected="false"><?php _e('Spintax', 'multiple-pages-generator-by-porthas') ?></a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link disabled" id="cache-tab" data-toggle="tab" href="#cache" role="tab" aria-controls="cache" aria-selected="false"><?php _e('Cache', 'multiple-pages-generator-by-porthas') ?></a>
-                        </li>
-                        <li class="nav-item">
                             <a class="nav-link disabled" id="logs-tab" data-toggle="tab" href="#logs" role="tab" aria-controls="logs" aria-selected="false"><?php _e('Logs', 'multiple-pages-generator-by-porthas') ?></a>
                         </li>
                         <!-- <li class="project-id-top-menu">
