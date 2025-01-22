@@ -553,9 +553,9 @@ class MPG_Helper
      * @return array
      */
     public static function mpg_posts_results( $posts, $query ) {
-        if ( ! is_home() && ! is_search() ) {
-            return $posts;
-        }
+	if ( ! $query instanceof WP_Query || ( ! $query->is_home && ! $query->is_search ) ) {
+	    return $posts;
+	}
         if ( is_admin() ) {
             return $posts;
         }
@@ -587,9 +587,9 @@ class MPG_Helper
      * @return void
      */
     public static function mpg_pre_get_posts( $query ) {
-        if ( ! is_home() && ! is_search() ) {
-            return;
-        }
+	if ( ! $query instanceof WP_Query || ( ! $query->is_home && ! $query->is_search ) ) {
+	    return;
+	}
         if ( is_admin() ) {
             return;
         }

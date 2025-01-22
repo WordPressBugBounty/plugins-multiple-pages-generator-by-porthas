@@ -61,7 +61,7 @@ class MPG_HookController
 		    if ( ! empty( $_GET['elementor-preview'] ) && is_numeric( $_GET['elementor-preview'] ) ) {
 			    return;
 		    }
-		    if ( ! is_user_logged_in() && ! defined( 'TI_UNIT_TESTING' ) ) {
+		    if ( function_exists( 'is_user_logged_in' ) && ! is_user_logged_in() && ! defined( 'TI_UNIT_TESTING' ) ) {
 			    $templates_ids = MPG_ProjectModel::mpg_get_all_templates_id();
 			    if ( $templates_ids ) {
 				    $query->query_vars['post__not_in'] = $templates_ids;

@@ -131,11 +131,9 @@ E-mail us at [friends@themeisle.com](mailto:friends@themeisle.com)
 
 == Changelog ==
 
-#####   Version 4.0.7 (2025-01-15)
+#####   Version 4.0.8 (2025-01-22)
 
-- Improved translations
-- Fixed issue with the Cache tab being available
-- Fixed issue with generated pages not appearing in Search
+- Fixed compatibility issues with the Oxygen plugin
 
 
 
