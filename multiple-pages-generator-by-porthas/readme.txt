@@ -3,7 +3,7 @@ Contributors: themeisle
 Tags: bulk page creator, landing pages, content generation, seo, programmatic seo
 Requires at least: 5.6
 Tested up to: 6.7
-Stable tag: trunk
+Stable tag: 4.0.9
 Requires PHP: 7.2
 License: GPLv2
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -131,9 +131,9 @@ E-mail us at [friends@themeisle.com](mailto:friends@themeisle.com)
 
 == Changelog ==
 
-#####   Version 4.0.8 (2025-01-22)
+#####   Version 4.0.9 (2025-02-05)
 
-- Fixed compatibility issues with the Oxygen plugin
+- Fix language pack loading
 
 
 
