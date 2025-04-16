@@ -2,8 +2,8 @@
 Contributors: themeisle
 Tags: bulk page creator, landing pages, content generation, seo, programmatic seo
 Requires at least: 5.6
-Tested up to: 6.7
-Stable tag: 4.0.9
+Tested up to: 6.8
+Stable tag: 4.0.10
 Requires PHP: 7.2
 License: GPLv2
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -118,22 +118,22 @@ E-mail us at [friends@themeisle.com](mailto:friends@themeisle.com)
 
 
 == Screenshots ==
-1. Project Setup: MPG project configuration page for connecting and syncing with external data sources.
-2. URL Generator: MPG URL builder for creating SEO-friendly URLs from job data fields.
-3. Job Data Display: MPG-powered data table showing job listings with integrated filtering and pagination.
-4. Spintax Editor: Advanced text variation tool that creates unique content versions to avoid duplication.
-5. Cache Manager: Dual-option caching system with disk and database storage for optimizing page load times.
-6. Sitemap Tool: XML sitemap generator with customizable URL limits and update frequency settings.
-7. Shortcode System: Dynamic content generator using shortcodes with Spintax support for content variation.
-8. MPG Visibility Rules: Conditional display settings for controlling when and how content appears.
-9. MPG Loop Block: Customizable content block builder with project-based data filtering and display settings.
+1. Project Setup: MPG project configuration page for connecting data sources.
+2. Preview Data: Preview the data from your data source before proceeding.
+3. Project Settings: Configure entity type, templates, and advanced settings for your project.
+4. Generate URL: URL builder for creating SEO-friendly URLs from data fields.
+5. Sitemap Settings: XML sitemap generator with customizable URL limits and update frequency settings.
+6. Spintax Editor: Advanced text variation tool that creates unique content versions to avoid duplication.
+7. Generate Shortcode: Visual interface for creating customized data display shortcodes.
+8. MPG Loop Block: Customizable content block builder with project-based data filtering and display settings.
 
 
 == Changelog ==
 
-#####   Version 4.0.9 (2025-02-05)
+#####   Version 4.0.10 (2025-04-16)
 
-- Fix language pack loading
+- Fixed shortcode preview issue
+- Updated dependencies
 
 
 

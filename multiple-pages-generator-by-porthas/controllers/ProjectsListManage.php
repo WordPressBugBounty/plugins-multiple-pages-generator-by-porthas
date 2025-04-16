@@ -49,19 +49,22 @@ if ( ! class_exists( 'ProjectsListManage' ) ) {
 		/**
 		 * Total Projects
 		 *
-		 * @return object.
+		 * @param int|null $limit (Optional) Limit for the query.
+		 * @param bool $enable_search (Optional) Filter the results based on the search URL param `s`.
+		 * @return int Number of projects.
 		 */
-		public function total_projects() {
+		public function total_projects( $limit = null, $enable_search = true ) {
 			global $wpdb;
 			$table_name = $wpdb->prefix . MPG_Constant::MPG_PROJECTS_TABLE;
 			$search     = isset( $_GET['s'] ) ? sanitize_text_field( wp_unslash( $_GET['s'] ) ) : '';
 			$where      = '';
-			if ( ! empty( $search ) ) {
+			if ( $enable_search && ! empty( $search ) ) {
 				$search = preg_replace( '/[^A-Za-z0-9\-]/', '', $search );
 				$search = $wpdb->esc_like( $search );
 				$where .= " WHERE name LIKE '%$search%'";
 			}
-			$total_projects = $wpdb->get_results( "SELECT COUNT(*) as count FROM $table_name" . $where ); // phpcs:ignore
+			$limit_clause = is_numeric( $limit ) ? " LIMIT " . intval( $limit ) : '';
+			$total_projects = $wpdb->get_results( "SELECT COUNT(*) as count FROM $table_name" . $where . $limit_clause ); // phpcs:ignore
 			$total_projects = reset( $total_projects );
 			return (int) $total_projects->count;
 		}

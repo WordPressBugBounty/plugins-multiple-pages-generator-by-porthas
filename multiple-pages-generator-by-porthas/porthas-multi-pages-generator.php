@@ -8,7 +8,7 @@
  *
  * Author: Themeisle
  * Author URI: https://themeisle.com
- * Version: 4.0.9
+ * Version: 4.0.10
  */
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -16,6 +16,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 defined( 'MPG_BASENAME' ) || define( 'MPG_BASENAME', __FILE__ );
 defined( 'MPG_MAIN_DIR' ) || define( 'MPG_MAIN_DIR', dirname( __FILE__ ) );
+defined( 'MPG_PRODUCT_SLUG' ) || define( 'MPG_PRODUCT_SLUG', basename( MPG_MAIN_DIR ) );
 defined( 'MPG_MAIN_URL' ) || define( 'MPG_MAIN_URL', plugins_url( '', __FILE__ ));
 defined( 'MPG_UPLOADS_DIR' ) || define( 'MPG_UPLOADS_DIR', WP_CONTENT_DIR . DIRECTORY_SEPARATOR . 'mpg-uploads' . DIRECTORY_SEPARATOR );
 defined( 'MPG_UPLOADS_URL' ) || define( 'MPG_UPLOADS_URL', WP_CONTENT_URL . DIRECTORY_SEPARATOR . 'mpg-uploads' . DIRECTORY_SEPARATOR );
@@ -24,7 +25,7 @@ defined( 'MPG_CACHE_URL' ) || define( 'MPG_CACHE_URL', WP_CONTENT_URL . DIRECTOR
 defined( 'MPG_NAME' ) || define( 'MPG_NAME', 'Multiple Pages Generator' );
 defined( 'MPG_BASE_IMG_PATH' ) || define( 'MPG_BASE_IMG_PATH', plugin_dir_url( __FILE__ ) . 'frontend/images' );
 defined( 'MPG_DATABASE_VERSION' ) || define( 'MPG_DATABASE_VERSION', '1.0.0' );
-defined( 'MPG_PLUGIN_VERSION' ) || define( 'MPG_PLUGIN_VERSION', '4.0.9' );
+defined( 'MPG_PLUGIN_VERSION' ) || define( 'MPG_PLUGIN_VERSION', '4.0.10' );
 defined( 'MPG_FREE_SLUG' ) || define( 'MPG_FREE_SLUG', 'multiple-pages-generator-by-porthas' );
 defined( 'MPG_TRANSLATION_CACHE_KEY_PREFIX' ) || define( 'MPG_TRANSLATION_CACHE_KEY_PREFIX', 'mpg_translation_check' );
 

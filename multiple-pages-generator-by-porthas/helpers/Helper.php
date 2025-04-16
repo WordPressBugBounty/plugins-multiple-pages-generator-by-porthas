@@ -11,6 +11,11 @@ class MPG_Helper
 {
     public static $urls_array;
 
+    public static function init() { 
+        add_action( 'admin_enqueue_scripts', array( 'MPG_Helper', 'register_internal_pages' ) );
+        add_filter( 'themeisle-sdk/survey/' . MPG_PRODUCT_SLUG, array( 'MPG_Helper', 'register_survey' ), 10, 2 );
+    }
+
     // Подключает .mo файл перевода из указанной папки.
     public static function mpg_set_language_folder_path()
     {
@@ -177,8 +182,6 @@ class MPG_Helper
             wp_enqueue_style('mpg_main_css',                    plugins_url('frontend/css/style.css', __DIR__) , array(), MPG_PLUGIN_VERSION);
 
             wp_add_inline_style( 'mpg_main_css', '.condition-row {display: inline-flex;}.condition-row:not(:last-child) .add-new-condition:last-child {display:none;}.condition-row select {display: inline-flex;min-width: 170px;}.condition-row:first-child .mpg_headers_condition_value_dropdown:disabled + .btn-danger:not(.mpp-remove-action) {display: none;} .condition-container + .tooltip-circle {margin-left: 45px;}' );
-
-            self::register_survey();
         } elseif ( strpos($hook_suffix, 'mpg-project-builder') !== false ) {
             wp_enqueue_script('mpg_datatable_js',               plugins_url('frontend/libs/dataTables/jquery.dataTables.min.js', __DIR__), array('jquery') , MPG_PLUGIN_VERSION);
             wp_enqueue_style('mpg_datatable',                   plugins_url('frontend/libs/dataTables/jquery.dataTables.min.css', __DIR__) , array(), MPG_PLUGIN_VERSION);
@@ -652,7 +655,7 @@ class MPG_Helper
         }
     }
 
-    /**
+	/**
 	 * Get the data used for the survey.
 	 *
 	 * @return array
@@ -660,72 +663,54 @@ class MPG_Helper
 	 */
 	public static function get_survey_metadata() {
 
-		$user_id       = 'mgp_';
 		$license_saved = get_option( 'multi_pages_plugin_premium_license_data', array() );
 
-		if ( ! empty( $license_saved->key ) ) {
-			$user_id .= $license_saved->key;
+		$current_time        = time();
+		$install_date        = min( get_option( 'multiple_pages_generator_by_porthas_install', $current_time ), get_option( 'multi_pages_plugin_premium_install', $current_time ) );
+		$install_days_number = intval( ( $current_time - $install_date ) / DAY_IN_SECONDS );
+
+		$version = get_plugin_data( MPG_BASENAME );
+		$version = ! empty( $version['Version'] ) ? $version['Version'] : '';
+
+		$created_projects_num_cache_key = 'mpg_created_projects';
+		$created_projects_num_limit     = 50;
+		$created_projects_num           = get_transient( $created_projects_num_cache_key );
+
+		if ( false === $created_projects_num ) {
+			$created_projects_num = ( new ProjectsListManage() )->total_projects( $created_projects_num_limit, false );
+			set_transient( $created_projects_num_cache_key, $created_projects_num, $created_projects_num_limit >= $created_projects_num ? WEEK_IN_SECONDS : HOUR_IN_SECONDS );
 		} else {
-			$user_id .= preg_replace( '/[^\w\d]*/', '', get_site_url() ); // Use a normalized version of the site URL as a user ID for free users.
+			$created_projects_num = intval( $created_projects_num );
 		}
-
-        $install_date = get_option( 'multi_pages_plugin_premium_install', false );
-
-        // Fallback to free version install date.
-        if ( false === $install_date ) {
-            $install_date = get_option( 'multiple_pages_generator_by_porthas_install', false );
-        }
 		
-		$install_category   = 0;
-
-        if ( false !== $install_date ) {
-            $days_since_install = round( ( time() - $install_date ) / DAY_IN_SECONDS );
-
-            if ( 0 === $days_since_install || 1 === $days_since_install ) {
-                $install_category = 0;
-            } elseif ( 1 < $days_since_install && 8 > $days_since_install ) {
-                $install_category = 7;
-            } elseif ( 8 <= $days_since_install && 31 > $days_since_install ) {
-                $install_category = 30;
-            } elseif ( 30 < $days_since_install && 90 > $days_since_install ) {
-                $install_category = 90;
-            } elseif ( 90 <= $days_since_install ) {
-                $install_category = 91;
-            }
-        }
-
-        $version = get_plugin_data( MPG_BASENAME );
-        if ( ! empty( $version['Version'] ) ) {
-            $version = $version['Version'];
-        } else {
-            $version = '';
-        }
-
-		return array(
-			'userId'     => $user_id,
-			'attributes' => array(
-				'license_status'     => ! empty( $license_saved->license ) ? $license_saved->license : 'invalid',
-				'days_since_install' => $install_category,
-				'version'            => $version,
-                'plan'               => mpg_app()->get_license_type(),
+		$survey_data = array(
+			'environmentId' => 'clskhdqhz8qevpodw3om6y3fw',
+			'attributes'    => array(
+				'license_status'      => ! empty( $license_saved->license ) ? $license_saved->license : 'invalid',
+				'version'             => $version,
+				'plan'                => mpg_app()->get_license_type(),
+				'install_days_number' => $install_days_number,
+				'projects_number'     => $created_projects_num
 			),
 		);
+
+		if ( isset( $license_saved->key ) ) {
+			$survey_data['attributes']['license_key'] = apply_filters( 'themeisle_sdk_secret_masking', $license_saved->key );
+		}
+
+		return $survey_data;
 	}
 
 	/**
-	 * Register the survey script.
+	 * Register the survey script for plugin pages.
+	 *
+	 * @param string $plugin     The plugin slug identifier
+	 * @param string $page_slug  The page slug where the survey will be registered
+	 * 
+	 * @return array|null Survey metadata array if plugin is not free version, null otherwise
 	 */
-	public static function register_survey() {
-
-		// Register the survey script.
-		$survey_handler = apply_filters( 'themeisle_sdk_dependency_script_handler', 'survey' );
-		if ( empty( $survey_handler) ) {
-            return;
-        }
-        
-        do_action( 'themeisle_sdk_dependency_enqueue_script', 'survey' );
-        wp_enqueue_script( 'mpg_survey', plugins_url('frontend/js/survey.js', __DIR__), array( $survey_handler ) );
-        wp_localize_script( 'mpg_survey', 'mpgSurveyData', self::get_survey_metadata() );
+	public static function register_survey( $data, $page_slug ) {
+		return self::get_survey_metadata();
 	}
 
 	/**
@@ -839,5 +824,43 @@ class MPG_Helper
                 'buttonText' => __( 'View Sample MPG URL', 'multiple-pages-generator-by-porthas' ),
             )
         );
+    }
+
+    public static function register_internal_pages() {
+        $screen = get_current_screen();
+
+        if ( empty( $screen ) || empty( $screen->base ) ) {
+            return;
+        }
+
+        $page_slug = '';
+        if ( 'mpg_page_mpg-dataset-library' === $screen->base ) {
+            $page_slug = 'dataset-library';
+        }
+
+        if ( 'toplevel_page_mpg-project-builder' === $screen->base ) {
+            if ( isset( $_GET['action'] ) ) {
+                $action = sanitize_text_field( wp_unslash( $_GET['action'] ) );
+                if ( 'from_scratch' === $action ) {
+                    $page_slug = 'new-project'; 
+                } elseif ( 'edit_project' === $action ) {
+                    $page_slug = 'edit-project';
+                }
+            } else {
+                $page_slug = 'projects';
+            }
+        }
+
+        if ( 'mpg_page_mpg-advanced-settings' === $screen->base ) {
+            $page_slug = 'advanced-settings';
+        }
+
+        if ( 'mpg_page_mpg-search-settings' === $screen->base ) {
+            $page_slug = 'search-settings';
+        }
+
+        if ( ! empty( $page_slug ) ) {
+            do_action( 'themeisle_internal_page', MPG_PRODUCT_SLUG, $page_slug );
+        }
     }
 }

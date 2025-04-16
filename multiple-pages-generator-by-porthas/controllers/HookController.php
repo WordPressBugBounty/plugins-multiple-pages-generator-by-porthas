@@ -472,6 +472,8 @@ class MPG_HookController
 
         // License
         add_action('wp_ajax_mpg_ti_toggle_license', ['MPG_ProjectController', 'mpg_ti_toggle_license']);
+
+        add_action('init', [ 'MPG_Helper', 'init' ] );
     }
     /**
      * Register rest routes.

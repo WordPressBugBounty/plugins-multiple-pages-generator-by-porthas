@@ -116,9 +116,7 @@ function shortCodeTabInit() {
     initEvents();
 }
 
-let headersShortcodeDropdown = jQuery('.shortcode-headers-dropdown');
-
-headersShortcodeDropdown.on('change', function () {
+jQuery(document).on('change', '.shortcode-headers-dropdown', function () {
     let shortcode = jQuery(this).val();
     jQuery('.shortcode-preview-output').html(`{{${shortcode}}}`);
 });
