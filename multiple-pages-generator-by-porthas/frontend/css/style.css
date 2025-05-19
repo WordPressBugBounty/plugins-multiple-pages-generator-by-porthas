@@ -2206,3 +2206,8 @@ div.dt-length select.dt-input {
 .mpg-banner-library {
     margin: 25px;
 }
+
+.mpg-banner {
+    margin-left: 12px;
+    margin-right: 4px;
+}

@@ -1,14 +1,14 @@
 === Multiple Page Generator Plugin - MPG ===
 Contributors: themeisle
-Tags: bulk page creator, landing pages, content generation, seo, programmatic seo
+Tags: bulk pages, landing page, bulk edit, generate, mass
 Requires at least: 5.6
 Tested up to: 6.8
-Stable tag: 4.0.10
+Stable tag: 4.0.11
 Requires PHP: 7.2
 License: GPLv2
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
- Create thousands of targeted landing pages in bulk, boost your search visibility, and save countless hours of manual work with MPG.🚀
+Create thousands of targeted landing pages in bulk, boost your search visibility, and save countless hours of manual work with MPG.🚀
 
 == Description ==
 
@@ -130,10 +130,10 @@ E-mail us at [friends@themeisle.com](mailto:friends@themeisle.com)
 
 == Changelog ==
 
-#####   Version 4.0.10 (2025-04-16)
+#####   Version 4.0.11 (2025-05-19)
 
-- Fixed shortcode preview issue
 - Updated dependencies
+- Fixed compatibility issue with PHP 8.0
 
 
 

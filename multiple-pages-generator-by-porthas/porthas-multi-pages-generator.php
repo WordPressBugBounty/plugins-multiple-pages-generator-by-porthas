@@ -8,7 +8,7 @@
  *
  * Author: Themeisle
  * Author URI: https://themeisle.com
- * Version: 4.0.10
+ * Version: 4.0.11
  */
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -25,7 +25,7 @@ defined( 'MPG_CACHE_URL' ) || define( 'MPG_CACHE_URL', WP_CONTENT_URL . DIRECTOR
 defined( 'MPG_NAME' ) || define( 'MPG_NAME', 'Multiple Pages Generator' );
 defined( 'MPG_BASE_IMG_PATH' ) || define( 'MPG_BASE_IMG_PATH', plugin_dir_url( __FILE__ ) . 'frontend/images' );
 defined( 'MPG_DATABASE_VERSION' ) || define( 'MPG_DATABASE_VERSION', '1.0.0' );
-defined( 'MPG_PLUGIN_VERSION' ) || define( 'MPG_PLUGIN_VERSION', '4.0.10' );
+defined( 'MPG_PLUGIN_VERSION' ) || define( 'MPG_PLUGIN_VERSION', '4.0.11' );
 defined( 'MPG_FREE_SLUG' ) || define( 'MPG_FREE_SLUG', 'multiple-pages-generator-by-porthas' );
 defined( 'MPG_TRANSLATION_CACHE_KEY_PREFIX' ) || define( 'MPG_TRANSLATION_CACHE_KEY_PREFIX', 'mpg_translation_check' );
 
@@ -120,7 +120,7 @@ if ( ! function_exists( 'mpg_run' ) ) {
 				return wpautop(
 					sprintf(
 						// translators: %1$s: the shortname name of the plugin (MPG), %2$s: the shortname of the PRO version (MPG PRO), %3$s: the upgrade link (with label 'Upgrade now'), %4$s: the shortname of the PRO version (MPG PRO).
-						__( 'Thanks for using %1$s for the past 7 days! To help you get even more from it, we’re offering an exclusive deal: upgrade to %2$s within the next 5 days and save up to 60%. Unlock unlimited rows and projects — %3$s and access all the powerful features of %4$s!', 'multiple-pages-generator-by-porthas' ),
+						__( 'Thanks for using %1$s for the past 7 days! To help you get even more from it, we’re offering an exclusive deal: upgrade to %2$s within the next 5 days and save up to 60%%. Unlock unlimited rows and projects — %3$s and access all the powerful features of %4$s!', 'multiple-pages-generator-by-porthas' ),
 						'<b>' . __( 'MPG', 'multiple-pages-generator-by-porthas' ) . '</b>',
 						'<b>' . __( 'MPG PRO', 'multiple-pages-generator-by-porthas' ) . '</b>',
 						'<a href="{cta_link}" target="_blank">' . __( 'Upgrade now', 'multiple-pages-generator-by-porthas' ) . '</a>',
@@ -130,13 +130,49 @@ if ( ! function_exists( 'mpg_run' ) ) {
 				);
 			}
 		);
-
+		
 		add_filter(
 			'themesle_sdk_namespace_' . md5( MPG_BASENAME ),
 			function () {
 				return 'mpg';
 			}
 		);
+
+		add_filter( 'themeisle_sdk_blackfriday_data', function( $configs) {
+			$config = $configs['default'];
+
+			// translators: %1$s - HTML tag, %2$s - discount, %3$s - HTML tag, %4$s - product name.
+			$message_template = __( 'Our biggest sale of the year: %1$sup to %2$s OFF%3$s on %4$s. Don\'t miss this limited-time offer.', 'multiple-pages-generator-by-porthas' );
+			$product_label    = 'MPG';
+			$discount         = '70%';
+
+			$plan    = apply_filters( 'product_mpg_license_plan', 0 );
+			$license = apply_filters( 'product_mpg_license_key', false );
+			$is_pro  = 0 < $plan;
+
+			if ( $is_pro ) {
+				// translators: %1$s - HTML tag, %2$s - discount, %3$s - HTML tag, %4$s - product name.
+				$message_template = __( 'Get %1$sup to %2$s off%3$s when you upgrade your %4$s plan or renew early.', 'multiple-pages-generator-by-porthas' );
+				$product_label    = 'MPG Pro';
+				$discount         = '20%';
+			}
+
+			$product_label = sprintf( '<strong>%s</strong>', $product_label );
+			$url_params    = array(
+				'utm_term' => $is_pro ? 'plan-' . $plan : 'free',
+				'lkey'     => ! empty( $license ) ? $license : false,
+			);
+
+			$config['message']  = sprintf( $message_template, '<strong>', $discount, '</strong>', $product_label );
+			$config['sale_url'] = add_query_arg(
+				$url_params,
+				tsdk_translate_link( tsdk_utmify( 'https://themeisle.link/mpg-bf', 'bfcm', 'mpg' ) )
+			);
+
+			$configs[ MPG_PRODUCT_SLUG ] = $config;
+
+			return $configs;
+		});
 
 		$option_name = basename( dirname( MPG_BASENAME ) );
 		$option_name = str_replace( '-', '_', strtolower( trim( $option_name ) ) );

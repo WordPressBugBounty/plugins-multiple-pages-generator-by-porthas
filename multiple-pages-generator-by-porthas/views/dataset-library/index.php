@@ -30,6 +30,7 @@ class MPG_DatasetLibraryView
 	            ?>
 	        </div>
 		</div>
+		<div id="tsdk_banner" class="mpg-banner"></div>
         <div class="dataset-library">
 
             <div class="main-page-container">
