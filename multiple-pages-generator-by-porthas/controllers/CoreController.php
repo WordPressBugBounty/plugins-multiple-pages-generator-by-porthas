@@ -114,8 +114,10 @@ class MPG_CoreController
 			    return MPG_CoreModel::mpg_shortcode_replacer( $buffer, $project_id );
 		    } );
 	    }, 9, 0 );
-	    add_action( 'wp_print_footer_scripts', function () use ( $project_id, $path ) {
-		    ob_end_flush();
+	    add_action( 'get_footer', function () use ( $project_id, $path ) {
+			if ( ob_get_level() ) {
+				ob_end_flush();
+			}
 	    }, 10, 0 );
         add_action('wp_footer', function () {
             if (!mpg_app()->is_premium()) {
