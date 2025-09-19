@@ -104,20 +104,17 @@ class MPG_DatasetController
                 }
             }
 
-            $headers = MPG_DatasetController::get_headers($destination_path);
+            $headers = MPG_DatasetController::get_headers($destination_path, false, $project_id);
             // Докидываем в массив еще и заголовки
             $insert_data['headers'] = json_encode($headers);
 
             $url_structure = $dataset_config[7];
             $space_replacer = $dataset_config[8];
 
-            $urls_array = MPG_ProjectModel::mpg_generate_urls_from_dataset($destination_path, $url_structure, $space_replacer);
-
             $insert_data['url_structure'] = $url_structure;
-            $insert_data['urls_array']     = json_encode($urls_array);
+            $insert_data['urls_array']     = true; // If set to true, it means we need to regenerate the file.
             $insert_data['space_replacer'] = $space_replacer;
             $insert_data['exclude_in_robots'] = 1;
-
 
             // Если надо - создаем карту сайта
             $sitemap_filename = isset($dataset_config[9]) ? $dataset_config[9] : null;
@@ -126,7 +123,7 @@ class MPG_DatasetController
             $sitemap_add_to_robots = isset($dataset_config[12]) ? $dataset_config[12] : null;
 
             if ($sitemap_filename && $sitemap_max_url && $sitemap_update_frequency && $sitemap_add_to_robots) {
-
+                $urls_array = MPG_ProjectModel::mpg_generate_urls_from_dataset($destination_path, $url_structure, $space_replacer);
                 $sitemap_url = MPG_SitemapGenerator::run($urls_array, $sitemap_filename, $sitemap_max_url, $sitemap_update_frequency, $sitemap_add_to_robots, $project_id);
 
                 $insert_data['sitemap_filename'] = $sitemap_filename;
@@ -163,11 +160,11 @@ class MPG_DatasetController
     // возвращает массив из названий заголовков
     // Бывают случаи, где get_headers вызывается из функции, где уже есть прочитан source-файл.
     // Поэтому я сразу передаю заголовки как массив. Если эе эта функция вызывается саба по себе, тогда читаем с файла.
-    public static function get_headers($path_to_dataset, $headers = null)
+    public static function get_headers($path_to_dataset, $headers = null, $project_id = null)
     {
 
         if (!$headers) {
-	        $headers = MPG_DatasetModel::read_dataset( $path_to_dataset, true );
+	        $headers = MPG_DatasetModel::read_dataset( $path_to_dataset, true, $project_id );
         }
 
         foreach ($headers as $key => $header) {
@@ -188,20 +185,6 @@ class MPG_DatasetController
         return array_values($headers);
     }
 
-    // возвращает массив самих данных.
-	public static function get_rows( $path_to_dataset, $limit ) {
-
-		$dataset_array = MPG_DatasetModel::read_dataset( $path_to_dataset );
-
-		// Срезаем N элементов с датасета, пропуская хедер.
-		$limit = count( $dataset_array ) >= 5 ? $limit : count( $dataset_array ) - 1;
-
-		return [
-			'rows'       => array_slice( $dataset_array, 1, $limit ),
-			'total_rows' => count( $dataset_array )
-		];
-	}
-
     // Возвращает данные для модалки с превью датасета.
     public static function mpg_get_data_for_preview()
     {
@@ -218,38 +201,43 @@ class MPG_DatasetController
 
             $path_to_dataset = MPG_DatasetModel::get_dataset_path_by_project($project_id);
 
-	        $dataset_array = MPG_DatasetModel::read_dataset( $path_to_dataset );
+            if ($search_value !== null && $search_value !== '') {
+                $dataset = MPG_DatasetModel::get_dataset($path_to_dataset, $project_id);
+            } else {
+                $dataset = MPG_DatasetModel::get_dataset($path_to_dataset, $project_id, $length, $start);
+            }
+            $dataset_array = $dataset['data'];
+            $total_rows = $dataset['total'];
 
             $data = [];
             $search_results_length = 0;
 
             if ($search_value) {
                 $search_string = trim(strtolower($search_value));
-
                 foreach ($dataset_array as $row) {
-                    // @todo: стоило бы это оптимизоровать. Возможно, для больгих датасетов поиск будет тупить
                     $row = array_map('strtolower', $row);
                     $row = array_map('trim', $row);
-
                     if (array_search($search_string, $row, true) !== false) {
                         $data[] = $row;
                     }
                 }
-
                 $search_results_length = count($data);
-
-                $data = array_slice($data, $start, $length);
+                $data = array_slice( $data, $start, $length );
             } else {
-                // +1  чтобы пропустить заголовок
-                $data = array_slice($dataset_array, $start + 1, $length);
+                // If the dataset_array is already limited, use as-is, else slice for backward compat
+                if ( count( $dataset_array ) <= $length ) {
+                    $data = $dataset_array;
+                } else {
+                    $data = array_slice( $dataset_array, $start + 1, $length );
+                }
             }
 
             echo json_encode([
                 'draw' => $draw,
-                'recordsTotal' => count($dataset_array),
-                'recordsFiltered' => $search_value ? $search_results_length : count($dataset_array),
+                'recordsTotal' => $total_rows,
+                'recordsFiltered' => $search_value ? $search_results_length : $total_rows,
                 'data' => map_deep( $data, 'wp_strip_all_tags' ),
-                'headers' =>  MPG_DatasetController::get_headers($path_to_dataset, $dataset_array[0])
+                'headers' =>  MPG_DatasetController::get_headers($path_to_dataset, $dataset_array[0], $project_id )
             ]);
         } catch (Exception $e) {
 
@@ -412,7 +400,7 @@ class MPG_DatasetController
 	        }
 
             $choosed_culumn_number = (int) $_POST['choosedColumnNumber'];
-			$dataset = MPG_DatasetModel::read_dataset( $path_to_dataset );
+			$dataset = MPG_DatasetModel::read_dataset( $path_to_dataset, false, $project_id );
 	        $storage = array_column( $dataset,$choosed_culumn_number );
 	        $storage = array_unique( $storage );
 	        $storage = array_filter($storage);

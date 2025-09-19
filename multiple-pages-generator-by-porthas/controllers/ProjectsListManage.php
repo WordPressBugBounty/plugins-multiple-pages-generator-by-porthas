@@ -43,6 +43,11 @@ if ( ! class_exists( 'ProjectsListManage' ) ) {
 			$table_name = $wpdb->prefix . MPG_Constant::MPG_PROJECTS_TABLE;
 			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.DirectDatabaseQuery
 			$retrieve_data = $wpdb->get_results( "SELECT * FROM $table_name" . $where );
+
+			foreach( $retrieve_data as $key => $project ) {
+				$retrieve_data[ $key ]->urls_array = ! empty( $project->urls_array ) ? $project->urls_array : json_encode( array_keys( MPG_DatasetModel::get_index( $project->id, 'permalinks' ) ) );
+			}
+
 			return $retrieve_data;
 		}
 
@@ -129,6 +134,8 @@ if ( ! class_exists( 'ProjectsListManage' ) ) {
 			global $wpdb;
 			$table_name = $wpdb->prefix . MPG_Constant::MPG_PROJECTS_TABLE;
 			$wpdb->delete( $table_name, array( 'id' => $project_id ) ); // phpcs:ignore
+
+			MPG_DatasetModel::delete_project_folders( $project_id );
 
 			// Удаляем все строки для текущего проекта из БД (Spintax)
 			MPG_SpintaxModel::flush_cache_by_project_id( $project_id );
@@ -330,9 +337,7 @@ if ( ! class_exists( 'ProjectsListManage' ) ) {
 					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_print_r
 					do_action( 'themeisle_log_event', MPG_NAME, sprintf( 'Unable to download file = %s', print_r( $destination, true ) ), 'debug', __FILE__, __LINE__ );
 				}
-				$urls_array = MPG_ProjectModel::mpg_generate_urls_from_dataset( $destination, $import_data['url_structure'], $import_data['space_replacer'] );
-
-				$update_options_array = array( 'source_path' => basename( $destination ), 'urls_array' => wp_json_encode( $urls_array ) );
+				$update_options_array = array( 'source_path' => basename( $destination ), 'urls_array' => true ); // If set to true, it means we need to regenerate the file.
 
 				MPG_ProjectModel::mpg_update_project_by_id( $new_id, $update_options_array );
 			}

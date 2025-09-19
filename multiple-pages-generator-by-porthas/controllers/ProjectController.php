@@ -151,13 +151,17 @@ class MPG_ProjectController
 			if ( ! $folder_path || ( ! is_readable( $folder_path ) || ! str_contains( $folder_path, MPG_DatasetModel::uploads_base_path() ) ) ) {
 				throw new Exception( __( 'The file could not be uploaded. Double-check the file format and size, then try again.', 'multiple-pages-generator-by-porthas' ) );
 			}
-			$headers = MPG_DatasetController::get_headers( $folder_path );
+			$headers = MPG_DatasetController::get_headers( $folder_path, false, $project_id );
 			if ( empty( $headers ) || ! is_array( $headers ) ) {
 				throw new Exception( __( 'The CSV file contains empty or invalid headers. Please check and ensure all headers are correct.', 'multiple-pages-generator-by-porthas' ) );
 			}
 
-			$rows = MPG_DatasetController::get_rows( $folder_path, 5 );
-			if ( empty( $rows ) || ! is_array( $rows ) ) {
+            $limit = 6;
+            $dataset = MPG_DatasetModel::get_dataset( $folder_path, $project_id, $limit );
+            $dataset_array = array_slice( $dataset['data'], 1, $limit );
+            $total_rows = $dataset['total'];
+
+			if ( empty( $dataset ) || ! is_array( $dataset ) ) {
 				throw new Exception( __( 'Some rows in the file are invalid. Double-check the data and try uploading once more.', 'multiple-pages-generator-by-porthas' ) );
 			}
 
@@ -197,8 +201,8 @@ class MPG_ProjectController
 				'success' => true,
 				'data'    => [
 					'headers'       => $headers,
-					'rows'          => $rows['rows'],
-					'totalRows'     => $rows['total_rows'],
+					'rows'          => $dataset_array,
+					'totalRows'     => $total_rows,
 					'projectId'     => $project_id,
 					'path'          => $new_path,
 					// В процессе сохранения проекта, мы перемещаем датасет с temp в uploads.
@@ -273,8 +277,7 @@ class MPG_ProjectController
 	        if ( empty( $dataset_path ) ) {
 		        throw new Exception( __( 'Can\'t get dataset path', 'multiple-pages-generator-by-porthas' ) );
 	        }
-            $urls_array = MPG_ProjectModel::mpg_generate_urls_from_dataset($dataset_path, $url_structure, $space_replacer,true );
-            $update_options_array['urls_array'] = json_encode($urls_array['urls_array'], JSON_UNESCAPED_UNICODE);
+            $update_options_array['urls_array'] = true; // If set to true, it means we need to regenerate the file.
 
             // =============================  Schedule ==========================
             // С какими параметрами крон-задача ставится, с такими ее надо и отключать. Поэтому храним это в базе
@@ -319,13 +322,6 @@ class MPG_ProjectController
             $update_options_array['update_modified_on_sync'] = $update_modified_on_sync;
 
             MPG_ProjectModel::mpg_update_project_by_id($project_id, $update_options_array);
-
-            $periodicity = $project->schedule_periodicity ?? null;
-            $expiration  = 0;
-            if ( null === $periodicity ) {
-                $expiration = MPG_Helper::get_live_update_interval();
-            }
-	        MPG_DatasetModel::set_cache( $project_id, $urls_array['dataset_array'], $expiration );
             echo json_encode(['success' => true]);
         } catch (Exception $e) {
 
@@ -376,11 +372,13 @@ class MPG_ProjectController
             }
 
             if ( isset($project->source_path ) ) {
+                $limit = 6;
+                $dataset = MPG_DatasetModel::get_dataset( MPG_DatasetModel::get_dataset_path_by_project( $project ), $project_id, $limit );
+                $dataset_array = array_slice( $dataset['data'], 1, $limit );
+                $total_rows = $dataset['total'];
 
-	            $rows = MPG_DatasetController::get_rows( MPG_DatasetModel::get_dataset_path_by_project( $project ), 5 );
-
-                $response['rows'] = wp_doing_ajax( 'wp_ajax_mpg_get_project' ) ? map_deep( $rows['rows'], 'wp_strip_all_tags' ) : $rows['rows'];
-                $response['totalRows'] = $rows['total_rows'];
+                $response['rows'] = wp_doing_ajax( 'wp_ajax_mpg_get_project' ) ? map_deep( $dataset_array, 'wp_strip_all_tags' ) : $dataset_array;
+                $response['totalRows'] = $total_rows;
 
                 $response['spintax_cached_records_count'] = MPG_SpintaxController::get_cached_records_count($project_id);
 
@@ -647,9 +645,8 @@ class MPG_ProjectController
 
 	        $urls_array = MPG_ProjectModel::mpg_generate_urls_from_dataset( $source_path, $url_structure, $space_replacer );
 
-            MPG_ProjectModel::mpg_update_project_by_id( $project_id, [ 'urls_array' => json_encode( $urls_array, JSON_UNESCAPED_UNICODE ) ], true );
-	        MPG_SitemapGenerator::maybe_create_sitemap( $urls_array, $project );
-
+            MPG_ProjectModel::mpg_update_project_by_id( $project_id, [ 'urls_array' => true ], true );
+	        MPG_SitemapGenerator::maybe_create_sitemap( $project, $urls_array );
 
             // Теперь, когда мы заменили файл с данными на тот, что пользователь указал по ссылке пользователь
 	        if ( $notificate_about === 'every-time' && ! empty( $notification_email ) ) {

@@ -77,7 +77,6 @@ abstract class Core extends Base_Display {
 		}
 		\MPG_ProjectModel::set_current_project_id( $project_id );
 		$filtered_dataset_index = [];
-		$count                  = 0;
 		unset( $dataset_array[0] ); // we remove the headers row.
 		if ( ! empty( $args['conditions']['conditions'] ) ) {
 			foreach ( $dataset_array as $index => $row ) {
@@ -116,7 +115,6 @@ abstract class Core extends Base_Display {
 				$filtered_dataset_index = array_keys( $dataset_to_order );
 			}
 		}
-		$filtered_dataset_index = array_slice( $filtered_dataset_index, 0, $limit );
 
 		//Now we need to apply the loop to the content.
 		$urls_array = $project_data->urls_array ? json_decode( $project_data->urls_array ) : [];
@@ -124,17 +122,38 @@ abstract class Core extends Base_Display {
 		$extended_content         = [];
 		//We need to backup the internal row index to set it back once we are done.
 		$current_row_backup = \MPG_CoreModel::get_current_row( $project_id );
+		$current_url = \MPG_Helper::mpg_get_request_uri();
+		$added_count = 0;
 		foreach ( $filtered_dataset_index as $index ) {
-			//We set the internal index to the current row. This would be used to other shortcodes to get the current row that they will apply the value for, i.e mpg-if.
+			if ( $added_count >= $limit ) {
+				break;
+			}
+
 			\MPG_CoreModel::set_current_row( $project_id, $index);
+
 			$content_template                     = $content;
 			$strings                              = $dataset_array[ $index ];
 
-			$strings[ count( $short_codes ) - 1 ] = \MPG_CoreModel::path_to_url( $urls_array[ $index - 1  ] );
+			if ( \MPG_DatasetModel::is_dataset_chunked( $project_id ) ) {
+				$base_url = \MPG_ProjectModel::mpg_generate_url_for_row( $dataset_array[ $index ], $headers, $project_data->url_structure, $project_data->space_replacer );
+				$strings[ count( $short_codes ) - 1 ] = \MPG_CoreModel::path_to_url( $base_url );
+			} else {
+				if ( ! isset( $urls_array[ $index - 1  ] ) ) {
+					continue;
+				}
+
+				$strings[ count( $short_codes ) - 1 ] = \MPG_CoreModel::path_to_url( $urls_array[ $index - 1  ] );
+			}
 
 			if ( ! empty( $args['base_url'] ) ) {
 				$strings[ count( $short_codes ) - 1 ] = $args['base_url'] . $strings[ count( $short_codes ) - 1 ];
 			}
+
+			// Skip if the generated URL matches the current request URI
+			if ( parse_url( $strings[ count( $short_codes ) - 1 ], PHP_URL_PATH ) === $current_url ) {
+				continue;
+			}
+
 			$content_template = \MPG_CoreModel::replace_content( $content_template, $strings, $short_codes, $project_data->space_replacer );
 			if ( $args['unique_rows'] ?? false ) {
 				$content_signature = crc32( $content_template );
@@ -143,8 +162,10 @@ abstract class Core extends Base_Display {
 				}
 				$extended_content[ $content_signature ] = $content_template;
 			} else {
-				$extended_content[] = $content_template;
+				$extended_content[] = do_shortcode( $content_template );
 			}
+
+			$added_count++;
 		}
 		//We reset the internal index to the original value.
 		\MPG_CoreModel::set_current_row( $project_id, $current_row_backup );

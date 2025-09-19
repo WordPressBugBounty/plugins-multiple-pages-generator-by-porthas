@@ -34,6 +34,10 @@ class MPG_SearchController
             global $wpdb;
             $projects = $wpdb->get_results("SELECT id, template_id, source_path, urls_array FROM {$wpdb->prefix}" .  MPG_Constant::MPG_PROJECTS_TABLE . ' WHERE `participate_in_search` = true');
 
+            foreach ( $projects as $key => $project ) {
+                $projects[ $key ]->urls_array = ! empty( $project->urls_array ) ? $project->urls_array : json_encode( array_keys( MPG_DatasetModel::get_index( $project->id, 'permalinks' ) ) );
+            }
+
             // Params
             $search_in_links = true;
             $search_in_titles = true;

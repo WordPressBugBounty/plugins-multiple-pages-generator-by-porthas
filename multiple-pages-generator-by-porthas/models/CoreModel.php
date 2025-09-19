@@ -49,9 +49,15 @@ class MPG_CoreModel
 		}
 		$needs_path_variants = MPG_Helper::generate_path_variants( $needed_path );
 
+		$urls_data = [];
+
 		foreach ( $projects as $project ) {
-			$urls_array  = $project->urls_array ? json_decode( $project->urls_array ) : array();
-			$urls_array  = is_array( $urls_array ) ? $urls_array : array();
+			$urls_array  = $project->urls_array ? json_decode( $project->urls_array ) : [];
+			if ( empty( $urls_array ) ) {
+				$urls_data = MPG_DatasetModel::get_index( $project->id, 'permalinks' );
+				$urls_array = array_keys( $urls_data );
+			}
+			$urls_array  = is_array( $urls_array ) ? $urls_array : [];
 			try {
 				if ( null === $project->schedule_periodicity ) {
 					$updated_project_data = MPG_Helper::mpg_live_project_data_update( $project );
@@ -154,6 +160,13 @@ class MPG_CoreModel
 					}
 
 					self::$current_row[$project->id] = $iteration;
+
+					// This is for new-datasets that have an index file.
+					if ( ! empty( $urls_data ) && array_key_exists( $raw_single_url, $urls_data ) ) {
+						$item = $urls_data[ $raw_single_url ];
+						self::$current_row[ $project->id . '_index' ] = $item;
+					}
+
 					break 2; // Останавливаем весь цикл. Ведь один УРЛ найден.
 				}
 			}
@@ -223,8 +236,6 @@ class MPG_CoreModel
 	}
     public static function mpg_shortcode_replacer($content, $project_id)
     {
-
-        global $found_strings;
 	    if ( empty( $content ) ) {
 		    return $content;
 	    }
@@ -235,10 +246,6 @@ class MPG_CoreModel
 	    }
 
         $project = MPG_ProjectModel::get_project_by_id($project_id);
-        $project_data = MPG_Helper::mpg_live_project_data_update( $project);
-        $dataset_array = MPG_Helper::mpg_get_dataset_array( $project_data );
-
-
 	    $headers = MPG_ProjectModel::get_headers_from_project( $project);
         $short_codes = self::mpg_shortcodes_composer($headers);
 
@@ -250,7 +257,8 @@ class MPG_CoreModel
         $strings = false;
 		$url_match_index = self::get_current_row($project_id);
 	    if ( $url_match_index !== false ) {
-		    $strings = $dataset_array[ $url_match_index + 1 ];
+		    $strings = self::get_current_datarow( $project_id );
+
 		    if ( ! is_array( $strings ) ) {
 			    return $content;
 		    }
@@ -259,8 +267,6 @@ class MPG_CoreModel
 		    // Therefore, we replace the URL in such a way that it is correct.
 		    //We always have the URL in the last column. If it is not in the dataset, we will add it to the shortcodes to enable the mpg_url shortcode.
 		    $strings[ count( $short_codes ) - 1 ] = MPG_CoreModel::mpg_prepare_mpg_url( $project, $urls_array, $url_match_index );
-		    // Store found string.
-		    $found_strings = $strings;
 	    } else {
 		    return $content;
 	    }
@@ -415,8 +421,19 @@ class MPG_CoreModel
 	 */
 	public static function get_current_datarow( $project_id ) {
 		$index = self::get_current_row( $project_id );
+
 		if ( $index === false ) {
 			return false;
+		}
+
+		// For projects with index file, we get the current row from particular chunks rather than loading the whole dataset.
+		if ( isset( self::$current_row[ $project_id . '_index' ] )  && is_array( self::$current_row[ $project_id . '_index' ] ) ) {
+			$item = self::$current_row[ $project_id . '_index' ];
+			$dataset = MPG_DatasetModel::get_dataset_row( $project_id, $item['chunk'], $item['offset'] );
+
+			if ( is_array( $dataset ) && ! empty( $dataset ) ) {
+				return $dataset;
+			}
 		}
 
 		$project       = MPG_ProjectModel::get_project_by_id( $project_id );

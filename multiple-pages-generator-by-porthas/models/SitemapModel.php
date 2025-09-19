@@ -167,70 +167,96 @@ class MPG_SitemapGenerator
      */
     public function createSitemap()
     {
-	    if ( empty( $this->urls ) ) {
-		    throw new BadMethodCallException( "To create sitemap, call addUrl or addUrls function first." );
-	    }
-	    if ( $this->maxURLsPerSitemap > 50000 ) {
-		    throw new InvalidArgumentException( "More than 50,000 URLs per single sitemap is not allowed." );
-	    }
+		if ( empty( $this->urls ) ) {
+			throw new BadMethodCallException( "To create sitemap, call addUrl or addUrls function first." );
+		}
+		if ($this->maxURLsPerSitemap > 50000) {
+			throw new InvalidArgumentException( "More than 50,000 URLs per single sitemap is not allowed." );
+		}
 
-        $generatorInfo = '';
-        $sitemapHeader = '<?xml version="1.0" encoding="UTF-8"?> <urlset xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9 http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd" xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"></urlset>';
-        $sitemapIndexHeader = '<?xml version="1.0" encoding="UTF-8"?>' . $generatorInfo . '
-                                    <sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-                                  </sitemapindex>';
-        foreach (array_chunk($this->urls, $this->maxURLsPerSitemap) as $sitemap) {
-            $xml = new SimpleXMLElement($sitemapHeader);
+        $sitemapFiles = [];
+        $totalChunks = 0;
+        foreach ( array_chunk( $this->urls, $this->maxURLsPerSitemap ) as $chunkIndex => $sitemapChunk ) {
+            $filename = ( $totalChunks > 0 )
+                ? str_replace( '.xml', ( $chunkIndex + 1 ) . '.xml', $this->sitemapFileName )
+                : $this->sitemapFileName;
+            $filepath = $this->basePath . $filename;
 
-            foreach ($sitemap as $url) {
-
-	            $row = $xml->addChild( 'url' );
-	            $row->addChild( 'loc', htmlspecialchars( $url['loc'], ENT_QUOTES, 'UTF-8' ) );
-	            if ( isset( $url['lastmod'] ) ) {
-		            $row->addChild( 'lastmod', $url['lastmod'] );
-	            }
-	            if ( isset( $url['changefreq'] ) ) {
-		            $row->addChild( 'changefreq', $url['changefreq'] );
-	            }
-	            if ( isset( $url['priority'] ) ) {
-		            $row->addChild( 'priority', $url['priority'] );
-	            }
+            $handle = fopen( $filepath, 'w' );
+            if ( ! $handle ) {
+                throw new Exception( "Unable to open file for writing: $filepath" );
             }
+            fwrite( $handle, "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" );
+            fwrite( $handle, "<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:schemaLocation=\"http://www.sitemaps.org/schemas/sitemap/0.9 http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd\">\n" );
 
-            if (strlen($xml->asXML()) > 10485760) {
-                throw new LengthException("Sitemap size is more than 10MB (10,485,760), please decrease maxURLsPerSitemap variable.");
+            $currentSize = 0;
+            foreach ( $sitemapChunk as $url ) {
+                $row = "  <url>\n";
+                    $loc = $url['loc'];
+                    // Percent-encode non-ASCII characters for RFC-3986 compliance
+                    $encodedLoc = preg_replace_callback('/[^A-Za-z0-9\-._~:\/?#\[\]@!$&\'()*+,;=%]/u', function($matches) {
+                        return rawurlencode($matches[0]);
+                    }, $loc);
+                    $row .= "    <loc>" . htmlspecialchars($encodedLoc, ENT_XML1 | ENT_QUOTES, 'UTF-8') . "</loc>\n";
+                if ( isset( $url['lastmod'] ) ) {
+                    $row .= "    <lastmod>" . $url['lastmod'] . "</lastmod>\n";
+                }
+                if ( isset( $url['changefreq'] ) ) {
+                    $row .= "    <changefreq>" . $url['changefreq'] . "</changefreq>\n";
+                }
+                if ( isset( $url['priority'] ) ) {
+                    $row .= "    <priority>" . $url['priority'] . "</priority>\n";
+                }
+                $row .= "  </url>\n";
+                fwrite( $handle, $row );
+                $currentSize += strlen( $row );
+                if ( $currentSize > 10485760 ) {
+                    fclose( $handle );
+                    unlink( $filepath );
+                    throw new LengthException( "Sitemap size is more than 10MB (10,485,760), please decrease maxURLsPerSitemap variable." );
+                }
             }
-            $this->sitemaps[] = $xml->asXML();
+            fwrite( $handle, "</urlset>\n" );
+            fclose( $handle );
+            $sitemapFiles[] = $filename;
+            $totalChunks++;
         }
-        if (count($this->sitemaps) > 1000)
-            throw new LengthException("Sitemap index can contains 1000 single sitemaps. Perhaps You trying to submit too many URLs.");
-        if (count($this->sitemaps) > 1) {
-            for ($i = 0; $i < count($this->sitemaps); $i++) {
-                $this->sitemaps[$i] = array(
-                    str_replace(".xml", ($i + 1) . ".xml", $this->sitemapFileName), //.xml.gz
-                    $this->sitemaps[$i]
-                );
+
+        if ( count( $sitemapFiles ) > 1000 ) {
+            throw new LengthException( "Sitemap index can contains 1000 single sitemaps. Perhaps You trying to submit too many URLs." );
+        }
+
+        $this->sitemaps = [];
+        foreach ( $sitemapFiles as $file ) {
+            $this->sitemaps[] = array( $file, null ); // Store only filename, not contents
+        }
+
+        if ( count( $sitemapFiles ) > 1 ) {
+            // Create sitemap index file
+            $indexFile = $this->sitemapIndexFileName;
+            $indexPath = $this->basePath . $indexFile;
+            $handle = fopen( $indexPath, 'w' );
+            if ( ! $handle ) {
+                throw new Exception( "Unable to open file for writing: $indexPath" );
             }
-            $xml = new SimpleXMLElement($sitemapIndexHeader);
-            foreach ($this->sitemaps as $sitemap) {
-                $row = $xml->addChild('sitemap');
-                $row->addChild('loc', $this->baseURL . htmlentities($sitemap[0]));
-                $row->addChild('lastmod', date('c'));
+            fwrite( $handle, "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" );
+            fwrite( $handle, "<sitemapindex xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\">\n" );
+            foreach ( $sitemapFiles as $file ) {
+                fwrite( $handle, "  <sitemap>\n" );
+                fwrite( $handle, "    <loc>" . $this->baseURL . htmlentities( $file ) . "</loc>\n" );
+                fwrite( $handle, "    <lastmod>" . date( 'c' ) . "</lastmod>\n" );
+                fwrite( $handle, "  </sitemap>\n" );
             }
+            fwrite( $handle, "</sitemapindex>\n" );
+            fclose( $handle );
             $this->sitemapFullURL = $this->baseURL . $this->sitemapIndexFileName;
-            $this->sitemapIndex = array(
-                $this->sitemapIndexFileName,
-                $xml->asXML()
-            );
+            $this->sitemapIndex = array( $this->sitemapIndexFileName, null ); // Store only filename
         } else {
-            if ($this->createGZipFile) {
+            if ( $this->createGZipFile ) {
                 $this->sitemapFullURL = $this->baseURL . $this->sitemapFileName . ".gz";
             } else {
                 $this->sitemapFullURL = $this->baseURL . $this->sitemapFileName;
-                $this->sitemaps[0] = array(
-                    $this->sitemapFileName,
-                    $this->sitemaps[0]
-                );
+                $this->sitemaps[0] = array( $this->sitemapFileName, null ); // Store only filename
             }
         }
     }

@@ -109,12 +109,12 @@ class MPG_CoreController
         MPG_SEOModel::mpg_squirrly_seo($project_id);
 
         MPG_SEOModel::mpg_the_seo_framework( $project_id );
-	    add_action( 'wp_head', function () use ( $project_id, $path ) {
+	    add_action( 'wp_head', function () use ( $project_id ) {
 		    ob_start( function ( $buffer ) use ( $project_id ) {
 			    return MPG_CoreModel::mpg_shortcode_replacer( $buffer, $project_id );
 		    } );
 	    }, 9, 0 );
-	    add_action( 'get_footer', function () use ( $project_id, $path ) {
+	    add_action( 'get_footer', function () {
 			if ( ob_get_level() ) {
 				ob_end_flush();
 			}

@@ -30,34 +30,21 @@ class MPG_SEOModel
 
         // Заменяем шорткоды в <title>...</title>
         add_filter('wpseo_title', function ($title) use ($project_id) {
-            $post_id = get_queried_object_id();
-            $description = get_post_meta($post_id, '_yoast_wpseo_title',  true);
-
-            return  MPG_CoreModel::mpg_shortcode_replacer($description, $project_id);
+            return  MPG_CoreModel::mpg_shortcode_replacer($title, $project_id);
         }, 1);
 
 
         add_filter('wpseo_metadesc', function ($description) use ($project_id) {
-
-            $post_id = get_queried_object_id();
-            $description = get_post_meta($post_id, '_yoast_wpseo_metadesc',  true);
-
             return  MPG_CoreModel::mpg_shortcode_replacer($description, $project_id);
         });
 
         // Переписывает свойство <meta property="og:title">
         add_filter('wpseo_opengraph_title', function ($title) use ($project_id) {
-            $post_id = get_queried_object_id();
-            $description = get_post_meta($post_id, '_yoast_wpseo_title',  true);
-
-            return  MPG_CoreModel::mpg_shortcode_replacer($description, $project_id);
+            return  MPG_CoreModel::mpg_shortcode_replacer($title, $project_id);
         });
 
         // Переписывает свойство <meta property="og:description">
         add_filter('wpseo_opengraph_desc', function ($description) use ($project_id) {
-            $post_id = get_queried_object_id();
-            $description = get_post_meta($post_id, '_yoast_wpseo_metadesc',  true);
-
             return  MPG_CoreModel::mpg_shortcode_replacer($description, $project_id);
         });
 

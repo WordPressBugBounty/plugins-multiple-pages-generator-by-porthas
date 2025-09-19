@@ -380,17 +380,22 @@ class MPG_ProjectModel
         wp_die();
     }
 
-
-    public static function mpg_generate_urls_from_dataset($dataset_path, $url_structure, $space_replacer, $return_dataset = false )
+    /**
+     * Generate URL for a particular row
+     * 
+     * @param array $row
+     * @param array $headers
+     * @param string $url_structure
+     * @param string $space_replacer
+     * 
+     * @return string The generated URL.
+     */
+    public static function mpg_generate_url_for_row( array $row, array $headers, string $url_structure, string $space_replacer ): string
     {
-	    $dataset_array = MPG_DatasetModel::read_dataset( $dataset_path );
-
-        // 1. Берем первый ряд, тоесть тот что содержит заголовки
-        $headers = ! empty( $dataset_array[0] ) ? $dataset_array[0] : array();
-
+        // Create shortcodes from headers
         $shortcodes = [];
         foreach ($headers as $raw_header) {
-            // В хедерах всегда пробелы заменяем на _, а в самих URL'ах - уже на то что выбрал пользователь ($space_replacer)
+            // In headers, always replace spaces with _, and in URLs - replace with what the user chose ($space_replacer)
             $header = str_replace(' ', '_', $raw_header);
 
             if (strpos($header, 'mpg_') === 0) {
@@ -401,56 +406,63 @@ class MPG_ProjectModel
         }
 
         $re = '/{{(.*?)}}/';
-        // 2. Проходимся по ним циклом, приводим в вид шорткода
-        // "my Custom Text" => {{mpg_my_custom_text}}
-        $url_structure = str_replace(' ', $space_replacer, $url_structure);
-        preg_match_all($re, $url_structure, $matches, PREG_SET_ORDER, 0);
+        // Process URL structure: replace spaces with space_replacer
+        $url_structure = str_replace( ' ', $space_replacer, $url_structure );
+        preg_match_all( $re, $url_structure, $matches, PREG_SET_ORDER, 0 );
 
         if ( empty( $matches ) ) {
             $url_structure = $shortcodes[0];
-            $url_structure = str_replace(' ', $space_replacer, $url_structure);
-            preg_match_all($re, $url_structure, $matches, PREG_SET_ORDER, 0);
+            $url_structure = str_replace( ' ', $space_replacer, $url_structure );
+            preg_match_all( $re, $url_structure, $matches, PREG_SET_ORDER, 0 );
         }
-        // Тут будут номера столбцов, которым соответсвуюш шорткоды
 
+        // Get indexes of columns that correspond to shortcodes
         $indexes = [];
-        foreach ($matches as $match) {
-            // Находим номер столбца по шорткоду.
-            $index = array_search($match[0], $shortcodes);
-            if (is_int($index)) {
+        foreach ( $matches as $match ) {
+            // Find the column number by shortcode
+            $index = array_search( $match[0], $shortcodes );
+            if ( is_int( $index ) ) {
                 $indexes[] = $index;
             }
         }
 
+        if ( empty( $indexes ) ) {
+            return '/';
+        }
+
+        // Get needed shortcodes based on found indexes
+        $needed_shortcodes = [];
+        foreach ( $indexes as $column_number ) {
+            $needed_shortcodes[] = $shortcodes[ $column_number ];
+        }
+
+        // Extract values from the row for the identified indexes
+        $line = [];
+        foreach ( $indexes as $index ) {
+            $ceil_value = (string) $row[$index]; // (string) - for cases when the value is null or false
+            $line[] = self::mpg_processing_special_chars( $ceil_value, $space_replacer );
+        }
+
+        // Replace shortcodes with actual values from columns
+        return '/' . str_replace( $needed_shortcodes, $line, $url_structure ) . '/';
+    }
+
+    public static function mpg_generate_urls_from_dataset( $dataset_path, $url_structure, $space_replacer, $return_dataset = false )
+    {
+	    $dataset_array = MPG_DatasetModel::read_dataset( $dataset_path );
+
+        // Get the headers (first row of dataset)
+        $headers = ! empty( $dataset_array[0] ) ? $dataset_array[0] : array();
+
         $urls_array = [];
+        $dataset_with_headers = $dataset_array;
 
-        if (!empty($indexes)) {
+        // Remove headers from dataset array
+        array_shift( $dataset_array );
 
-            // Всего столбцов в датасете может быть 10, и в $shortcodes будет 10 элементов,
-            // но для str_replace() первый и второй массив для замены должен содержать одинаковое колличество элементов
-            // Поскольку по индексам из ряда было получено, ну, скажем 3 элемента (url состоит из 3-х пилов), то и шорткодов должно быть 3
-            $needed_shortcodes = [];
-            foreach ($indexes as $column_number) {
-                $needed_shortcodes[] = $shortcodes[$column_number];
-            }
-
-            $dataset_with_headers = $dataset_array;
-
-            // Удалим из массива первый элемент (заголовки)
-            array_shift($dataset_array);
-
-            foreach ($dataset_array  as $iteration => $row) {
-
-                $line = [];
-                foreach ($indexes as $index) {
-
-                    $ceil_value = (string) $row[$index]; // (string) - для случаев если там будет null или false
-                    $line[] = self::mpg_processing_special_chars($ceil_value, $space_replacer);
-                }
-
-                // Заменяем шорткоды на реальные значения из колонок
-                $urls_array[] = '/' . str_replace($needed_shortcodes, $line, $url_structure) . '/';
-            }
+        // Generate URL for each row in the dataset
+        foreach ( $dataset_array as $row ) {
+            $urls_array[] = self::mpg_generate_url_for_row( $row, $headers, $url_structure, $space_replacer );
         }
 
         if ( $return_dataset ) {
@@ -464,7 +476,6 @@ class MPG_ProjectModel
 
         return $urls_array;
     }
-
 
 	/**
 	 * Alternative to mpg_get_project_by_id which return just the project.
@@ -492,6 +503,9 @@ class MPG_ProjectModel
 			if ( ! isset( $project[0]->source_type ) || empty( $project[0]->source_type ) ) {
 				$project[0]->source_type = isset( $project[0]->original_file_url ) && ! empty( $project[0]->original_file_url ) ? 'direct_link' : 'upload_file';
 			}
+
+            $project[0]->urls_array = ! empty( $project[0]->urls_array ) ? $project[0]->urls_array : json_encode( array_keys( MPG_DatasetModel::get_index( $project_id, 'permalinks' ) ) );
+
 			self::$projects[ $project_id ] = $project[0];
 
 			return self::$projects[ $project_id ];
@@ -519,6 +533,51 @@ class MPG_ProjectModel
             );
 		}
 	}
+
+    /**
+     * Get the schedule periodicity for a project.
+     * 
+     * @param mixed $project_id
+     * @return int|mixed|null
+     */
+    public static function get_project_schedule_periodicity( $project_id ) {
+        global $wpdb;
+        $table = $wpdb->prefix . MPG_Constant::MPG_PROJECTS_TABLE;
+        $periodicity = $wpdb->get_var(
+            $wpdb->prepare(
+                "SELECT schedule_periodicity FROM $table WHERE id = %d LIMIT 1",
+                $project_id
+            )
+        );
+
+        $expiration = DAY_IN_SECONDS;
+        if ( null === $periodicity ) {
+            $expiration = MPG_Helper::get_live_update_interval();
+        }
+
+        return $expiration;
+    }
+
+    /**
+     * Get project url_structure and space_replacer.
+     * 
+     * @param int $project_id
+     * @return array
+     */
+    public static function get_project_url_structure_and_space_replacer( int $project_id ): array
+    {
+        global $wpdb;
+        $table = $wpdb->prefix . MPG_Constant::MPG_PROJECTS_TABLE;
+        $result = $wpdb->get_row(
+            $wpdb->prepare(
+                "SELECT url_structure, space_replacer FROM $table WHERE id = %d LIMIT 1",
+                $project_id
+            ), ARRAY_A
+        );
+
+        return is_array( $result ) ? $result : [];
+    }
+
 	public static function update_last_check($project_id){
 
 		global $wpdb;
@@ -529,22 +588,39 @@ class MPG_ProjectModel
 
     public static function mpg_update_project_by_id(int $project_id, $fields_array, $delete_dataset = false )
     {
-
         global $wpdb;
+        $generate_index = false;
+
         try {
             if ( empty( $fields_array['worksheet_id'] ) ) {
                 unset( $fields_array['worksheet_id'] );
             }
+
+            // For backward compatibility. We don't use urls_array in the DB anymore.
+            // It is saved in the directory as a separate file.
+            // To make it easier, we generate it in one place here.
+            // If urls_array is set to true, it means we need to regenerate it.
+            if ( isset( $fields_array['urls_array'] ) && true === $fields_array['urls_array'] ) {
+                $fields_array['urls_array'] = null;
+                $generate_index = true;
+            }
+
             $wpdb->update($wpdb->prefix .  MPG_Constant::MPG_PROJECTS_TABLE, $fields_array, ['id' => $project_id]);
 
             if ($wpdb->last_error) {
                 throw new Exception($wpdb->last_error);
             }
+
+            if ( $delete_dataset ) {
+	            MPG_DatasetModel::delete_cache( $project_id );
+            }
+
 	        if ( isset( self::$projects[ $project_id ] ) ) {
 		        unset( self::$projects[ $project_id ] );
 	        }
-            if ( $delete_dataset ) {
-	            MPG_DatasetModel::delete_cache( $project_id );
+
+	        if ( $generate_index ) {
+                MPG_DatasetModel::create_index( $project_id );
             }
             
             // Save to excluded projects in a 'wp_options' for third-party plugins integration.
@@ -964,6 +1040,11 @@ class MPG_ProjectModel
         $table = $wpdb->prefix . MPG_Constant::MPG_PROJECTS_TABLE;
         $query = $wpdb->prepare("SELECT * FROM $table ORDER BY id DESC LIMIT %d", $limit);
         $results = $wpdb->get_results($query);
+
+        foreach( $results as $key => $project ) {
+            $results[ $key ]->urls_array = ! empty( $project->urls_array ) ? $project->urls_array : json_encode( array_keys( MPG_DatasetModel::get_index( $project->id, 'permalinks' ) ) );
+        }
+
         return is_array($results) ? $results : [];
     }
 	/**

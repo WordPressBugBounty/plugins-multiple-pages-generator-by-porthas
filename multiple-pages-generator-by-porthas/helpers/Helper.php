@@ -392,7 +392,6 @@ class MPG_Helper
     {
 	    $project_id         = isset( $project->id ) ? $project->id : 0;
 	    $dataset_path       = MPG_DatasetModel::get_dataset_path_by_project( $project );
-	    $periodicity        = isset( $project->schedule_periodicity ) ? $project->schedule_periodicity : null;
 
         global $mpg_dataset;
         if ( ! empty( $mpg_dataset[ $project_id ] ) ) {
@@ -402,18 +401,8 @@ class MPG_Helper
             return json_decode( $mpg_dataset[ $project_id ] );
         }
 
-        $expiration = 0;
-        if ( null === $periodicity ) {
-            $expiration = self::get_live_update_interval();
-        }
+        $dataset_array = MPG_DatasetModel::read_dataset( $dataset_path, false, $project_id );
 
-	    $dataset_array = MPG_DatasetModel::get_cache($project_id);
-
-
-	    if ( ! $dataset_array ) {
-		    $dataset_array = MPG_DatasetModel::read_dataset( $dataset_path );
-		    MPG_DatasetModel::set_cache( $project_id, $dataset_array, $expiration );
-	    }
         if ( ! doing_action( 'wp_ajax_mpg_get_search_results' ) ) {
             $mpg_dataset[ $project_id ] = $dataset_array;
         }
@@ -479,43 +468,44 @@ class MPG_Helper
      */
     public static function mpg_live_project_data_update( stdClass $project = null ) {
 
-	    $project_id         = isset( $project->id ) ? $project->id : 0;
-	    $dataset_path       = MPG_DatasetModel::get_dataset_path_by_project( $project );
-	    $periodicity        = isset( $project->schedule_periodicity ) ? $project->schedule_periodicity : null;
-	    $source_direct_link = isset( $project->original_file_url ) ? $project->original_file_url : '';
-	    $worksheet_id       = isset( $project->worksheet_id ) ? $project->worksheet_id : '';
-	    $space_replacer     = isset( $project->space_replacer ) ? $project->space_replacer : '';
-	    $url_structure      = isset( $project->url_structure ) ? $project->url_structure : '';
-	    $source_type = MPG_Validators::validate_source_type( $project->source_type ?? '', ! empty( $source_direct_link ) ? MPG_Validators::SOURCE_TYPE_URL : MPG_Validators::SOURCE_TYPE_UPLOAD );
+        $project_id         = isset( $project->id ) ? $project->id : 0;
+        $dataset_path       = MPG_DatasetModel::get_dataset_path_by_project( $project );
+        $periodicity        = isset( $project->schedule_periodicity ) ? $project->schedule_periodicity : null;
+        $source_direct_link = isset( $project->original_file_url ) ? $project->original_file_url : '';
+        $worksheet_id       = isset( $project->worksheet_id ) ? $project->worksheet_id : '';
+        $space_replacer     = isset( $project->space_replacer ) ? $project->space_replacer : '';
+        $url_structure      = isset( $project->url_structure ) ? $project->url_structure : '';
+        $source_type = MPG_Validators::validate_source_type( $project->source_type ?? '', ! empty( $source_direct_link ) ? MPG_Validators::SOURCE_TYPE_URL : MPG_Validators::SOURCE_TYPE_UPLOAD );
 
         $expiration = 0;
         if ( null === $periodicity ) {
             $expiration = self::get_live_update_interval();
         }
-	    if ( $source_type !== MPG_Validators::SOURCE_TYPE_URL ) {
-		    return $project;
-	    }
-        $dataset_array = MPG_DatasetModel::get_cache( $project_id );
-	    if ( empty( $dataset_path ) ) {
-		    return $project;
-	    }
-		if ( empty( $source_direct_link ) ) {
-		    return $project;
-	    }
+        if ( $source_type !== MPG_Validators::SOURCE_TYPE_URL ) {
+            return $project;
+        }
+
+        $dataset_array = MPG_DatasetModel::get_cache( $project_id ) || MPG_DatasetModel::get_dataset_chunk_cache( $project_id, 0 );
+
+        if ( empty( $dataset_path ) ) {
+            return $project;
+        }
+        if ( empty( $source_direct_link ) ) {
+            return $project;
+        }
 
         if ( empty( $dataset_array ) && $expiration > 0 ) {
             $direct_link = MPG_Helper::mpg_get_direct_csv_link( $source_direct_link, $worksheet_id );
             MPG_DatasetModel::download_file( $direct_link, $dataset_path );
             $urls_array = MPG_ProjectModel::mpg_generate_urls_from_dataset( $dataset_path, $url_structure, $space_replacer, true );
-	        $dataset_array = $urls_array['dataset_array'];
             $urls_array = $urls_array['urls_array'];
             $fields_array = array();
             self::$urls_array = $urls_array;
-            $fields_array['urls_array'] = wp_json_encode( $urls_array );
+            $fields_array['urls_array'] = true; // If set to true, it means we need to regenerate the file.
             MPG_ProjectModel::mpg_update_project_by_id( $project_id, $fields_array, true );
-	        MPG_DatasetModel::set_cache( $project_id, $dataset_array, $expiration );
+            MPG_ProjectModel::update_last_check( $project_id );
             $project->urls_array = $fields_array['urls_array'];
-            MPG_SitemapGenerator::maybe_create_sitemap( $urls_array, $project );
+            MPG_SitemapGenerator::maybe_create_sitemap( $project, $urls_array );
         }
         return $project;
     }
