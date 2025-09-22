@@ -504,7 +504,7 @@ class MPG_Helper
             $fields_array['urls_array'] = true; // If set to true, it means we need to regenerate the file.
             MPG_ProjectModel::mpg_update_project_by_id( $project_id, $fields_array, true );
             MPG_ProjectModel::update_last_check( $project_id );
-            $project->urls_array = $fields_array['urls_array'];
+            $project->urls_array = $urls_array['urls_array'];
             MPG_SitemapGenerator::maybe_create_sitemap( $project, $urls_array );
         }
         return $project;

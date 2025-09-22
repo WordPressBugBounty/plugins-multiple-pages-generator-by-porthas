@@ -3,7 +3,7 @@ Contributors: themeisle
 Tags: bulk pages, landing page, bulk edit, generate, mass
 Requires at least: 5.6
 Tested up to: 6.8
-Stable tag: 4.1.0
+Stable tag: 4.1.1
 Requires PHP: 7.2
 License: GPLv2
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -257,13 +257,10 @@ E-mail us at [friends@themeisle.com](mailto:friends@themeisle.com)
 
 == Changelog ==
 
-####   Version 4.1.0 (2025-09-19)
+#####   Version 4.1.1 (2025-09-22)
 
-- Improved MPG loops by skipping the current page URL item.
-- Improved performance on large datasets by adding chunking and indexing.
-- Added a logging limit with automatic rotation, keeping only the latest 1K entries.
-- Fixed shortcode rendering in child loops to use the correct project ID.
-- Fixed an issue where Yoast SEO tags were overriding Open Graph tags.
+- Fixed issue with the latest update where generated URLs stop loading for some existing projects
+- Fixed the error being thrown about TypeError: count()
 
 
 

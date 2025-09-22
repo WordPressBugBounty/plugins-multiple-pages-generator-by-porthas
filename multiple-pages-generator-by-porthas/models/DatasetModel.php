@@ -220,6 +220,7 @@ class MPG_DatasetModel
 
 		$permalinks_contents = file_get_contents( $permalinks_temp_path );
 		$permalinks_contents = json_decode( $permalinks_contents, true );
+		$permalinks_contents = is_array( $permalinks_contents ) ? $permalinks_contents : [];
 
 		// Write the metadata section
 		$meta = [
