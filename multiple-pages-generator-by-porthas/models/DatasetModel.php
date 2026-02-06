@@ -19,15 +19,6 @@ class MPG_DatasetModel
 	}
 
 	/**
-	 * Get the threshold at which to start chunking datasets.
-	 *
-	 * @return int The threshold
-	 */
-	public static function get_chunk_threshold() {
-		return apply_filters( 'mpg_chunk_threshold', 5000 );
-	}
-
-	/**
 	 * Get project path.
 	 * 
 	 * @param int $project_id The project ID
@@ -436,7 +427,6 @@ class MPG_DatasetModel
 		self::delete_dataset_chunks( $project_id );
 
 		$chunk_size = self::get_chunk_size();
-		$chunk_threshold = self::get_chunk_threshold();
 		$project_path = self::get_dataset_path_by_project( $project_id );
 
 		$ext = MPG_Helper::mpg_get_extension_by_path( $project_path );
@@ -476,10 +466,6 @@ class MPG_DatasetModel
 
 			$data_rows = $total_rows - 1; // Exclude header
 			$total_chunks = ceil( $data_rows / $chunk_size );
-
-			if ( $total_rows < $chunk_threshold ) {
-				return false;
-			}
 
 			$chunks_dir = self::get_chunks_dir( $project_id );
 			if ( ! file_exists( $chunks_dir ) ) {

@@ -70,7 +70,8 @@ class MPG_CoreModel
 					}
 				}
 			} catch ( \Exception $exception ) {
-				MPG_LogsController::mpg_write( '', 'warning', $exception->getMessage() . ' path: ' . $needed_path);
+				// Use project_id parameter to prevent circular reference in logging
+				MPG_LogsController::mpg_write( $project->id ?? 0, 'warning', $exception->getMessage() . ' path: ' . $needed_path);
 			}
 			if ( empty( $urls_array ) ) {
 				continue;

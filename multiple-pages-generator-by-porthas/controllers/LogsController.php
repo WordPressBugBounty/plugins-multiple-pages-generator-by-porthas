@@ -7,6 +7,13 @@
 class MPG_LogsController
 {
 	/**
+	 * Flag to prevent circular reference during logging operations.
+	 * 
+	 * @var bool
+	 */
+	private static $is_logging = false;
+
+	/**
 	 * Get the maximum number of log records to keep.
 	 * 
 	 * @return int Maximum number of log records, defaults to 1000.
@@ -25,26 +32,43 @@ class MPG_LogsController
 	 * @param int $line Line number that triggered the log.
 	 */
 	public static function mpg_write( $project_id = false, $level = 'warning', $message = "", $file = __FILE__, $line = __LINE__ ) {
-		global $wpdb;
-
-		$requested_url = MPG_Helper::mpg_get_request_uri();
-
-		if ( ! $project_id ) {
-			$redirect_rules = MPG_CoreModel::mpg_get_redirect_rules( $requested_url );
-			$project_id     = $redirect_rules['project_id'];
+		// Prevent circular reference - if we're already logging, don't start another log operation
+		if ( self::$is_logging ) {
+			return;
 		}
-		do_action( 'themeisle_log_event', MPG_NAME, $message, $level, __FILE__, __LINE__ );
-		$message .= $message . ' homeurl: ' . home_url();
-		$wpdb->insert( $wpdb->prefix . MPG_Constant::MPG_LOGS_TABLE, [
-			'project_id' => intval( $project_id ),
-			'level'      => esc_sql( $level ),
-			'url'        => esc_sql( $requested_url ),
-			'message'    => esc_sql( $message ),
-			'datetime'   => date( 'Y-m-d H:i:s' )
-		] );
 		
-		// Limit the number of log records
-		self::limit_log_records();
+		self::$is_logging = true;
+		
+		try {
+			global $wpdb;
+
+			$requested_url = MPG_Helper::mpg_get_request_uri();
+
+			if ( ! $project_id ) {
+				try {
+					$redirect_rules = MPG_CoreModel::mpg_get_redirect_rules( $requested_url );
+					$project_id     = $redirect_rules['project_id'] ?? 0;
+				} catch ( Exception $e ) {
+					// If getting redirect rules fails, use 0 as project_id to prevent infinite loop
+					$project_id = 0;
+				}
+			}
+			do_action( 'themeisle_log_event', MPG_NAME, $message, $level, __FILE__, __LINE__ );
+			$message .= $message . ' homeurl: ' . home_url();
+			$wpdb->insert( $wpdb->prefix . MPG_Constant::MPG_LOGS_TABLE, [
+				'project_id' => intval( $project_id ),
+				'level'      => esc_sql( $level ),
+				'url'        => esc_sql( $requested_url ),
+				'message'    => esc_sql( $message ),
+				'datetime'   => date( 'Y-m-d H:i:s' )
+			] );
+			
+			// Limit the number of log records
+			self::limit_log_records();
+		} finally {
+			// Always reset the flag, even if an exception occurs
+			self::$is_logging = false;
+		}
 	}
     public static function mpg_clear_log_by_project_id()
     {

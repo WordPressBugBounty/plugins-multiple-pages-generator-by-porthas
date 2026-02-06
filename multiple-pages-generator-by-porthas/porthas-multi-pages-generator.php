@@ -8,7 +8,7 @@
  *
  * Author: Themeisle
  * Author URI: https://themeisle.com
- * Version: 4.1.1
+ * Version: 4.1.4
  */
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -25,7 +25,7 @@ defined( 'MPG_CACHE_URL' ) || define( 'MPG_CACHE_URL', WP_CONTENT_URL . DIRECTOR
 defined( 'MPG_NAME' ) || define( 'MPG_NAME', 'Multiple Pages Generator' );
 defined( 'MPG_BASE_IMG_PATH' ) || define( 'MPG_BASE_IMG_PATH', plugin_dir_url( __FILE__ ) . 'frontend/images' );
 defined( 'MPG_DATABASE_VERSION' ) || define( 'MPG_DATABASE_VERSION', '1.0.0' );
-defined( 'MPG_PLUGIN_VERSION' ) || define( 'MPG_PLUGIN_VERSION', '4.1.1' );
+defined( 'MPG_PLUGIN_VERSION' ) || define( 'MPG_PLUGIN_VERSION', '4.1.4' );
 defined( 'MPG_FREE_SLUG' ) || define( 'MPG_FREE_SLUG', 'multiple-pages-generator-by-porthas' );
 defined( 'MPG_TRANSLATION_CACHE_KEY_PREFIX' ) || define( 'MPG_TRANSLATION_CACHE_KEY_PREFIX', 'mpg_translation_check' );
 
@@ -154,7 +154,7 @@ if ( ! function_exists( 'mpg_run' ) ) {
 				// translators: %1$s - HTML tag, %2$s - discount, %3$s - HTML tag, %4$s - product name.
 				$message_template = __( 'Get %1$sup to %2$s off%3$s when you upgrade your %4$s plan or renew early.', 'multiple-pages-generator-by-porthas' );
 				$product_label    = 'MPG Pro';
-				$discount         = '20%';
+				$discount         = '30%';
 			}
 
 			$product_label = sprintf( '<strong>%s</strong>', $product_label );
