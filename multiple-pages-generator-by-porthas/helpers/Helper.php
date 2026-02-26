@@ -208,9 +208,14 @@ class MPG_Helper
     // Return the path of URL
 	public static function mpg_get_request_uri() {
 		global $wp;
-		$full_url_path = home_url( $wp->request );
-		$home_url      = explode( '?', home_url() )[0];
-		$current_url   = urldecode( str_ireplace( $home_url, '/', $full_url_path ) );
+
+        $full_url_path = home_url();
+        if ( isset( $wp ) ) {
+            $full_url_path = home_url( $wp->request );
+        }
+
+		$home_url    = explode( '?', home_url() )[0];
+		$current_url = urldecode( str_ireplace( $home_url, '/', $full_url_path ) );
 		if ( ! str_contains( $current_url, '?' ) ) {
 			$current_url = $current_url . '/';
 		}
@@ -504,7 +509,7 @@ class MPG_Helper
             $fields_array['urls_array'] = true; // If set to true, it means we need to regenerate the file.
             MPG_ProjectModel::mpg_update_project_by_id( $project_id, $fields_array, true );
             MPG_ProjectModel::update_last_check( $project_id );
-            $project->urls_array = $urls_array['urls_array'];
+            $project->urls_array = $urls_array;
             MPG_SitemapGenerator::maybe_create_sitemap( $project, $urls_array );
         }
         return $project;

@@ -36,6 +36,28 @@ jQuery('.advanced-page .mpg-hooks-block').on('submit', async function (e) {
     if (!eventData.success) {
         toastr.error(eventData.error, __('Failed', 'multiple-pages-generator-by-porthas'));
     } else {
+        jQuery('.mpg-hooks-block .btn-reset').attr('disabled', false);
+        toastr.success(__('Hook settings updated successfully', 'multiple-pages-generator-by-porthas'), __('Success', 'multiple-pages-generator-by-porthas'), { timeOut: 5000 });
+    }
+});
+
+jQuery('.advanced-page .mpg-hooks-block .btn-reset').on('click', async function (e) {
+
+    e.preventDefault();
+
+    const event = await jQuery.post(ajaxurl, {
+        action: 'mpg_delete_hook_name_and_priority',
+        'securityNonce': backendData.securityNonce
+    });
+
+    let eventData = JSON.parse(event);
+
+    if (!eventData.success) {
+        toastr.error(eventData.error, __('Failed', 'multiple-pages-generator-by-porthas'));
+    } else {
+        jQuery('#mpg_hook_name').val('');
+        jQuery('#mpg_hook_priority').val('');
+        jQuery('.mpg-hooks-block .btn-reset').attr('disabled', true);
         toastr.success(__('Hook settings updated successfully', 'multiple-pages-generator-by-porthas'), __('Success', 'multiple-pages-generator-by-porthas'), { timeOut: 5000 });
     }
 });

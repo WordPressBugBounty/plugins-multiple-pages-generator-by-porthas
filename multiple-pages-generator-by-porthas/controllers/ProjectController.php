@@ -1143,4 +1143,33 @@ class MPG_ProjectController
         wp_redirect( wp_get_referer() );
         exit;
     }
+
+    /**
+     * Delete hook name and priority.
+     *
+     * @return void
+     */
+    public static function mpg_delete_hook_name_and_priority() {
+	    MPG_Validators::nonce_check();
+
+        try {
+            delete_option( 'mpg_hook_name' );
+            delete_option( 'mpg_hook_priority' );
+
+            echo json_encode([
+                'success' => true
+            ]);
+
+            wp_die();
+        } catch (Exception $e) {
+
+            do_action( 'themeisle_log_event', MPG_NAME, $e->getMessage(), 'debug', __FILE__, __LINE__ );
+
+            echo json_encode([
+                'success' => false,
+                'error' => $e->getMessage()
+            ]);
+            wp_die();
+        }
+    }
 }

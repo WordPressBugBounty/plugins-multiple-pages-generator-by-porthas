@@ -549,7 +549,7 @@ class MPG_DatasetModel
 	 */
 	public static function get_dataset_chunk( $project_id, $chunk_number ) {
 		$cached_chunk = self::get_dataset_chunk_cache( $project_id, $chunk_number );
-		if ( $cached_chunk !== false ) {
+		if ( ! empty( $cached_chunk ) ) {
 			return $cached_chunk;
 		}
 		
@@ -935,7 +935,7 @@ class MPG_DatasetModel
 	public static function read_dataset_original( string $file, bool $headers_only = false ):array {
 		if ( ! $headers_only ) {
 			$cached = self::get_cache( $file );
-			if ( $cached !== false ) {
+			if ( $cached !== false && ! empty( $cached ) ) {
 				return $cached;
 			}
 		}

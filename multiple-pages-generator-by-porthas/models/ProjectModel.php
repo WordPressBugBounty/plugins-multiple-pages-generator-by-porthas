@@ -861,8 +861,8 @@ class MPG_ProjectModel
         $start_end_slashes_trimed = ltrim(rtrim(strtolower($ceil_value), '/'), '/');
         // Перед удалением всех спецсимволов - заменяем пробел на строку, иначе пробелы будут удалены регуляркой ниже.
         $escaped_spaces = preg_replace(
-            ['/\s+/u', '/\//', '/\./', '/\-/', '/\_/', '/\~/', '/\=/'],
-            ['mpgspaceholder', 'mpgslashholder', 'mpgdotholder', 'mpgdashholder', 'mpglodashholder', 'mpgtildaholder', 'mpgequalholder'],
+            ['/\s+/u', '/\//', '/\./', '/\-/', '/\_/', '/\~/', '/\=/', '/\'/'],
+            ['mpgspaceholder', 'mpgslashholder', 'mpgdotholder', 'mpgdashholder', 'mpglodashholder', 'mpgtildaholder', 'mpgequalholder', 'mpgquoteholder'],
             $start_end_slashes_trimed
         );
 
@@ -871,8 +871,8 @@ class MPG_ProjectModel
 
         // То что раньше было пробелом - заменяем на space_replacer
         $back_to_allowed_chars = str_replace(
-            ['mpgspaceholder', 'mpgslashholder', 'mpgdotholder', 'mpgdashholder', 'mpglodashholder', 'mpgtildaholder', 'mpgequalholder'],
-            [$space_replacer, '/', '.', '-', '_', '~', '='],
+            ['mpgspaceholder', 'mpgslashholder', 'mpgdotholder', 'mpgdashholder', 'mpglodashholder', 'mpgtildaholder', 'mpgequalholder', 'mpgquoteholder'],
+            [$space_replacer, '/', '.', '-', '_', '~', '=', $space_replacer],
             $special_chars_trimmed
         );
 

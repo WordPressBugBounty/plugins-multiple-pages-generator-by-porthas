@@ -3,6 +3,7 @@
 namespace MPG\Display\Loop;
 
 use MPG\Display\Base_Display;
+use WP_Block;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -48,10 +49,11 @@ abstract class Core extends Base_Display {
 	 * }
 	 *
 	 * @param string $content The content to render.
+	 * @param WP_Block|null $block The block to render. This is sent from the block renderer and contains the inner blocks to render. We use this because render_block fires inside-out (children first, then parents), so we need to manually re-render the inner blocks for each loop iteration for the conditionals to work. 
 	 *
 	 * @return string The rendered content. This will be an HTML string or another type of formatted content based on the implementation.
 	 */
-	public function render( int $project_id, array $args, string $content ): string {
+	public function render( int $project_id, array $args, string $content, $block = null ): string {
 		if ( empty( $project_id ) || ( $project_data = \MPG_ProjectModel::get_project_by_id( $project_id ) ) === false ) {
 			throw new \Exception( __( 'Invalid or empty project id provided.', 'multiple-pages-generator-by-porthas' ) );
 		}
@@ -129,9 +131,15 @@ abstract class Core extends Base_Display {
 				break;
 			}
 
-			\MPG_CoreModel::set_current_row( $project_id, $index);
-
-			$content_template                     = $content;
+			\MPG_CoreModel::set_current_row( $project_id, $index - 1 ); // We subtract 1 because get_current_datarow adds 1 internally (returns dataset[$stored + 1]).
+			$content_template = '';
+			if( ! empty( $block ) ) {
+				foreach ($block->inner_blocks as $inner_block) {
+					$content_template .= render_block($inner_block->parsed_block);
+				}
+			}else{
+				$content_template = $content;
+			}
 			$strings                              = $dataset_array[ $index ];
 
 			if ( \MPG_DatasetModel::is_dataset_chunked( $project_id ) ) {

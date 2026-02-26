@@ -75,7 +75,7 @@ function generateUrlPreview(urlBuilderString, headers, spaceReplacer, inputRow) 
 
         // Подкидываем строку из таблицы вместо заголовка. toString - на случай если в ячейке будет число.
         // Эта проверка нужна для того, чтобы не было ошибки при попытке .toString() если пустая ячейка.
-        let neededHeaderValue = inputRow[index] ? inputRow[index].toString() : '';
+        let neededHeaderValue = inputRow?.[index] ? inputRow[index].toString() : '';
 
         // Удалим слеши в начале и в конце строки.
         let trimedHeader = neededHeaderValue.replace(/^\/+|\/+$/g, '');
@@ -96,7 +96,8 @@ function generateUrlPreview(urlBuilderString, headers, spaceReplacer, inputRow) 
     .replace(/\-/gm, 'mpgdashholder')
     .replace(/\_/gm, 'mpglodashholder')
     .replace(/\~/gm, 'mpgtildaholder')
-    .replace(/\=/gm, 'mpgequalholder');
+    .replace(/\=/gm, 'mpgequalholder')
+    .replace(/\'/gm, 'mpgquoteholder');
     
     finalPath = finalPath.replace(/[^\p{L}\d]/gu, '');
 
@@ -108,6 +109,7 @@ function generateUrlPreview(urlBuilderString, headers, spaceReplacer, inputRow) 
     .replace(/mpglodashholder/gm, '_')
     .replace(/mpgtildaholder/gm, '~')
     .replace(/mpgequalholder/gm, '=')
+    .replace(/mpgquoteholder/gm, spaceReplacer);
 
     if (finalPath) {
         const [baseUrl, queryString] = backendData.baseUrl.split('?');

@@ -445,6 +445,8 @@ class MPG_HookController
         // Advanced settings
         add_action('wp_ajax_mpg_set_hook_name_and_priority', ['MPG_ProjectController', 'mpg_set_hook_name_and_priority']);
         add_action('wp_ajax_mpg_get_hook_name_and_priority', ['MPG_ProjectController', 'mpg_get_hook_name_and_priority']);
+        add_action( 'wp_ajax_mpg_delete_hook_name_and_priority', ['MPG_ProjectController', 'mpg_delete_hook_name_and_priority'] );
+
 
         // Basepath
         add_action('wp_ajax_mpg_set_basepath', ['MPG_ProjectController', 'mpg_set_basepath']);

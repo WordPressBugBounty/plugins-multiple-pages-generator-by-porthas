@@ -62,7 +62,7 @@ class Block extends Core {
 	 *
 	 * @param array $attributes The block attributes.
 	 * @param string $content The block content.
-	 * @param array $block The block data.
+	 * @param \WP_Block $block The block data.
 	 *
 	 * @return string The rendered block content.
 	 */
@@ -82,7 +82,7 @@ class Block extends Core {
 				'conditions'  => $attributes['conditions'],
 				'order_by'    => $attributes['orderBy'],
 				'direction'   => $attributes['direction']
-			], $content );
+			], $content,$block );
 			\MPG_ProjectModel::set_current_project_id( $current_project_backup );
 			return $content;
 		} catch (\Exception $e) {

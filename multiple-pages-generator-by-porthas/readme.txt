@@ -3,7 +3,7 @@ Contributors: themeisle
 Tags: bulk pages, landing page, bulk edit, generate, mass
 Requires at least: 5.6
 Tested up to: 6.9
-Stable tag: 4.1.4
+Stable tag: 4.1.5
 Requires PHP: 7.2
 License: GPLv2
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -196,8 +196,17 @@ For manual installation:
 
 == Changelog ==
 
-#####   Version 4.1.4 (2025-11-05)
+#####   Version 4.1.5 (2026-02-26)
 
+- Added a reset button to reset the Page Builder Compatibility option
+- Fixed translations reappear after being updated
+- Fixed a fatal error caused by posts_selection hook
+- Fixed an issue where conditional display logic within a loop incorrectly referenced the main projects data instead of the loops data context
+- Fixed issue where incorrect page content was being pulled when duplicate values exists in the source file
+- Ensured the cached dataset is not empty before returning to prevent JS errors
 - Updated dependencies
+
+
+
 
 [See changelog for all versions](http://rviv.ly/rXv5jU).

@@ -11,7 +11,7 @@ class MPG_CoreModel
 
 	public static function mpg_get_redirect_rules( $needed_path, $projects = array() ) {
 
-		global $wpdb, $pagenow, $post;
+		global $wpdb, $pagenow, $post, $wp_query;
 		$needed_path = preg_replace( '/(\/+)/', '/', $needed_path ); // Remove double slashes from URL.
 
 		if ( is_admin() && false !== strpos( $needed_path, $pagenow ) ) {
@@ -23,7 +23,7 @@ class MPG_CoreModel
 		}
 
 		// If the requested URL is post/term then it will return an empty array.
-		if ( function_exists( 'get_queried_object' ) && ! empty( get_queried_object() ) ) {
+		if ( ! isset( $wp_query ) ||  ! empty( $wp_query->get_queried_object() ) ) {
 			return [];
 		}
 
@@ -64,8 +64,7 @@ class MPG_CoreModel
 					if ( is_object( $updated_project_data ) ) {
 						$project = $updated_project_data;
 						if ( $project->urls_array ) {
-							$urls_array = json_decode( $project->urls_array );
-							$urls_array = is_array( $urls_array ) ? $urls_array : array();
+							$urls_array = is_array( $project->urls_array ) ? $project->urls_array : array();
 						}
 					}
 				}

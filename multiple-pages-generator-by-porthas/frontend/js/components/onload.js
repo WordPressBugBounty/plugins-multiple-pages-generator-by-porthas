@@ -309,6 +309,7 @@ export function handleAdvance(){
                         jQuery('#mpg_hook_priority').val(
                             hooksData.data.hook_priority
                         );
+                        jQuery('.mpg-hooks-block .btn-reset').attr('disabled', false);
                     }
                 }
             });

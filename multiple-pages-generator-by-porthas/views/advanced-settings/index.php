@@ -50,6 +50,7 @@
                     </select>
 
                     <button type="submit" class="btn btn-primary"><?php _e('Update', 'multiple-pages-generator-by-porthas'); ?></button>
+                    <button type="submit" class="btn btn-primary btn-reset" disabled><?php esc_html_e( 'Reset', 'multiple-pages-generator-by-porthas' ); ?></button>
                 </form>
             </section>
 
