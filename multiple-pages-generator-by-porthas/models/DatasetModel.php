@@ -10,6 +10,13 @@ require_once(realpath(__DIR__ . '/../helpers/Constant.php'));
 class MPG_DatasetModel
 {
 	/**
+	 * Holds the build ID resolved for each project during the current request.
+	 *
+	 * @var array
+	 */
+	protected static $resolved_build_ids = [];
+
+	/**
 	 * Get the chunk size to use for dataset chunking.
 	 *
 	 * @return int The chunk size
@@ -29,13 +36,52 @@ class MPG_DatasetModel
 	}
 
 	/**
+	 * Get the path to the builds directory for a project.
+	 *
+	 * @param int $project_id The project ID.
+	 * @return string
+	 */
+	public static function get_builds_dir( $project_id ) {
+		return self::get_project_path( $project_id ) . 'builds/';
+	}
+
+	/**
+	 * Get the path to a specific build directory.
+	 *
+	 * @param int    $project_id The project ID.
+	 * @param string $build_id The build ID.
+	 * @return string
+	 */
+	public static function get_build_path( $project_id, $build_id ) {
+		return self::get_builds_dir( $project_id ) . trailingslashit( $build_id );
+	}
+
+	/**
+	 * Get the path to the manifest that points to the active build.
+	 *
+	 * @param int $project_id The project ID.
+	 * @return string
+	 */
+	public static function get_active_build_manifest_path( $project_id ) {
+		return self::get_project_path( $project_id ) . 'current-build.json';
+	}
+
+	/**
 	 * Get the path to the index file for a project.
 	 * 
 	 * @param int $project_id The project ID
 	 * @return string The path to the index file
 	 */
-	public static function get_index_path( $project_id ) {
-		return self::get_project_path( $project_id ) . 'index.json';
+	public static function get_index_path( $project_id, $build_id = null ) {
+		if ( null === $build_id ) {
+			$build_id = self::get_active_build_id( $project_id );
+		}
+
+		if ( false === $build_id ) {
+			return self::get_project_path( $project_id ) . 'index.json';
+		}
+
+		return self::get_build_path( $project_id, $build_id ) . 'index.json';
 	}
 
 	/**
@@ -44,8 +90,16 @@ class MPG_DatasetModel
 	 * @param int $project_id The project ID
 	 * @return string The path to the chunks directory
 	 */
-	public static function get_chunks_dir( $project_id ) {
-		return self::get_project_path( $project_id ) . 'chunks/';
+	public static function get_chunks_dir( $project_id, $build_id = null ) {
+		if ( null === $build_id ) {
+			$build_id = self::get_active_build_id( $project_id );
+		}
+
+		if ( false === $build_id ) {
+			return self::get_project_path( $project_id ) . 'chunks/';
+		}
+
+		return self::get_build_path( $project_id, $build_id ) . 'chunks/';
 	}
 
 	/**
@@ -55,8 +109,8 @@ class MPG_DatasetModel
 	 * @param int $chunk_number The chunk number
 	 * @return string The path to the chunk file
 	 */
-	public static function get_chunk_path( $project_id, $chunk_number ) {
-		return self::get_chunks_dir( $project_id ) . sprintf( 'chunk_%06d.json', $chunk_number );
+	public static function get_chunk_path( $project_id, $chunk_number, $build_id = null ) {
+		return self::get_chunks_dir( $project_id, $build_id ) . sprintf( 'chunk_%06d.json', $chunk_number );
 	}
 
 	/**
@@ -70,193 +124,244 @@ class MPG_DatasetModel
 	}
 
 	/**
+	 * Return the build ID used for reads in the current request.
+	 *
+	 * @param int $project_id The project ID.
+	 * @return string|false
+	 */
+	public static function get_active_build_id( $project_id ) {
+		if ( array_key_exists( $project_id, self::$resolved_build_ids ) ) {
+			return self::$resolved_build_ids[ $project_id ];
+		}
+
+		$manifest_path = self::get_active_build_manifest_path( $project_id );
+		$build_id      = false;
+
+		if ( file_exists( $manifest_path ) ) {
+			$manifest_contents = file_get_contents( $manifest_path );
+			$manifest_data     = json_decode( $manifest_contents, true );
+			if ( isset( $manifest_data['build_id'] ) && is_string( $manifest_data['build_id'] ) ) {
+				$manifest_build_id = sanitize_file_name( $manifest_data['build_id'] );
+				if ( $manifest_build_id !== '' && file_exists( self::get_index_path( $project_id, $manifest_build_id ) ) ) {
+					$build_id = $manifest_build_id;
+				}
+			}
+		}
+
+		self::$resolved_build_ids[ $project_id ] = $build_id;
+
+		return $build_id;
+	}
+
+	/**
 	 * Create an index for a project's dataset using a streaming approach to minimize memory usage.
 	 * 
 	 * @param int $project_id The project ID
 	 * @return bool Whether the index was created successfully
 	 */
-	public static function create_index( $project_id ) {
-		self::delete_index( $project_id );
-		self::create_dataset_chunks( $project_id );
-
-		$chunk_size     = self::get_chunk_size();
-		$index_path     = self::get_index_path( $project_id );
-		$project_path   = self::get_dataset_path_by_project( $project_id );
-		$headers        = self::read_dataset( $project_path, true );
-		$project        = MPG_ProjectModel::get_project_url_structure_and_space_replacer( $project_id );
-		$url_structure  = isset( $project['url_structure'] ) ? $project['url_structure'] : '';
-		$space_replacer = isset( $project['space_replacer'] ) ? $project['space_replacer'] : '';
-
-		$chunks_meta = self::get_dataset_chunks_meta( $project_id );
-		$total_rows = isset( $chunks_meta['total_rows'] ) ? $chunks_meta['total_rows'] - 1 : 0;
-		$total_chunks = isset( $chunks_meta['total_chunks'] ) ? $chunks_meta['total_chunks'] : 0;
-
-		// Ensure directory exists for the index file
-		$index_dir = dirname( $index_path );
-		if ( ! file_exists( $index_dir ) ) {
-			wp_mkdir_p( $index_dir );
+	public static function create_index( $project_id, $lock_token = null ) {
+		$has_external_lock = is_string( $lock_token ) && '' !== $lock_token;
+		if ( ! $has_external_lock ) {
+			$lock_token = self::acquire_index_generation_lock( $project_id );
+			if ( false === $lock_token ) {
+				return false;
+			}
 		}
 
-		// Create a temporary file for permalinks
-		$permalinks_temp_path = $index_path . '.temp';
-		$permalinks_file = fopen( $permalinks_temp_path, 'w' );
-		if ( ! $permalinks_file ) {
-			return false;
-		}
+		$build_id        = self::generate_index_run_token();
+		$build_published = false;
 
-		// Start writing the permalinks as a JSON object
-		fwrite( $permalinks_file, '{' );
-
-		$first_entry = true;
-		$batch_size = 1000; // Process and write in batches of 1000 entries
-
-		// If there are no chunks (small dataset), process the dataset directly
-		if ( $total_chunks === 0 ) {
-			$dataset = self::read_dataset( $project_path, false );
-			// Remove header row if present
-			if ( isset( $dataset[0] ) && $dataset[0] === $headers ) {
-				array_shift( $dataset );
+		try {
+			if ( ! self::create_dataset_chunks( $project_id, $build_id ) ) {
+				return false;
 			}
 
-			$total_rows = count( $dataset );
-			$batch_entries = [];
-			$current_batch_size = 0;
-			foreach ( $dataset as $offset_in_chunk => $row ) {
-				$permalink = MPG_ProjectModel::mpg_generate_url_for_row( $row, $headers, $url_structure, $space_replacer );
-				$batch_entries[$permalink] = [
-					'chunk' => 0,
-					'offset' => $offset_in_chunk + 1, // +1 because header is removed
-				];
-				$current_batch_size++;
-				if ( $current_batch_size >= $batch_size ) {
-					self::write_permalink_batch( $permalinks_file, $batch_entries, $first_entry );
-					$first_entry = false;
-					$batch_entries = [];
-					$current_batch_size = 0;
-				}
-				unset( $permalink );
+			$chunk_size     = self::get_chunk_size();
+			$index_path     = self::get_index_path( $project_id, $build_id );
+			$project_path   = self::get_dataset_path_by_project( $project_id );
+			$headers        = self::read_dataset( $project_path, true );
+			$project        = MPG_ProjectModel::get_project_url_structure_and_space_replacer( $project_id );
+			$url_structure  = isset( $project['url_structure'] ) ? $project['url_structure'] : '';
+			$space_replacer = isset( $project['space_replacer'] ) ? $project['space_replacer'] : '';
+
+			$chunks_meta  = self::get_dataset_chunks_meta( $project_id, $build_id );
+			$total_rows   = isset( $chunks_meta['total_rows'] ) ? $chunks_meta['total_rows'] - 1 : 0;
+			$total_chunks = isset( $chunks_meta['total_chunks'] ) ? $chunks_meta['total_chunks'] : 0;
+
+			$index_dir = dirname( $index_path );
+			if ( ! file_exists( $index_dir ) ) {
+				wp_mkdir_p( $index_dir );
 			}
-			if ( $current_batch_size > 0 ) {
-				self::write_permalink_batch( $permalinks_file, $batch_entries, $first_entry );
-				$first_entry = false;
+
+			$run_token            = self::generate_index_run_token();
+			$permalinks_temp_path = self::get_index_temp_path( $index_path, 'permalinks', $run_token );
+			$index_temp_path      = self::get_index_temp_path( $index_path, 'index', $run_token );
+			$permalinks_file      = fopen( $permalinks_temp_path, 'w' );
+			if ( ! $permalinks_file ) {
+				return false;
 			}
-			unset( $batch_entries );
-			gc_collect_cycles();
-		} else {
-			// Process each chunk separately to reduce memory usage
+
+			if ( 1 !== fwrite( $permalinks_file, '{' ) ) {
+				self::cleanup_on_error( $permalinks_file, $permalinks_temp_path );
+				return false;
+			}
+
+			$first_entry = true;
+			$batch_size  = 1000;
+
 			for ( $chunk_idx = 0; $chunk_idx < $total_chunks; $chunk_idx++ ) {
-				// Get this chunk's data
-				$chunk_data = self::get_dataset_chunk( $project_id, $chunk_idx );
+				$chunk_data = self::get_dataset_chunk( $project_id, $chunk_idx, $build_id );
 
 				if ( empty( $chunk_data ) ) {
 					continue;
 				}
 
-				// Prepare batch for more efficient processing
-				$batch_entries = [];
+				$batch_entries      = [];
 				$current_batch_size = 0;
 
 				foreach ( $chunk_data as $offset_in_chunk => $row ) {
-					// Skip header row if it's included
 					if ( $offset_in_chunk === 0 && isset( $chunk_data[0] ) && $chunk_data[0] === $headers ) {
 						continue;
 					}
 
-					$permalink = MPG_ProjectModel::mpg_generate_url_for_row( $row, $headers, $url_structure, $space_replacer );
-
-					// Add to current batch
-					$batch_entries[$permalink] = [
-						'chunk' => $chunk_idx,
+					$permalink                   = MPG_ProjectModel::mpg_generate_url_for_row( $row, $headers, $url_structure, $space_replacer );
+					$batch_entries[ $permalink ] = [
+						'chunk'  => $chunk_idx,
 						'offset' => $offset_in_chunk,
 					];
 
 					$current_batch_size++;
 
-					// When we reach batch size, write the batch to file
 					if ( $current_batch_size >= $batch_size ) {
-						self::write_permalink_batch( $permalinks_file, $batch_entries, $first_entry );
-						$first_entry = false;
-						$batch_entries = []; // Clear batch
-						$current_batch_size = 0;
+						if ( ! self::flush_permalink_batch( $permalinks_file, $batch_entries, $first_entry, $current_batch_size ) ) {
+							self::cleanup_on_error( $permalinks_file, $permalinks_temp_path );
+							return false;
+						}
 					}
 
-					// Free individual row memory
 					unset( $permalink );
 				}
-                
-				// Write any remaining entries in the final batch
+
 				if ( $current_batch_size > 0 ) {
-					self::write_permalink_batch( $permalinks_file, $batch_entries, $first_entry );
-					$first_entry = false;
+					if ( ! self::flush_permalink_batch( $permalinks_file, $batch_entries, $first_entry, $current_batch_size ) ) {
+						self::cleanup_on_error( $permalinks_file, $permalinks_temp_path );
+						return false;
+					}
 				}
 
-				// Free memory
 				unset( $batch_entries );
 				unset( $chunk_data );
-				gc_collect_cycles(); // Force garbage collection
+				gc_collect_cycles();
 			}
-		}
 
-		// Close permalinks object
-		fwrite( $permalinks_file, '}' );
-		fclose( $permalinks_file );
+			if ( 1 !== fwrite( $permalinks_file, '}' ) ) {
+				self::cleanup_on_error( $permalinks_file, $permalinks_temp_path );
+				return false;
+			}
+			fclose( $permalinks_file );
 
-		$index_file = fopen( $index_path, 'w' );
-		if ( ! $index_file ) {
+			$index_file = fopen( $index_temp_path, 'w' );
+			if ( ! $index_file ) {
+				self::cleanup_on_error( null, $permalinks_temp_path, $index_temp_path );
+				return false;
+			}
+
+			if ( ! self::write_file_fragment( $index_file, '{' ) ) {
+				self::cleanup_on_error( $index_file, $permalinks_temp_path, $index_temp_path );
+				return false;
+			}
+
+			if ( ! file_exists( $permalinks_temp_path ) ) {
+				self::cleanup_on_error( $index_file, $permalinks_temp_path, $index_temp_path );
+				return false;
+			}
+
+			// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+			$permalinks_contents = @file_get_contents( $permalinks_temp_path );
+			if ( false === $permalinks_contents ) {
+				self::cleanup_on_error( $index_file, $permalinks_temp_path, $index_temp_path );
+				return false;
+			}
+
+			$permalinks_contents = json_decode( $permalinks_contents, true );
+			$permalinks_contents = is_array( $permalinks_contents ) ? $permalinks_contents : [];
+
+			$meta = [
+				'version'         => '1.0',
+				'build_id'        => $build_id,
+				'total_rows'      => $total_rows,
+				'total_chunks'    => $total_chunks,
+				'chunk_size'      => $chunk_size,
+				'created_at'      => date( 'Y-m-d H:i:s' ),
+				'column_headers'  => $headers,
+				'permalink_count' => count( $permalinks_contents ),
+			];
+
+			$index_data = [
+				'meta'    => $meta,
+				'indexes' => [
+					'permalinks' => $permalinks_contents,
+				],
+			];
+
+			self::set_dataset_chunks_meta( $project_id, $meta, $build_id );
+
+			if ( ! self::write_file_fragment( $index_file, '"meta":' . json_encode( $meta, MPG_JSON_OPTIONS ) . ',' ) ) {
+				self::cleanup_on_error( $index_file, $permalinks_temp_path, $index_temp_path );
+				return false;
+			}
+
+			if ( ! self::write_file_fragment( $index_file, '"indexes":{' ) ) {
+				self::cleanup_on_error( $index_file, $permalinks_temp_path, $index_temp_path );
+				return false;
+			}
+
+			if ( ! self::write_file_fragment( $index_file, '"permalinks":' ) ) {
+				self::cleanup_on_error( $index_file, $permalinks_temp_path, $index_temp_path );
+				return false;
+			}
+
+			if ( ! self::write_file_fragment( $index_file, json_encode( $index_data['indexes']['permalinks'], MPG_JSON_OPTIONS ) ) ) {
+				self::cleanup_on_error( $index_file, $permalinks_temp_path, $index_temp_path );
+				return false;
+			}
+
 			unlink( $permalinks_temp_path );
-			return false;
-		}
 
-		fwrite( $index_file, '{' );
+			if ( ! self::write_file_fragment( $index_file, '}}' ) ) {
+				self::cleanup_on_error( $index_file, null, $index_temp_path );
+				return false;
+			}
 
-		$permalinks_contents = file_get_contents( $permalinks_temp_path );
-		$permalinks_contents = json_decode( $permalinks_contents, true );
-		$permalinks_contents = is_array( $permalinks_contents ) ? $permalinks_contents : [];
+			if ( ! fclose( $index_file ) ) {
+				self::cleanup_on_error( null, null, $index_temp_path );
+				return false;
+			}
 
-		// Write the metadata section
-		$meta = [
-			'version' => '1.0',
-			'total_rows' => $total_rows,
-			'total_chunks' => $total_chunks,
-			'chunk_size' => $chunk_size,
-			'created_at' => date( 'Y-m-d H:i:s' ),
-			'column_headers' => $headers,
-			'permalink_count' => count( $permalinks_contents ),
-		];
+			if ( ! self::replace_index_file( $index_temp_path, $index_path ) ) {
+				self::cleanup_on_error( null, null, $index_temp_path );
+				return false;
+			}
 
-		self::set_dataset_chunks_meta( $project_id, $meta );
+			self::set_index_cache( $project_id, $index_data, $build_id );
+			if ( ! self::publish_active_build( $project_id, $build_id ) ) {
+				return false;
+			}
 
-		fwrite( $index_file, '"meta":' . json_encode( $meta, MPG_JSON_OPTIONS ) . ',' );
+			$build_published = true;
+			MPG_ProjectModel::update_last_check( $project_id );
 
-		// Write the beginning of indexes section
-		fwrite( $index_file, '"indexes":{' );
+			self::prune_build_artifacts( $project_id, $build_id );
 
-		// Write the permalinks key
-		fwrite( $index_file, '"permalinks":' );
-
-		fwrite( $index_file, json_encode( $permalinks_contents, MPG_JSON_OPTIONS ) );
-
-		unset( $permalinks_contents );
-
-		unlink( $permalinks_temp_path );
-
-		// Close the indexes object and the main JSON object
-		fwrite( $index_file, '}}' );
-
-		$file_saved = fclose( $index_file );
-
-		if ( ! $file_saved ) {
-			$index_content = file_get_contents( $index_path );
-			if ( $index_content ) {
-				$index = json_decode( $index_content, true );
-				if ( $index ) {
-					self::set_index_cache( $project_id, $index );
-				}
+			return true;
+		} finally {
+			if ( ! $build_published ) {
+				self::delete_build_snapshot( $project_id, $build_id );
+			}
+			if ( ! $has_external_lock ) {
+				self::release_index_generation_lock( $project_id, $lock_token );
 			}
 		}
-
-		MPG_ProjectModel::update_last_check( $project_id );
-		return $file_saved;
 	}
 
 	/**
@@ -265,12 +370,12 @@ class MPG_DatasetModel
 	 * @param int $project_id The project ID
 	 * @return bool Whether the index file was deleted
 	 */
-	public static function delete_index( $project_id ) {
-		$index_path = self::get_index_path( $project_id );
+	public static function delete_index( $project_id, $build_id = null ) {
+		$resolved_build_id = self::resolve_build_id_context( $project_id, $build_id );
+		$index_path        = self::get_index_path( $project_id, $resolved_build_id );
+		self::delete_index_cache( $project_id, $resolved_build_id );
 
 		if ( file_exists( $index_path ) ) {
-			self::delete_index_cache( $project_id );
-
 			return unlink( $index_path );
 		}
 
@@ -285,13 +390,14 @@ class MPG_DatasetModel
 	 * @return array Index data
 	 */
 	public static function get_index( $project_id, $key = null ) {
-		$chunked_index = self::get_index_cache( $project_id );
+		$build_id      = self::get_active_build_id( $project_id );
+		$chunked_index = self::get_index_cache( $project_id, $build_id );
 
 		if ( $chunked_index !== false ) {
 			return isset( $chunked_index['indexes'][ $key ] ) ? $chunked_index['indexes'][ $key ] : $chunked_index;
 		}
 
-		$index_path = self::get_index_path( $project_id );
+		$index_path = self::get_index_path( $project_id, $build_id );
 
 		if ( ! file_exists( $index_path ) ) {
 			return array();
@@ -310,7 +416,7 @@ class MPG_DatasetModel
 		}
 
 		if ( is_array( $index_data ) ) {
-			self::set_index_cache( $project_id, $index_data );
+			self::set_index_cache( $project_id, $index_data, $build_id );
 		}
 
 		return isset( $index_data['indexes'][ $key ] ) ? $index_data['indexes'][ $key ] : $index_data;
@@ -323,10 +429,11 @@ class MPG_DatasetModel
 	 * @param int $project_id The project ID
 	 * @return bool Whether all chunks were cached successfully
 	 */
-	public static function set_index_cache( $project_id, $index ) {
+	public static function set_index_cache( $project_id, $index, $build_id = null ) {
 		$expiration = MPG_ProjectModel::get_project_schedule_periodicity( $project_id );
+		$cache_token = self::get_cache_build_token( $project_id, $build_id );
 
-		$meta_key = wp_hash( "mpg_index_meta_{$project_id}" );
+		$meta_key = wp_hash( "mpg_index_meta_{$project_id}_{$cache_token}" );
 		$meta = isset( $index['meta'] ) ? $index['meta'] : [];
 		$success = set_transient( $meta_key, $meta, $expiration );
 
@@ -336,7 +443,7 @@ class MPG_DatasetModel
 			$chunk_size       = self::get_chunk_size();
 			$permalink_chunks = array_chunk( $permalinks, $chunk_size, true ); // Keep keys intact
 
-			$chunks_meta_key = wp_hash( "mpg_index_permalinks_meta_{$project_id}" );
+			$chunks_meta_key = wp_hash( "mpg_index_permalinks_meta_{$project_id}_{$cache_token}" );
 			$chunks_meta = [
 				'chunk_count' => count( $permalink_chunks ),
 				'total_permalinks' => count( $permalinks )
@@ -344,7 +451,7 @@ class MPG_DatasetModel
 			$success = set_transient( $chunks_meta_key, $chunks_meta, $expiration ) && $success;
 
 			foreach ( $permalink_chunks as $chunk_index => $chunk ) {
-				$chunk_key = wp_hash( "mpg_index_permalinks_{$project_id}_{$chunk_index}" );
+				$chunk_key = wp_hash( "mpg_index_permalinks_{$project_id}_{$chunk_index}_{$cache_token}" );
 				$encoded_chunk = json_encode( $chunk, MPG_JSON_OPTIONS );
 				$success = set_transient( $chunk_key, $encoded_chunk, $expiration ) && $success;
 			}
@@ -359,22 +466,23 @@ class MPG_DatasetModel
 	 * @param int $project_id The project ID
 	 * @return array|false The index data or false if not in cache
 	 */
-	public static function get_index_cache( $project_id ) {
-		$meta_key = wp_hash( "mpg_index_meta_{$project_id}" );
+	public static function get_index_cache( $project_id, $build_id = null ) {
+		$cache_token = self::get_cache_build_token( $project_id, $build_id );
+		$meta_key = wp_hash( "mpg_index_meta_{$project_id}_{$cache_token}" );
 		$meta = get_transient( $meta_key );
 		
 		if ( $meta === false ) {
 			return false;
 		}
 		
-		$chunks_meta_key = wp_hash( "mpg_index_permalinks_meta_{$project_id}" );
+		$chunks_meta_key = wp_hash( "mpg_index_permalinks_meta_{$project_id}_{$cache_token}" );
 		$chunks_meta = get_transient( $chunks_meta_key );
 		
 		$permalinks = [];
 		
 		if ( $chunks_meta !== false && isset( $chunks_meta['chunk_count'] ) ) {
 			   for ( $i = 0; $i < $chunks_meta['chunk_count']; $i++ ) {
-				   $chunk_key = wp_hash( "mpg_index_permalinks_{$project_id}_{$i}" );
+				   $chunk_key = wp_hash( "mpg_index_permalinks_{$project_id}_{$i}_{$cache_token}" );
 				   $chunk = get_transient( $chunk_key );
 				   if ( $chunk === false ) {
 					   return false;
@@ -400,16 +508,17 @@ class MPG_DatasetModel
 	 * @param int $project_id The project ID
 	 * @return void
 	 */
-	public static function delete_index_cache( $project_id ) {
-		$meta_key = wp_hash( "mpg_index_meta_{$project_id}" );
+	public static function delete_index_cache( $project_id, $build_id = null ) {
+		$cache_token = self::get_cache_build_token( $project_id, $build_id );
+		$meta_key = wp_hash( "mpg_index_meta_{$project_id}_{$cache_token}" );
 		delete_transient( $meta_key );
 		
-		$chunks_meta_key = wp_hash( "mpg_index_permalinks_meta_{$project_id}" );
+		$chunks_meta_key = wp_hash( "mpg_index_permalinks_meta_{$project_id}_{$cache_token}" );
 		$chunks_meta = get_transient( $chunks_meta_key );
 		
 		if ( $chunks_meta !== false && isset( $chunks_meta['chunk_count'] ) ) {
 			for ( $i = 0; $i < $chunks_meta['chunk_count']; $i++ ) {
-				$chunk_key = wp_hash( "mpg_index_permalinks_{$project_id}_{$i}" );
+				$chunk_key = wp_hash( "mpg_index_permalinks_{$project_id}_{$i}_{$cache_token}" );
 				delete_transient( $chunk_key );
 			}
 		}
@@ -423,9 +532,7 @@ class MPG_DatasetModel
 	 * @param int $project_id The project ID
 	 * @return bool Whether the dataset was chunked
 	 */
-	public static function create_dataset_chunks( $project_id ) {
-		self::delete_dataset_chunks( $project_id );
-
+	public static function create_dataset_chunks( $project_id, $build_id = null ) {
 		$chunk_size = self::get_chunk_size();
 		$project_path = self::get_dataset_path_by_project( $project_id );
 
@@ -467,10 +574,10 @@ class MPG_DatasetModel
 			$data_rows = $total_rows - 1; // Exclude header
 			$total_chunks = ceil( $data_rows / $chunk_size );
 
-			$chunks_dir = self::get_chunks_dir( $project_id );
-			if ( ! file_exists( $chunks_dir ) ) {
-				wp_mkdir_p( $chunks_dir );
-			}
+				$chunks_dir = self::get_chunks_dir( $project_id, $build_id );
+				if ( ! file_exists( $chunks_dir ) ) {
+					wp_mkdir_p( $chunks_dir );
+				}
 
 			$chunks_meta = [
 				'total_chunks' => $total_chunks,
@@ -479,7 +586,7 @@ class MPG_DatasetModel
 				'created_at' => date( 'Y-m-d H:i:s' ),
 			];
 			
-			self::set_dataset_chunks_meta( $project_id, $chunks_meta );
+				self::set_dataset_chunks_meta( $project_id, $chunks_meta, $build_id );
 
 			$reader->open( $project_path );
 			
@@ -512,12 +619,12 @@ class MPG_DatasetModel
 
 					$is_last_row = ( $row_counter === $total_rows );
 					if ( $rows_in_current_chunk >= $chunk_size || $is_last_row ) {
-						$chunk_path = self::get_chunk_path( $project_id, $current_chunk );
-						$success = file_put_contents( $chunk_path, json_encode( $current_chunk_data, MPG_JSON_OPTIONS ) );
+							$chunk_path = self::get_chunk_path( $project_id, $current_chunk, $build_id );
+							$success = file_put_contents( $chunk_path, json_encode( $current_chunk_data, MPG_JSON_OPTIONS ) );
 
-						if ( $success !== false ) {
-							self::set_dataset_chunk_cache( $project_id, $current_chunk, $current_chunk_data );
-						}
+							if ( $success !== false ) {
+								self::set_dataset_chunk_cache( $project_id, $current_chunk, $current_chunk_data, $build_id );
+							}
 
 						$current_chunk++;
 						$rows_in_current_chunk = 0;
@@ -532,13 +639,16 @@ class MPG_DatasetModel
 				break;
 			}
 
-			$reader->close();
-			return true;
-		} catch ( Exception $e ) {
-			do_action( 'themeisle_log_event', MPG_NAME, $e->getMessage(), 'debug', __FILE__, __LINE__ );
-			return false;
+				$reader->close();
+				return true;
+			} catch ( Exception $e ) {
+				if ( is_string( $build_id ) && '' !== $build_id ) {
+					self::delete_build_snapshot( $project_id, $build_id );
+				}
+				do_action( 'themeisle_log_event', MPG_NAME, $e->getMessage(), 'debug', __FILE__, __LINE__ );
+				return false;
+			}
 		}
-	}
 
 	/**
 	 * Get a specific dataset chunk for a project.
@@ -547,20 +657,21 @@ class MPG_DatasetModel
 	 * @param int $chunk_number The chunk number
 	 * @return array The chunk data
 	 */
-	public static function get_dataset_chunk( $project_id, $chunk_number ) {
-		$cached_chunk = self::get_dataset_chunk_cache( $project_id, $chunk_number );
+	public static function get_dataset_chunk( $project_id, $chunk_number, $build_id = null ) {
+		$resolved_build_id = self::resolve_build_id_context( $project_id, $build_id );
+		$cached_chunk      = self::get_dataset_chunk_cache( $project_id, $chunk_number, $resolved_build_id );
 		if ( ! empty( $cached_chunk ) ) {
 			return $cached_chunk;
 		}
 		
-		$chunk_path = self::get_chunk_path( $project_id, $chunk_number );
+		$chunk_path = self::get_chunk_path( $project_id, $chunk_number, $resolved_build_id );
 
 		if ( file_exists( $chunk_path ) ) {
 			$chunk_content = file_get_contents( $chunk_path );
 			if ( $chunk_content ) {
 				$chunk_data = json_decode( $chunk_content, true );
 				if ( is_array( $chunk_data ) ) {
-					self::set_dataset_chunk_cache( $project_id, $chunk_number, $chunk_data );
+					self::set_dataset_chunk_cache( $project_id, $chunk_number, $chunk_data, $resolved_build_id );
 					return $chunk_data;
 				}
 			}
@@ -576,8 +687,8 @@ class MPG_DatasetModel
 	 * @param int $chunk_number The chunk number
 	 * @return array|false The chunk data or false if not in cache
 	 */
-	public static function get_dataset_chunk_cache( $project_id, $chunk_number ) {
-		$chunk_key = wp_hash( "mpg_dataset_chunk_{$project_id}_{$chunk_number}" );
+	public static function get_dataset_chunk_cache( $project_id, $chunk_number, $build_id = null ) {
+		$chunk_key = wp_hash( "mpg_dataset_chunk_{$project_id}_{$chunk_number}_" . self::get_cache_build_token( $project_id, $build_id ) );
 		$cached = get_transient( $chunk_key );
 		return json_decode( $cached, true );
 	}
@@ -590,9 +701,9 @@ class MPG_DatasetModel
 	 * @param array $chunk_data The chunk data to cache
 	 * @return bool Whether the chunk was cached successfully
 	 */
-	public static function set_dataset_chunk_cache( $project_id, $chunk_number, $chunk_data ) {
+	public static function set_dataset_chunk_cache( $project_id, $chunk_number, $chunk_data, $build_id = null ) {
 		$expiration = MPG_ProjectModel::get_project_schedule_periodicity( $project_id );
-		$chunk_key = wp_hash( "mpg_dataset_chunk_{$project_id}_{$chunk_number}" );
+		$chunk_key = wp_hash( "mpg_dataset_chunk_{$project_id}_{$chunk_number}_" . self::get_cache_build_token( $project_id, $build_id ) );
 		$encoded_chunk = json_encode( $chunk_data, MPG_JSON_OPTIONS );
 		return set_transient( $chunk_key, $encoded_chunk, $expiration );
 	}
@@ -604,9 +715,9 @@ class MPG_DatasetModel
 	 * @param array $meta The metadata to cache
 	 * @return bool Whether the metadata was cached successfully
 	 */
-	public static function set_dataset_chunks_meta( $project_id, $meta ) {
+	public static function set_dataset_chunks_meta( $project_id, $meta, $build_id = null ) {
 		$expiration = MPG_ProjectModel::get_project_schedule_periodicity( $project_id );
-		$meta_key = wp_hash( "mpg_dataset_chunks_meta_{$project_id}" );
+		$meta_key = wp_hash( "mpg_dataset_chunks_meta_{$project_id}_" . self::get_cache_build_token( $project_id, $build_id ) );
 		return set_transient( $meta_key, $meta, $expiration );
 	}
 
@@ -616,20 +727,21 @@ class MPG_DatasetModel
 	 * @param int $project_id The project ID
 	 * @return array|false The metadata or false if not available
 	 */
-	public static function get_dataset_chunks_meta( $project_id ) {
-		$meta_key = wp_hash( "mpg_dataset_chunks_meta_{$project_id}" );
+	public static function get_dataset_chunks_meta( $project_id, $build_id = null ) {
+		$resolved_build_id = self::resolve_build_id_context( $project_id, $build_id );
+		$meta_key          = wp_hash( "mpg_dataset_chunks_meta_{$project_id}_" . self::get_cache_build_token( $project_id, $resolved_build_id ) );
 		$meta = get_transient( $meta_key );
 		if ( $meta !== false ) {
 			return $meta;
 		}
 		// Fallback: Try to read from index file's meta section
-		$index_path = self::get_index_path( $project_id );
+		$index_path = self::get_index_path( $project_id, $resolved_build_id );
 		if ( file_exists( $index_path ) ) {
 			$index_content = file_get_contents( $index_path );
 			if ( $index_content ) {
 				$index_data = json_decode( $index_content, true );
 				if ( isset( $index_data['meta'] ) ) {
-					self::set_dataset_chunks_meta( $project_id, $index_data['meta'] );
+					self::set_dataset_chunks_meta( $project_id, $index_data['meta'], $resolved_build_id );
 					return $index_data['meta'];
 				}
 			}
@@ -644,9 +756,10 @@ class MPG_DatasetModel
 	 * @param bool $headers_only Whether to only return the headers
 	 * @return array An array of all chunk data or just the headers if $headers_only is true
 	 */
-	public static function get_dataset_chunks( $project_id, $headers_only = false, $limit = null, $offset = 0 ) {
+	public static function get_dataset_chunks( $project_id, $headers_only = false, $limit = null, $offset = 0, $build_id = null ) {
 		$rows = [];
-		$chunks_meta = self::get_dataset_chunks_meta( $project_id );
+		$resolved_build_id = self::resolve_build_id_context( $project_id, $build_id );
+		$chunks_meta       = self::get_dataset_chunks_meta( $project_id, $resolved_build_id );
 
 		if ( $chunks_meta === false || !isset( $chunks_meta['total_chunks'] ) ) {
 			return $rows;
@@ -659,7 +772,7 @@ class MPG_DatasetModel
 		$needed = ( $limit !== null ) ? $limit : PHP_INT_MAX;
 
 		for ( $chunk_number = 0; $chunk_number < $total_chunks; $chunk_number++ ) {
-			$chunk_data = self::get_dataset_chunk( $project_id, $chunk_number );
+			$chunk_data = self::get_dataset_chunk( $project_id, $chunk_number, $resolved_build_id );
 
 			if ( !empty( $chunk_data ) ) {
 				// If this isn't the first chunk, remove the header row (first row)
@@ -701,8 +814,8 @@ class MPG_DatasetModel
 	 * @param int $project_id The project ID
 	 * @return array The row data
 	 */
-	public static function get_dataset_row( $project_id, $chunk, $offset ) {
-		$chunk_data = self::get_dataset_chunk( $project_id, $chunk );
+	public static function get_dataset_row( $project_id, $chunk, $offset, $build_id = null ) {
+		$chunk_data = self::get_dataset_chunk( $project_id, $chunk, $build_id );
 
 		if ( !empty( $chunk_data ) && isset( $chunk_data[ $offset ] ) ) {
 			return $chunk_data[ $offset ];
@@ -717,8 +830,9 @@ class MPG_DatasetModel
 	 * @param int $project_id The project ID
 	 * @return void
 	 */
-	public static function delete_dataset_chunks( $project_id ) {
-		$chunks_dir = self::get_chunks_dir( $project_id );
+	public static function delete_dataset_chunks( $project_id, $build_id = null ) {
+		$resolved_build_id = self::resolve_build_id_context( $project_id, $build_id );
+		$chunks_dir        = self::get_chunks_dir( $project_id, $resolved_build_id );
 
 		if ( file_exists( $chunks_dir ) ) {
 			$files = glob( $chunks_dir . '*.json' );
@@ -729,19 +843,28 @@ class MPG_DatasetModel
 			rmdir( $chunks_dir );
 		}
 
-		$chunks_meta = self::get_dataset_chunks_meta( $project_id );
-		$total_chunks = 0;
+		self::delete_dataset_chunks_cache( $project_id, $resolved_build_id );
+	}
 
-		if ( $chunks_meta !== false && isset( $chunks_meta['total_chunks'] ) ) {
-			$total_chunks = $chunks_meta['total_chunks'];
-		}
+	/**
+	 * Delete cached transients for dataset chunks.
+	 *
+	 * @param int          $project_id The project ID.
+	 * @param string|false $build_id   The build ID or false for legacy layout.
+	 * @return void
+	 */
+	protected static function delete_dataset_chunks_cache( $project_id, $build_id ) {
+		$chunks_meta  = self::get_dataset_chunks_meta( $project_id, $build_id );
+		$total_chunks = ( $chunks_meta !== false && isset( $chunks_meta['total_chunks'] ) )
+			? $chunks_meta['total_chunks']
+			: 0;
 
 		for ( $chunk_number = 0; $chunk_number < $total_chunks; $chunk_number++ ) {
-			$chunk_key = wp_hash( "mpg_dataset_chunk_{$project_id}_{$chunk_number}" );
+			$chunk_key = wp_hash( "mpg_dataset_chunk_{$project_id}_{$chunk_number}_" . self::get_cache_build_token( $project_id, $build_id ) );
 			delete_transient( $chunk_key );
 		}
 
-		$meta_key = wp_hash( "mpg_dataset_chunks_meta_{$project_id}" );
+		$meta_key = wp_hash( "mpg_dataset_chunks_meta_{$project_id}_" . self::get_cache_build_token( $project_id, $build_id ) );
 		delete_transient( $meta_key );
 	}
 
@@ -753,8 +876,30 @@ class MPG_DatasetModel
 	 */
 	public static function delete_project_folders( $project_id ) {
 		$project_path = self::get_project_path( $project_id );
-		self::delete_dataset_chunks( $project_id );
-		self::delete_index( $project_id );
+		$builds_dir   = self::get_builds_dir( $project_id );
+
+		self::delete_dataset_chunks( $project_id, false );
+		self::delete_index( $project_id, false );
+
+		if ( file_exists( $builds_dir ) ) {
+			$build_paths = glob( $builds_dir . '*' );
+			if ( is_array( $build_paths ) ) {
+				foreach ( $build_paths as $build_path ) {
+					if ( is_dir( $build_path ) ) {
+						self::delete_build_snapshot( $project_id, basename( $build_path ) );
+					}
+				}
+			}
+
+			@rmdir( $builds_dir );
+		}
+
+		$manifest_path = self::get_active_build_manifest_path( $project_id );
+		if ( file_exists( $manifest_path ) ) {
+			unlink( $manifest_path );
+		}
+
+		delete_option( self::get_index_generation_lock_key( $project_id ) );
 
 		if ( file_exists( $project_path ) ) {
 			rmdir( $project_path );
@@ -1043,31 +1188,402 @@ class MPG_DatasetModel
 	}
 
 	/**
-	 * Helper method to write a batch of permalinks to the index file
-	 * 
-	 * @param resource $file The file handle to write to
-	 * @param array $batch The batch of permalinks to write
-	 * @param bool $is_first Whether this is the first batch being written
+	 * Clean up temporary files and close file handles on error
+	 *
+	 * @param resource|false|null $file_handle The file handle to close (optional)
+	 * @param string|null $temp_file_path Path to temporary file to delete (optional)
+	 * @param string|null $index_file_path Path to index file to delete (optional)
 	 * @return void
+	 */
+	protected static function cleanup_on_error( $file_handle = null, $temp_file_path = null, $index_file_path = null ) {
+		if ( $file_handle && is_resource( $file_handle ) ) {
+			fclose( $file_handle );
+		}
+		if ( $temp_file_path && file_exists( $temp_file_path ) ) {
+			unlink( $temp_file_path );
+		}
+		if ( $index_file_path && file_exists( $index_file_path ) ) {
+			unlink( $index_file_path );
+		}
+	}
+
+	/**
+	 * Helper method to write a string to a file handle and verify all bytes were written.
+	 *
+	 * @param resource $file The file handle to write to.
+	 * @param string   $content The content to write.
+	 * @return bool True when the complete string was written, false otherwise.
+	 */
+	protected static function write_file_fragment( $file, $content ) {
+		$expected_bytes = strlen( $content );
+		$written_bytes  = fwrite( $file, $content );
+
+		return $written_bytes === $expected_bytes;
+	}
+
+	/**
+	 * Flush a permalink batch and advance the JSON object state.
+	 *
+	 * @param resource $file The file handle to write to.
+	 * @param array    $batch The current batch of permalinks.
+	 * @param bool     $is_first Whether the next write is still the first JSON entry.
+	 * @param int      $current_batch_size Number of entries currently buffered.
+	 * @return bool
+	 */
+	protected static function flush_permalink_batch( $file, array &$batch, &$is_first, &$current_batch_size ) {
+		if ( ! self::write_permalink_batch( $file, $batch, $is_first ) ) {
+			return false;
+		}
+
+		$is_first           = false;
+		$batch              = [];
+		$current_batch_size = 0;
+
+		return true;
+	}
+
+	/**
+	 * Generate a per-run token for locks and temporary files.
+	 *
+	 * @return string
+	 */
+	protected static function generate_index_run_token() {
+		if ( function_exists( 'wp_generate_uuid4' ) ) {
+			return wp_generate_uuid4();
+		}
+
+		return uniqid( 'mpg_', true );
+	}
+
+	/**
+	 * Build a unique temporary path for an index generation run.
+	 *
+	 * @param string $index_path Base index path.
+	 * @param string $label Temp file label.
+	 * @param string $run_token Unique run token.
+	 * @return string
+	 */
+	protected static function get_index_temp_path( $index_path, $label, $run_token ) {
+		return sprintf( '%s.%s.%s.tmp', $index_path, $label, $run_token );
+	}
+
+	/**
+	 * Atomically replace the live index file with a completed temp file.
+	 *
+	 * @param string $source_path The completed temp file.
+	 * @param string $destination_path The live index path.
+	 * @return bool
+	 */
+	protected static function replace_index_file( $source_path, $destination_path ) {
+		return rename( $source_path, $destination_path );
+	}
+
+	/**
+	 * Acquire a project rebuild lock for callers that need to update config and publish atomically.
+	 *
+	 * @param int $project_id The project ID.
+	 * @return string|false
+	 */
+	public static function begin_index_generation( $project_id ) {
+		return self::acquire_index_generation_lock( $project_id );
+	}
+
+	/**
+	 * Release a project rebuild lock previously acquired by begin_index_generation().
+	 *
+	 * @param int    $project_id The project ID.
+	 * @param string $lock_token The lock token.
+	 * @return void
+	 */
+	public static function end_index_generation( $project_id, $lock_token ) {
+		self::release_index_generation_lock( $project_id, $lock_token );
+	}
+
+	/**
+	 * Acquire a per-project lock before rebuilding the index.
+	 *
+	 * @param int $project_id The project ID.
+	 * @return string|false Lock token on success, false when the lock is already held.
+	 */
+	protected static function acquire_index_generation_lock( $project_id, $allow_recovery = true ) {
+		$lock_key   = self::get_index_generation_lock_key( $project_id );
+		$lock_token = self::generate_index_run_token();
+		$lock_value = wp_json_encode(
+			[
+				'token'      => $lock_token,
+				'expires_at' => time() + self::get_index_generation_lock_ttl(),
+			]
+		);
+
+		if ( add_option( $lock_key, $lock_value, '', false ) ) {
+			return $lock_token;
+		}
+
+		$current_lock = self::parse_index_generation_lock_value( get_option( $lock_key ) );
+		if ( $allow_recovery && ( empty( $current_lock ) || self::is_index_generation_lock_expired( $current_lock ) ) ) {
+			delete_option( $lock_key );
+
+			return self::acquire_index_generation_lock( $project_id, false );
+		}
+
+		return false;
+	}
+
+	/**
+	 * Release a previously acquired per-project index lock.
+	 *
+	 * @param int    $project_id The project ID.
+	 * @param string $lock_token The lock token.
+	 * @return void
+	 */
+	protected static function release_index_generation_lock( $project_id, $lock_token ) {
+		$current_lock = self::parse_index_generation_lock_value( get_option( self::get_index_generation_lock_key( $project_id ) ) );
+
+		if ( isset( $current_lock['token'] ) && is_string( $current_lock['token'] ) && hash_equals( $current_lock['token'], $lock_token ) ) {
+			delete_option( self::get_index_generation_lock_key( $project_id ) );
+		}
+	}
+
+	/**
+	 * Get the option key used for the per-project index lock.
+	 *
+	 * @param int $project_id The project ID.
+	 * @return string
+	 */
+	protected static function get_index_generation_lock_key( $project_id ) {
+		return 'mpg_index_lock_' . absint( $project_id );
+	}
+
+	/**
+	 * Return the lock TTL for index generation.
+	 *
+	 * @return int
+	 */
+	protected static function get_index_generation_lock_ttl() {
+		return (int) apply_filters( 'mpg_index_lock_ttl', 5 * MINUTE_IN_SECONDS );
+	}
+
+	/**
+	 * Publish the completed build as the active snapshot for future requests.
+	 *
+	 * @param int $project_id The project ID.
+	 * @return bool
+	 */
+	protected static function publish_active_build( $project_id, $build_id ) {
+		$manifest_path = self::get_active_build_manifest_path( $project_id );
+
+		// Capture the previous build ID before overwriting the manifest.
+		$previous_build_id = null;
+		if ( file_exists( $manifest_path ) ) {
+			$old_manifest = json_decode( (string) file_get_contents( $manifest_path ), true );
+			if ( isset( $old_manifest['build_id'] ) && is_string( $old_manifest['build_id'] ) ) {
+				$previous_build_id = sanitize_file_name( $old_manifest['build_id'] );
+			}
+		}
+
+		$temp_path     = self::get_index_temp_path( $manifest_path, 'manifest', self::generate_index_run_token() );
+		$manifest_file = fopen( $temp_path, 'w' );
+
+		if ( ! $manifest_file ) {
+			return false;
+		}
+
+		$manifest_contents = wp_json_encode(
+			[
+				'build_id'    => $build_id,
+				'published_at' => time(),
+			],
+			MPG_JSON_OPTIONS
+		);
+
+		if ( ! self::write_file_fragment( $manifest_file, $manifest_contents ) ) {
+			self::cleanup_on_error( $manifest_file, $temp_path );
+			return false;
+		}
+
+		if ( ! fclose( $manifest_file ) ) {
+			self::cleanup_on_error( null, $temp_path );
+			return false;
+		}
+
+		$published = rename( $temp_path, $manifest_path );
+		if ( $published ) {
+			unset( self::$resolved_build_ids[ $project_id ] );
+
+			// Clean up transient caches for the previous build.
+			if ( null !== $previous_build_id && '' !== $previous_build_id && $previous_build_id !== $build_id ) {
+				self::delete_index_cache( $project_id, $previous_build_id );
+				self::delete_dataset_chunks_cache( $project_id, $previous_build_id );
+			}
+		}
+
+		return $published;
+	}
+
+	/**
+	 * Prune stale build artifacts after a new snapshot has been published.
+	 *
+	 * Deletes orphaned temp files and inactive build directories that are
+	 * older than the stale artifact TTL. The active build is never deleted.
+	 *
+	 * @param int         $project_id The project ID.
+	 * @param string|null $active_build_id The currently published build ID.
+	 * @return void
+	 */
+	public static function prune_build_artifacts( $project_id, $active_build_id = null ) {
+		$safe_active_id = is_string( $active_build_id ) && '' !== $active_build_id
+			? sanitize_file_name( $active_build_id )
+			: null;
+
+		$prune_before = time() - self::get_stale_artifact_ttl();
+		$project_path = self::get_project_path( $project_id );
+		$builds_dir   = self::get_builds_dir( $project_id );
+
+		// Clean stale temp files in the project root.
+		$tmp_files = glob( $project_path . '*.tmp' );
+		if ( is_array( $tmp_files ) ) {
+			foreach ( $tmp_files as $tmp_file ) {
+				if ( is_file( $tmp_file ) ) {
+					$mtime = filemtime( $tmp_file );
+					if ( false === $mtime || $mtime < $prune_before ) {
+						@unlink( $tmp_file );
+					}
+				}
+			}
+		}
+
+		// Clean stale inactive build directories.
+		$build_paths = glob( $builds_dir . '*' );
+		if ( ! is_array( $build_paths ) ) {
+			return;
+		}
+
+		foreach ( $build_paths as $build_path ) {
+			if ( ! is_dir( $build_path ) ) {
+				continue;
+			}
+
+			$build_id = basename( $build_path );
+			if ( null !== $safe_active_id && $build_id === $safe_active_id ) {
+				continue;
+			}
+
+			$mtime = filemtime( $build_path );
+			if ( false !== $mtime && $mtime >= $prune_before ) {
+				continue;
+			}
+
+			self::delete_build_snapshot( $project_id, $build_id );
+		}
+	}
+
+	/**
+	 * Resolve the build context for cache and path helpers.
+	 *
+	 * @param int              $project_id The project ID.
+	 * @param string|false|null $build_id Explicit build ID or false for legacy layout.
+	 * @return string|false
+	 */
+	protected static function resolve_build_id_context( $project_id, $build_id = null ) {
+		return null === $build_id ? self::get_active_build_id( $project_id ) : $build_id;
+	}
+
+	/**
+	 * Return the cache token for the given build context.
+	 *
+	 * @param int              $project_id The project ID.
+	 * @param string|false|null $build_id Explicit build ID or false for legacy layout.
+	 * @return string
+	 */
+	protected static function get_cache_build_token( $project_id, $build_id = null ) {
+		$resolved_build_id = self::resolve_build_id_context( $project_id, $build_id );
+
+		return false === $resolved_build_id ? 'legacy' : sanitize_file_name( $resolved_build_id );
+	}
+
+	/**
+	 * Delete a staged build snapshot and its caches.
+	 *
+	 * @param int    $project_id The project ID.
+	 * @param string $build_id The build ID.
+	 * @return void
+	 */
+	protected static function delete_build_snapshot( $project_id, $build_id ) {
+		if ( ! is_string( $build_id ) || '' === $build_id ) {
+			return;
+		}
+
+		self::delete_index_cache( $project_id, $build_id );
+		self::delete_dataset_chunks_cache( $project_id, $build_id );
+
+		$build_path = self::get_build_path( $project_id, $build_id );
+		if ( file_exists( $build_path ) ) {
+			global $wp_filesystem;
+			if ( ! function_exists( 'WP_Filesystem' ) ) {
+				require_once ABSPATH . 'wp-admin/includes/file.php';
+			}
+			WP_Filesystem();
+			$wp_filesystem->delete( $build_path, true );
+		}
+	}
+
+	/**
+	 * Return how long stale artifacts must age before pruning.
+	 *
+	 * @return int Seconds. Minimum is HOUR_IN_SECONDS.
+	 */
+	protected static function get_stale_artifact_ttl() {
+		return max( HOUR_IN_SECONDS, (int) apply_filters( 'mpg_stale_artifact_ttl', HOUR_IN_SECONDS ) );
+	}
+
+	/**
+	 * Parse raw lock option data into an array.
+	 *
+	 * @param mixed $lock_value Raw option value.
+	 * @return array
+	 */
+	protected static function parse_index_generation_lock_value( $lock_value ) {
+		$decoded = json_decode( (string) $lock_value, true );
+
+		return is_array( $decoded ) ? $decoded : [];
+	}
+
+	/**
+	 * Check whether a stored index lock has expired.
+	 *
+	 * @param array $lock_data Parsed lock data.
+	 * @return bool
+	 */
+	protected static function is_index_generation_lock_expired( array $lock_data ) {
+		return ! isset( $lock_data['expires_at'] ) || (int) $lock_data['expires_at'] < time();
+	}
+
+	/**
+	 * Helper method to write a batch of permalinks to the provided file handle.
+	 *
+	 * @param resource $file The file handle to write to.
+	 * @param array    $batch The batch of permalinks to write.
+	 * @param bool     $is_first Whether this is the first batch being written.
+	 * @return bool True on success, false on failure
 	 */
 	protected static function write_permalink_batch( $file, $batch, $is_first ) {
 		if ( empty( $batch ) ) {
-			return;
+			return true;
 		}
-		
+
 		$batch_json = '';
 		$first_in_batch = true;
-		
+
 		foreach ( $batch as $permalink => $data ) {
 			if ( ! $is_first || ! $first_in_batch ) {
 				$batch_json .= ',';
 			}
 			$first_in_batch = false;
-			
+
 			$batch_json .= json_encode( $permalink, MPG_JSON_OPTIONS ) . ':' . json_encode( $data, MPG_JSON_OPTIONS );
 		}
-		
-		fwrite( $file, $batch_json );
+
+		return self::write_file_fragment( $file, $batch_json );
 	}
 
 	/**

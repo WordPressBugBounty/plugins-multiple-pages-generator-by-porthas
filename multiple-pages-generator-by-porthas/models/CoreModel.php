@@ -161,11 +161,12 @@ class MPG_CoreModel
 
 					self::$current_row[$project->id] = $iteration;
 
-					// This is for new-datasets that have an index file.
-					if ( ! empty( $urls_data ) && array_key_exists( $raw_single_url, $urls_data ) ) {
-						$item = $urls_data[ $raw_single_url ];
-						self::$current_row[ $project->id . '_index' ] = $item;
-					}
+						// This is for new-datasets that have an index file.
+						if ( ! empty( $urls_data ) && array_key_exists( $raw_single_url, $urls_data ) ) {
+							$item             = $urls_data[ $raw_single_url ];
+							$item['build_id'] = MPG_DatasetModel::get_active_build_id( $project->id );
+							self::$current_row[ $project->id . '_index' ] = $item;
+						}
 
 					break 2; // Останавливаем весь цикл. Ведь один УРЛ найден.
 				}
@@ -429,7 +430,7 @@ class MPG_CoreModel
 		// For projects with index file, we get the current row from particular chunks rather than loading the whole dataset.
 		if ( isset( self::$current_row[ $project_id . '_index' ] )  && is_array( self::$current_row[ $project_id . '_index' ] ) ) {
 			$item = self::$current_row[ $project_id . '_index' ];
-			$dataset = MPG_DatasetModel::get_dataset_row( $project_id, $item['chunk'], $item['offset'] );
+			$dataset = MPG_DatasetModel::get_dataset_row( $project_id, $item['chunk'], $item['offset'], $item['build_id'] ?? null );
 
 			if ( is_array( $dataset ) && ! empty( $dataset ) ) {
 				return $dataset;

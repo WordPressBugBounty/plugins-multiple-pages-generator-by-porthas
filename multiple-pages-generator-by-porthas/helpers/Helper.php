@@ -277,7 +277,7 @@ class MPG_Helper
 				continue;
 			}
 			//if the string is a URL, we ignore it.
-			if ( preg_match( '/^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?(\?.*)?$/', $string ) ) {
+			if ( strpos( $string, 'http://' ) === 0 || strpos( $string, 'https://' ) === 0 ) {
 				continue;
 			}
 			$strings[ $index ] = str_replace( ' ', $space_replacer, $string );

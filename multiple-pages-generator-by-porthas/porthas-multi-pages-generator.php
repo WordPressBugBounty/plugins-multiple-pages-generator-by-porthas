@@ -8,7 +8,7 @@
  *
  * Author: Themeisle
  * Author URI: https://themeisle.com
- * Version: 4.1.5
+ * Version: 4.1.6
  */
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -25,7 +25,7 @@ defined( 'MPG_CACHE_URL' ) || define( 'MPG_CACHE_URL', WP_CONTENT_URL . DIRECTOR
 defined( 'MPG_NAME' ) || define( 'MPG_NAME', 'Multiple Pages Generator' );
 defined( 'MPG_BASE_IMG_PATH' ) || define( 'MPG_BASE_IMG_PATH', plugin_dir_url( __FILE__ ) . 'frontend/images' );
 defined( 'MPG_DATABASE_VERSION' ) || define( 'MPG_DATABASE_VERSION', '1.0.0' );
-defined( 'MPG_PLUGIN_VERSION' ) || define( 'MPG_PLUGIN_VERSION', '4.1.5' );
+defined( 'MPG_PLUGIN_VERSION' ) || define( 'MPG_PLUGIN_VERSION', '4.1.6' );
 defined( 'MPG_FREE_SLUG' ) || define( 'MPG_FREE_SLUG', 'multiple-pages-generator-by-porthas' );
 defined( 'MPG_TRANSLATION_CACHE_KEY_PREFIX' ) || define( 'MPG_TRANSLATION_CACHE_KEY_PREFIX', 'mpg_translation_check' );
 
@@ -91,19 +91,25 @@ if ( ! function_exists( 'mpg_run' ) ) {
 
 			return $products;
 		} );
+
+		$product_key = str_replace( '-', '_', MPG_PRODUCT_SLUG);
+
 		add_filter( 'themeisle_sdk_hide_dashboard_widget', '__return_false' );
 		add_filter(
-			'multiple_pages_generator_by_porthas_about_us_metadata',
+			$product_key . '_about_us_metadata',
 			function() {
 				return array(
 					'logo'     => MPG_BASE_IMG_PATH . '/icon-256x256.png',
 					'location' => 'mpg-project-builder',
+					'upgrade_text' => __( 'Upgrade to Pro', 'multiple-pages-generator-by-porthas' ),
+					'upgrade_link' => mpg_app()->get_upgrade_url('datasetmenu'),
+					'has_upgrade_menu' => ! mpg_app()->is_premium()
 				);
 			}
 		);
 
 		add_filter(
-			'multiple_pages_generator_by_porthas_welcome_metadata',
+			$product_key . '_welcome_metadata',
 			function () {
 				return array(
 					'is_enabled' => ! mpg_app()->is_premium(),
@@ -115,7 +121,7 @@ if ( ! function_exists( 'mpg_run' ) ) {
 		);
 
 		add_filter(
-			'multiple_pages_generator_by_porthas_welcome_upsell_message',
+			$product_key . '_welcome_upsell_message',
 			function () {
 				return wpautop(
 					sprintf(
@@ -130,7 +136,7 @@ if ( ! function_exists( 'mpg_run' ) ) {
 				);
 			}
 		);
-		
+
 		add_filter(
 			'themesle_sdk_namespace_' . md5( MPG_BASENAME ),
 			function () {
@@ -141,29 +147,48 @@ if ( ! function_exists( 'mpg_run' ) ) {
 		add_filter( 'themeisle_sdk_blackfriday_data', function( $configs) {
 			$config = $configs['default'];
 
-			// translators: %1$s - HTML tag, %2$s - discount, %3$s - HTML tag, %4$s - product name.
-			$message_template = __( 'Our biggest sale of the year: %1$sup to %2$s OFF%3$s on %4$s. Don\'t miss this limited-time offer.', 'multiple-pages-generator-by-porthas' );
-			$product_label    = 'MPG';
-			$discount         = '70%';
+			$message = __( 'Unlimited pages, schema markup, spintax for unique content. Scale your programmatic SEO. Exclusively for existing MPG users. ', 'multiple-pages-generator-by-porthas' );
+			$cta_label = __( 'Get MPG Pro', 'multiple-pages-generator-by-porthas' );
 
 			$plan    = apply_filters( 'product_mpg_license_plan', 0 );
 			$license = apply_filters( 'product_mpg_license_key', false );
-			$is_pro  = 0 < $plan;
+			$status  = apply_filters( 'product_mpg_license_status', false );
 
-			if ( $is_pro ) {
-				// translators: %1$s - HTML tag, %2$s - discount, %3$s - HTML tag, %4$s - product name.
-				$message_template = __( 'Get %1$sup to %2$s off%3$s when you upgrade your %4$s plan or renew early.', 'multiple-pages-generator-by-porthas' );
-				$product_label    = 'MPG Pro';
-				$discount         = '30%';
+			$is_valid  = 'valid' === $status;
+			$has_expired = 'expired' === $status || 'active-expired' === $status;
+
+			if ( $is_valid ) {
+				// translators: %s is the discount percentage.
+				$config['upgrade_menu_text'] = sprintf( __( 'BF Sale - %s off', 'multiple-pages-generator-by-porthas' ), '30%' );
+				// translators: %s is the discount percentage.
+				$config['plugin_meta_message'] = sprintf( __( 'Black Friday Sale - up to %s off', 'multiple-pages-generator-by-porthas' ), '30%' );
+				// translators: %1$s - discount, %2$s - discount.
+				$message = sprintf( __( 'Upgrade your MPG Pro plan: %1$s off this week. Already on the plan you need? Renew early and save up to %2$s.', 'multiple-pages-generator-by-porthas' ), '30%', '20%' );
+				$cta_label = __( 'See your options', 'multiple-pages-generator-by-porthas' );
+			} elseif ( $has_expired ) {
+				// translators: %s is the discount percentage.
+				$config['upgrade_menu_text'] = sprintf( __( 'BF Sale - %s off', 'multiple-pages-generator-by-porthas' ), '50%' );
+				// translators: %s is the discount percentage.
+				$config['plugin_meta_message'] = sprintf( __( 'Black Friday Sale - %s off', 'multiple-pages-generator-by-porthas' ), '50%' );
+				$message = __( 'Your MPG Pro features are still here, just locked. Renew at a reduced rate this week.', 'multiple-pages-generator-by-porthas' );
+				$cta_label = __( 'Reactivate now', 'multiple-pages-generator-by-porthas' );
+			} else {
+				// translators: %s is the discount percentage.
+				$config['plugin_meta_message'] = sprintf( __( 'Black Friday Sale - %s off', 'multiple-pages-generator-by-porthas' ), '60%' );
+				// translators: %s - discount.
+				$config['title'] = sprintf( __( 'MPG Pro: %s off this week', 'multiple-pages-generator-by-porthas' ), '60%' );
+				// translators: %s is the discount percentage.
+				$config['upgrade_menu_text'] = sprintf( __( 'BF Sale - %s off', 'multiple-pages-generator-by-porthas' ), '60%' );
 			}
 
-			$product_label = sprintf( '<strong>%s</strong>', $product_label );
 			$url_params    = array(
-				'utm_term' => $is_pro ? 'plan-' . $plan : 'free',
+				'utm_term' => $is_valid ? 'plan-' . $plan : 'free',
 				'lkey'     => ! empty( $license ) ? $license : false,
+				'expired'  => $has_expired ? '1' : false,
 			);
 
-			$config['message']  = sprintf( $message_template, '<strong>', $discount, '</strong>', $product_label );
+			$config['message']  = $message;
+			$config['cta_label'] = $cta_label;
 			$config['sale_url'] = add_query_arg(
 				$url_params,
 				tsdk_translate_link( tsdk_utmify( 'https://themeisle.link/mpg-bf', 'bfcm', 'mpg' ) )

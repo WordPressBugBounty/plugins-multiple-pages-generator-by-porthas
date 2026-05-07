@@ -1,9 +1,9 @@
-=== Multiple Page Generator Plugin - MPG ===
+=== MPG – Multiple Page Generator, Bulk Landing Pages & Programmatic SEO ===
 Contributors: themeisle
-Tags: bulk pages, landing page, bulk edit, generate, mass
+Tags: bulk pages, programmatic seo, landing pages, seo, csv import
 Requires at least: 5.6
 Tested up to: 6.9
-Stable tag: 4.1.5
+Stable tag: 4.1.6
 Requires PHP: 7.2
 License: GPLv2
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -15,6 +15,8 @@ Create thousands of targeted landing pages in bulk, boost your search visibility
 **The #1 Bulk Page Creator & Programmatic SEO Plugin for WordPress**
 
 **[MPG](https://themeisle.com/plugins/multi-pages-generator/?utm_source=plugin-readme&utm_medium=mpg&utm_campaign=description)** is the all-in-one solution for mass page generation and large-scale content creation. Ideal for anyone looking for a mass page creator, mass content creator, or mass URL creator plugin, MPG helps you build thousands of SEO-ready landing pages with ease. Powered by your data and built for programmatic SEO, it eliminates manual work so you can scale faster.
+
+MPG lets you generate multiple WordPress pages from CSV or Google Sheets, enabling dynamic pages and scalable content generation for programmatic SEO.
 
 Whether you're building location-based pages, product catalogs, or directory listings, MPG empowers you to generate high-quality, fully optimized pages in minutes, boosting your organic traffic without compromising on performance.
 
@@ -172,6 +174,12 @@ Yes. [View tutorials and guides](https://docs.themeisle.com/collection/1572-mult
 **How can I request a feature?**
 Email [friends@themeisle.com](mailto:friends@themeisle.com)
 
+**How to report a security issue?**
+ 
+Plugin security is a core priority for us. If you identify a potential vulnerability, we ask that you disclose it responsibly.
+
+Please follow the reporting protocols outlined on our [Security Page](https://themeisle.com/security/).
+
 == Installation ==
 
 1. Go to 'Plugins > Add New' in your WordPress dashboard
@@ -196,15 +204,12 @@ For manual installation:
 
 == Changelog ==
 
-#####   Version 4.1.5 (2026-02-26)
+#####   Version 4.1.6 (2026-05-07)
 
-- Added a reset button to reset the Page Builder Compatibility option
-- Fixed translations reappear after being updated
-- Fixed a fatal error caused by posts_selection hook
-- Fixed an issue where conditional display logic within a loop incorrectly referenced the main projects data instead of the loops data context
-- Fixed issue where incorrect page content was being pulled when duplicate values exists in the source file
-- Ensured the cached dataset is not empty before returning to prevent JS errors
-- Updated dependencies
+- Fixes issue where colon (:) was stripped from URLs when using {{mpg_buy_link}} magic tag in href attribute
+- Fixes file race condition on index.json temporary file
+- Fixes PHP warning because of undefined array key warning in SearchController for uninitialized settings
+- Update dependencies
 
 
 

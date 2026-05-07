@@ -360,13 +360,13 @@ class MPG_ProjectModel
 
     public static function mpg_options_update() {
 	    MPG_Validators::nonce_check();
-        
+
         try {
             if ( ! current_user_can( 'manage_options' ) ) {
                 echo json_encode( [ 'success' => false, 'error' => 'You have no permissions to do this' ] );
                 wp_die();
             }
-            
+
             if ( isset( $_POST['enableTelemetry'] ) ) {
                 $enable_telemetry = (int) $_POST['enableTelemetry'];
                 update_option('multi_pages_plugin_logger_flag', $enable_telemetry > 0 ? 'yes' : 'no');
@@ -382,12 +382,12 @@ class MPG_ProjectModel
 
     /**
      * Generate URL for a particular row
-     * 
+     *
      * @param array $row
      * @param array $headers
      * @param string $url_structure
      * @param string $space_replacer
-     * 
+     *
      * @return string The generated URL.
      */
     public static function mpg_generate_url_for_row( array $row, array $headers, string $url_structure, string $space_replacer ): string
@@ -536,7 +536,7 @@ class MPG_ProjectModel
 
     /**
      * Get the schedule periodicity for a project.
-     * 
+     *
      * @param mixed $project_id
      * @return int|mixed|null
      */
@@ -560,7 +560,7 @@ class MPG_ProjectModel
 
     /**
      * Get project url_structure and space_replacer.
-     * 
+     *
      * @param int $project_id
      * @return array
      */
@@ -590,6 +590,7 @@ class MPG_ProjectModel
     {
         global $wpdb;
         $generate_index = false;
+        $index_lock_token = null;
 
         try {
             if ( empty( $fields_array['worksheet_id'] ) ) {
@@ -603,6 +604,13 @@ class MPG_ProjectModel
             if ( isset( $fields_array['urls_array'] ) && true === $fields_array['urls_array'] ) {
                 $fields_array['urls_array'] = null;
                 $generate_index = true;
+            }
+
+            if ( $generate_index ) {
+	            $index_lock_token = MPG_DatasetModel::begin_index_generation( $project_id );
+	            if ( false === $index_lock_token ) {
+		            throw new Exception( __( 'Can\'t rebuild project index.', 'multiple-pages-generator-by-porthas' ) );
+	            }
             }
 
             $wpdb->update($wpdb->prefix .  MPG_Constant::MPG_PROJECTS_TABLE, $fields_array, ['id' => $project_id]);
@@ -620,9 +628,11 @@ class MPG_ProjectModel
 	        }
 
 	        if ( $generate_index ) {
-                MPG_DatasetModel::create_index( $project_id );
+                if ( ! MPG_DatasetModel::create_index( $project_id, $index_lock_token ) ) {
+	                throw new Exception( __( 'Can\'t rebuild project index.', 'multiple-pages-generator-by-porthas' ) );
+                }
             }
-            
+
             // Save to excluded projects in a 'wp_options' for third-party plugins integration.
             $excluded_projects_in_robot = $wpdb->get_results( "SELECT DISTINCT template_id FROM {$wpdb->prefix}" . MPG_Constant::MPG_PROJECTS_TABLE . ' WHERE `exclude_in_robots` = 1', ARRAY_A );
             update_option( MPG_Constant::EXCLUDED_PROJECTS_IN_ROBOT, $excluded_projects_in_robot );
@@ -650,6 +660,10 @@ class MPG_ProjectModel
                     $e->getMessage()
                 )
             );
+        } finally {
+	        if ( is_string( $index_lock_token ) && '' !== $index_lock_token ) {
+		        MPG_DatasetModel::end_index_generation( $project_id, $index_lock_token );
+	        }
         }
     }
 

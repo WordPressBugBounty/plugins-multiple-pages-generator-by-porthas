@@ -193,9 +193,9 @@ class MPG_SearchController
             $search_query = isset($_POST['s']) ? sanitize_text_field($_POST['s']) : null;
 
             $mpg_search_settings = get_option( 'mpg_search_settings', array() );
-            $search_limit =  $mpg_search_settings['mpg_ss_results_count'];
-            $case_sensitive = filter_var($mpg_search_settings['mpg_ss_is_case_sensitive'], FILTER_VALIDATE_BOOLEAN);
-            $featured_image_url = $mpg_search_settings['mpg_ss_featured_image_url'];
+            $search_limit = isset( $mpg_search_settings['mpg_ss_results_count'] ) ? $mpg_search_settings['mpg_ss_results_count'] : 10;
+            $case_sensitive = isset( $mpg_search_settings['mpg_ss_is_case_sensitive'] ) ? filter_var($mpg_search_settings['mpg_ss_is_case_sensitive'], FILTER_VALIDATE_BOOLEAN) : true;
+            $featured_image_url = isset( $mpg_search_settings['mpg_ss_featured_image_url'] ) ? $mpg_search_settings['mpg_ss_featured_image_url'] : null;
             $mpg_excerpt_length = isset( $mpg_search_settings['mpg_ss_excerpt_length'] ) ? $mpg_search_settings['mpg_ss_excerpt_length'] : 0;
             echo json_encode([
                 'success' => true,

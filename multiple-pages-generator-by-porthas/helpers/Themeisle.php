@@ -103,6 +103,10 @@ if ( ! class_exists( 'MPG_Premium', false ) ) {
 add_action( 'wp_loaded', function () {
 	if ( ! mpg_app()->is_premium() ) {
 		add_filter( 'plugin_row_meta', function ( $links_array, $plugin_file_name, $plugin_data, $status ) {
+			$is_black_friday = apply_filters( 'themeisle_sdk_is_black_friday_sale', false );
+			if ( $is_black_friday ) {
+				return $links_array;
+			}
 
 			if ( strpos( $plugin_file_name, basename( MPG_BASENAME ) ) !== false ) {
 				$links_array[] = '<a style="color: #dba617;" href="' . mpg_app()->get_upgrade_url('pluginrow') . '">Upgrade</a>';
@@ -110,17 +114,6 @@ add_action( 'wp_loaded', function () {
 
 			return $links_array;
 		}, 10, 4 );
-
-		add_action( 'admin_menu',
-			function () {
-				global $submenu;
-				$menu_slug               = "mpg-project-builder";
-				$submenu[ $menu_slug ][] = array(
-					'<b style="width: calc(100% - 12px); padding: 6px 10px; font-size: 13px;font-weight: 600; line-height: 1; color: rgba(255, 255, 255, 1);border-radius: 3px;background-color: rgba(56, 81, 248, 1);  display: block; text-align: center; " class="left-btn-upgrade">' . esc_html__( 'Upgrade to Pro', 'multiple-pages-generator-by-porthas' ) . '</b>',
-					'manage_options',
-					mpg_app()->get_upgrade_url('datasetmenu')
-				);
-			} );
 	}
 } );
 mpg_run();
