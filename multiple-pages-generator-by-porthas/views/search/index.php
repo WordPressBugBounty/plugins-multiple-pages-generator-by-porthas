@@ -84,7 +84,7 @@ add_action('admin_head', ['Helper', 'mpg_header_code_container']);
                     <input type="number" min="1" id="mpg_ss_results_count">
                 </section>
 
-                <button type="submit" style="margin: 25px" class="btn btn-primary"><?php _e("Update", 'multiple-pages-generator-by-porthas'); ?></button>
+                <button type="submit" style="margin: 25px" class="button btn btn-primary"><?php _e("Update", 'multiple-pages-generator-by-porthas'); ?></button>
             </form>
         </div>
     </div>

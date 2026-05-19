@@ -54,7 +54,7 @@ class MPG_LogsController
 				}
 			}
 			do_action( 'themeisle_log_event', MPG_NAME, $message, $level, __FILE__, __LINE__ );
-			$message .= $message . ' homeurl: ' . home_url();
+			$message .= ' homeurl: ' . home_url();
 			$wpdb->insert( $wpdb->prefix . MPG_Constant::MPG_LOGS_TABLE, [
 				'project_id' => intval( $project_id ),
 				'level'      => esc_sql( $level ),

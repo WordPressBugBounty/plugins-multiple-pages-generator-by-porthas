@@ -27,10 +27,10 @@
                         </div>
                         <div class="save-changes-block p-0">
                             <div class="mpg-spin-btn">
-                                <input type="button" id="mpg_spin" class="btn btn-primary" value="<?php _e('Spin!', 'multiple-pages-generator-by-porthas'); ?>" />
+                                <input type="button" id="mpg_spin" class="button btn btn-primary" value="<?php _e('Spin!', 'multiple-pages-generator-by-porthas'); ?>" />
                                 <span class="spinner"></span>
                             </div>
-                            <input type="button" class="copy-spintax-output btn btn-link" value="<?php _e('Copy expression', 'multiple-pages-generator-by-porthas'); ?>" />
+                            <input type="button" class="copy-spintax-output button btn btn-link" value="<?php _e('Copy expression', 'multiple-pages-generator-by-porthas'); ?>" />
                         </div>
                         <hr/>
                         <div class="spin-condition pt-3 m-0">
@@ -57,7 +57,7 @@
                             <?php _e('Each time, when users visit the same URL again, Spintax string is retrieved from the cache, and will not be generated again until you clear cache.', 'multiple-pages-generator-by-porthas'); ?>
                         </div>
                         <div class="cache-info">
-                            <button class="btn btn-danger"><?php _e('Flush cache', 'multiple-pages-generator-by-porthas') ?></button>
+                            <button class="button btn btn-danger"><?php _e('Flush cache', 'multiple-pages-generator-by-porthas') ?></button>
                             <div class="cache-records m-0">
                                 <span><?php _e('Records in cache for current project:', 'multiple-pages-generator-by-porthas'); ?> <span class="num-rows"></span></span>
                             </div>

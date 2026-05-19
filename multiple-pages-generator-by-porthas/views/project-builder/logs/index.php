@@ -6,7 +6,7 @@
                     <h2 class="project-name-header">
                         <?php _e('Logs', 'multiple-pages-generator-by-porthas'); ?>
                     </h2>
-                    <button id="mpg_clear_log_by_project_id" class="btn btn-danger btn-link"><?php _e("Clear logs", 'multiple-pages-generator-by-porthas');?></button>
+                    <button id="mpg_clear_log_by_project_id" class="button btn btn-danger btn-link"><?php _e("Clear logs", 'multiple-pages-generator-by-porthas');?></button>
                 </div>
                 <div class="card-body">
                     <table id="mpg_logs_table" class="display"></table>

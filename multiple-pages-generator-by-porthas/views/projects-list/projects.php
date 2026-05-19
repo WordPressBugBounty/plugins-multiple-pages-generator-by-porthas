@@ -212,7 +212,7 @@ if ( ! empty( $license ) && ( is_object( $license ) && isset( $license->key ) ) 
         background: rgba(0,0,0,0.7);
     }
     select[name="mpg_mpg_preview_all_urls_table_length"]{
-        width: 50px;
+        width: 65px;
     }
     .mpg-modal .modal-content {
         position: relative;

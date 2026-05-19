@@ -66,12 +66,9 @@ class MPG_SpintaxController
             $spintax_string = $wpdb->get_results('SELECT `spintax_string`, `id` FROM ' . $table_name . ' WHERE `url` = "' . $requested_url . '" and `block_id` = "' . $block_id . '"');
 
             if ( ! empty( $spintax_string ) ) {
-                $id = $spintax_string[0]->id;
                 $spintax_content = $spintax_string[0]->spintax_string;
                 if ( false !== strpos( $spintax_content, 'mpg_' ) ) {
-                    $deleted = $wpdb->get_results( 'DELETE FROM ' . $table_name . ' WHERE `id` = ' . $id  );
-                    $spintax_content = MPG_SpintaxModel::mpg_generate_spintax_string($content);
-                    $requested_url = '/';
+                    $spintax_content = MPG_SpintaxModel::mpg_generate_spintax_string($spintax_content);
                 }
                 return $spintax_content;
             }

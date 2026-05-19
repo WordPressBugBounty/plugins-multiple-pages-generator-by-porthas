@@ -175,6 +175,14 @@ class MPG_SEOModel
 
             return  $robots_options;
         });
+
+        add_filter(
+            'rank_math/json_ld',
+            function( $data ) use ( $project_id ) {
+                return self::seo_data_shortcode_replacer( $data, $project_id );
+            },
+            99
+        );
     }
 
     public static function mpg_seopress($project_id)

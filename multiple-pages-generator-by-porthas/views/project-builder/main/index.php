@@ -231,11 +231,11 @@
                                                     <div id="mpg_next_cron_execution"></div>
                                                 </div>
                                                 <div class="right">
-                                                   <input type="button" id="mpg_unschedule_task" value="<?php esc_html_e('Unschedule', 'multiple-pages-generator-by-porthas'); ?>" class="btn btn-danger">
+                                                   <input type="button" id="mpg_unschedule_task" value="<?php esc_html_e('Unschedule', 'multiple-pages-generator-by-porthas'); ?>" class="button btn btn-danger">
                                                 </div>
                                             </div>
                                             <div class="save-changes-block p-0">
-                                                <button type="submit" class=" blue-gradient-btn btn btn-primary use-direct-link-button disabled"><?php esc_html_e('Fetch and use', 'multiple-pages-generator-by-porthas'); ?></button>
+                                                <button type="submit" class=" blue-gradient-btn button btn btn-primary use-direct-link-button disabled"><?php esc_html_e('Fetch and use', 'multiple-pages-generator-by-porthas'); ?></button>
                                                 <span class="spinner"></span>
                                             </div>
                                         </div>
@@ -254,7 +254,7 @@
                                                             <input type="file" name="mpg_upload_file_input" accept=".csv, .ods, .xlsx" class="custom-file-input" id="mpg_upload_file_input" aria-describedby="inputGroupFileAddon04">
                                                             <label class="custom-file-label mpg_upload_file-label" for="mpg_upload_file_input"><?php esc_html_e('Click to browse', 'multiple-pages-generator-by-porthas'); ?></label>
                                                         </div>
-                                                        <a class="col-ms-3 btn disabled btn-outline-primary" id="mpg_in_use_dataset_link" target="_blank" download>N/A</a>
+                                                        <a class="col-ms-3 button btn disabled btn-outline-primary" id="mpg_in_use_dataset_link" target="_blank" download>N/A</a>
                                                     </div>
                                                     <div id="progress-wrp">
                                                         <div class="progress">
@@ -401,7 +401,7 @@
                                                             </option>
                                                         </select>
                                                     </div>
-                                                    <a class="col-ms-3 btn btn-outline-primary disabled d-none" id="mpg_edit_template_link" href="#" data-edit_link="<?php echo esc_url( add_query_arg( array( 'post' => '#id#', 'action' => 'edit' ), admin_url( 'post.php' ) ) ); ?>" target="_blank"><?php esc_html_e( 'Edit template', 'multiple-pages-generator-by-porthas' ); ?></a>
+                                                    <a class="col-ms-3 button btn btn-outline-primary disabled d-none" id="mpg_edit_template_link" href="#" data-edit_link="<?php echo esc_url( add_query_arg( array( 'post' => '#id#', 'action' => 'edit' ), admin_url( 'post.php' ) ) ); ?>" target="_blank"><?php esc_html_e( 'Edit template', 'multiple-pages-generator-by-porthas' ); ?></a>
 
                                                 </div>
                                                 <div class="help-text" >
@@ -555,16 +555,16 @@
                                         <div class="right">
                                             <div id="mpg_url_mode_group" class="btn-group">
                                                 <input class="btn-check" type="radio" value="both" id="both" name="mpg_url_mode_group" checked>
-                                                <label for="both" class="btn btn-outline-primary">
+                                                <label for="both" class="button btn btn-outline-primary">
                                                     <?php
                                                     // translators: default mode.
                                                     esc_html_e('Default', 'multiple-pages-generator-by-porthas');
                                                     ?>
                                                 </label>
                                                 <input class="btn-check" type="radio" value="with-trailing-slash" id="with-trailing-slash" name="mpg_url_mode_group">
-                                                <label for="with-trailing-slash" class="btn btn-outline-primary"><?php esc_html_e('With trailing slash', 'multiple-pages-generator-by-porthas'); ?></label>
+                                                <label for="with-trailing-slash" class="button btn btn-outline-primary"><?php esc_html_e('With trailing slash', 'multiple-pages-generator-by-porthas'); ?></label>
                                                 <input class="btn-check" type="radio" value="without-trailing-slash" id="without-trailing-slash" name="mpg_url_mode_group">
-                                                <label for="without-trailing-slash" class="btn btn-outline-primary"><?php esc_html_e('Without trailing slash', 'multiple-pages-generator-by-porthas'); ?></label>
+                                                <label for="without-trailing-slash" class="button btn btn-outline-primary"><?php esc_html_e('Without trailing slash', 'multiple-pages-generator-by-porthas'); ?></label>
                                             </div>
                                         </div>
                                     </div>
@@ -610,7 +610,7 @@
                 </div>
                 <div class="d-flex align-items-center justify-content-between">
                     <div class="save-changes-block p-0">
-                        <button class="save-changes btn btn-primary disabled"><?php echo isset( $_GET['id'] ) ? esc_html__( 'Save changes', 'multiple-pages-generator-by-porthas' ) : esc_html__( 'Publish', 'multiple-pages-generator-by-porthas' ); ?></button>
+                        <button class="save-changes button btn btn-primary disabled"><?php echo isset( $_GET['id'] ) ? esc_html__( 'Save changes', 'multiple-pages-generator-by-porthas' ) : esc_html__( 'Publish', 'multiple-pages-generator-by-porthas' ); ?></button>
                         <span class="spinner"></span>
                     </div>
                     <a href="#" class="delete-project" style="display:none;">

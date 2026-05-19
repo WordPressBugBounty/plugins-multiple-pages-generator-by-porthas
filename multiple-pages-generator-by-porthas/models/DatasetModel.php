@@ -1700,4 +1700,110 @@ class MPG_DatasetModel
 
 		return self::read_dataset( $path_to_dataset_hub );
 	}
+
+	/**
+	 * Checks if the source file exists and attempts to regenerate the index from it.
+	 * 
+	 * @param int    $project_id   The project ID.
+	 * @param object $project      The project object.
+	 * @return bool True if the index was successfully regenerated, false otherwise.
+	 */
+	public static function regenerate_index( $project_id, $project ) {
+		$build_id   = self::get_active_build_id( $project_id );
+		$index_path = self::get_index_path( $project_id, $build_id );
+		$success    = false;
+
+		if ( file_exists( $index_path ) ) {
+			return true;
+		}
+
+		$source_type = $project->source_type ?? '';
+		if ( 'upload_file' !== $source_type ) {
+			return false;
+		}
+
+		$source_path = self::get_dataset_path_by_project( $project );
+		if ( empty( $source_path ) || ! file_exists( $source_path ) ) {
+			MPG_LogsController::mpg_write(
+				$project_id,
+				'error',
+				sprintf(
+					// translators: %1$d is the project ID, %2$s is the expected source file path.
+					esc_html__( 'Source file is missing for project #%1$d at path: %2$s', 'multiple-pages-generator-by-porthas' ),
+					$project_id,
+					$source_path
+				)
+			);
+			return false;
+		}
+
+		try {
+			$index_generated = self::create_index( $project_id );
+			
+			if ( ! $index_generated ) {
+				clearstatcache( true, $index_path );
+ 				if ( file_exists( $index_path ) ) {
+ 					$index_generated = true;
+ 				} else {
+ 					MPG_LogsController::mpg_write(
+ 						$project_id,
+ 						'info',
+ 						esc_html__( 'Index regeneration is already in progress for this project.', 'multiple-pages-generator-by-porthas' )
+ 					);
+ 					return true;
+ 				}
+			}
+
+			// Preserve the backward-compatibility marker without rereading the dataset.
+ 			// The index was just regenerated and already contains the permalink data needed
+ 			// for self-heal, so avoid rebuilding URLs from the source file here.
+			$url_structure = $project->url_structure ?? '';
+			
+			if ( ! empty( $url_structure ) ) {
+				$fields_array = [
+ 					'urls_array' => true,
+ 				];
+ 				MPG_ProjectModel::mpg_update_project_by_id( $project_id, $fields_array, true );
+			}
+
+			self::clear_project_cache( $project_id );
+
+			$success = true;
+			
+			MPG_LogsController::mpg_write(
+				$project_id,
+				'info',
+				esc_html__( 'Index successfully regenerated from source file.', 'multiple-pages-generator-by-porthas' )
+			);
+		} catch ( Exception $e ) {
+			MPG_LogsController::mpg_write(
+				$project_id,
+				'error',
+				sprintf(
+					// translators: %1$d is the project ID, %2$s is the exception message.
+					esc_html__( 'Exception during regeneration for project #%1$d: %2$s', 'multiple-pages-generator-by-porthas' ),
+					$project_id,
+					$e->getMessage()
+				)
+			);
+		}
+
+		return $success;
+	}
+
+	/**
+	 * Clear all cached data for a project to force fresh reads.
+	 * 
+	 * @param int $project_id The project ID.
+	 */
+	public static function clear_project_cache( $project_id ) {
+		if ( isset( self::$resolved_build_ids[ $project_id ] ) ) {
+			unset( self::$resolved_build_ids[ $project_id ] );
+		}
+
+		$build_id = self::get_active_build_id( $project_id );
+
+		self::delete_index_cache( $project_id, $build_id );
+		self::delete_dataset_chunks_cache( $project_id, $build_id );
+	}
 }

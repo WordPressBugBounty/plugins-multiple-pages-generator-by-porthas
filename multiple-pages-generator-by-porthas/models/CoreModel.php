@@ -58,6 +58,21 @@ class MPG_CoreModel
 				$urls_array = array_keys( $urls_data );
 			}
 			$urls_array  = is_array( $urls_array ) ? $urls_array : [];
+
+			if ( empty( $urls_array ) ) {
+				$source_type = $project->source_type ?? '';
+
+				// Only attempt healing for upload_file projects (direct_link has its own auto-refresh).
+				if ( 'upload_file' === $source_type ) {
+					$index_generated = MPG_DatasetModel::regenerate_index( $project->id, $project );
+
+					if ( $index_generated ) {
+						$urls_data  = MPG_DatasetModel::get_index( $project->id, 'permalinks' );
+						$urls_array = array_keys( $urls_data );
+					}
+				}
+			}
+
 			try {
 				if ( null === $project->schedule_periodicity ) {
 					$updated_project_data = MPG_Helper::mpg_live_project_data_update( $project );
@@ -433,14 +448,14 @@ class MPG_CoreModel
 			$dataset = MPG_DatasetModel::get_dataset_row( $project_id, $item['chunk'], $item['offset'], $item['build_id'] ?? null );
 
 			if ( is_array( $dataset ) && ! empty( $dataset ) ) {
-				return $dataset;
+				return self::update_dataset_by_removing_url_column( $project_id, $dataset );
 			}
 		}
 
 		$project       = MPG_ProjectModel::get_project_by_id( $project_id );
 		$dataset_array = MPG_Helper::mpg_get_dataset_array( $project );
 
-		return $dataset_array[ $index + 1 ] ?? false;
+		return $dataset_array[ $index + 1 ] ? self::update_dataset_by_removing_url_column( $project_id, $dataset_array[ $index + 1 ] ) : false;
 	}
 	/**
 	 * Get the current row details from the dataset.
@@ -497,5 +512,33 @@ class MPG_CoreModel
 		} else {
 			self::$current_row[ $project_id ] = false;
 		}
+	}
+
+	/**
+	 * Update dataset by removing URL column if exists, to prevent it from being used in shortcodes replacement.
+	 *
+	 * @param int $project_id Project id.
+	 * @param array $dataset Dataset row to update.
+	 * @return array Updated dataset row.
+	 */
+	private static function update_dataset_by_removing_url_column( $project_id, $dataset ) {
+		$project = MPG_ProjectModel::get_project_by_id( $project_id );
+		$headers = MPG_ProjectModel::get_headers_from_project( $project);
+		$headers = array_map( 'strtolower', $headers );
+
+		$url_column_indexes = array_keys( array_filter(
+ 			$headers,
+ 			function( $header ) {
+ 				return in_array( $header, array( 'url', 'mpg_url' ), true );
+ 			}
+ 		) );
+
+ 		if ( ! empty( $url_column_indexes ) ) {
+ 			rsort( $url_column_indexes );
+ 			foreach ( $url_column_indexes as $url_column_index ) {
+ 				array_splice( $dataset, $url_column_index, 1 );
+ 			}
+		}
+		return $dataset;
 	}
 }

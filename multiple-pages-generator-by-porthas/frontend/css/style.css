@@ -2183,7 +2183,7 @@ table#mpg_dataset_limited_rows_table tr:hover {
     }
 }
 div.dt-length select.dt-input {
-    width: 50px;
+    width: 65px;
 }
 #mpg_data_full_preview_table_wrapper {
     overflow-x: auto;

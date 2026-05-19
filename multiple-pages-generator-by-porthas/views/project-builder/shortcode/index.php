@@ -163,8 +163,8 @@
                                         <textarea id="mpg_shortcode_sandbox_textarea" class="input-data" style="width:100%; min-height: 100px;">[mpg project-id=""][/mpg]</textarea>
                                     </code>
                                     <div class="message">Choose how the tags are used in the list generation and preview it in the right sidebar.</div>
-                                    <button class="btn btn-primary shortcode-preview"><?php _e('Preview', 'multiple-pages-generator-by-porthas'); ?></button>
-                                    <button class="btn btn-link shortcode-copy"><?php _e('Copy expression', 'multiple-pages-generator-by-porthas'); ?></button>
+                                    <button class="button btn btn-primary shortcode-preview"><?php _e('Preview', 'multiple-pages-generator-by-porthas'); ?></button>
+                                    <button class="button btn btn-link shortcode-copy"><?php _e('Copy expression', 'multiple-pages-generator-by-porthas'); ?></button>
                                 </div>
                             </div>
                         </div>

@@ -79,7 +79,7 @@
                         </div>
                         <hr/>
                         <div class="save-changes-block">
-                            <input type="submit" class="generate-sitemap btn btn-primary"
+                            <input type="submit" class="generate-sitemap button btn btn-primary"
                                 value="<?php _e('Save and generate', 'multiple-pages-generator-by-porthas'); ?>" />
                             <div class="sitemap-status">
                                 <?php _e('Current sitemap:', 'multiple-pages-generator-by-porthas'); ?> <span id="mpg_sitemap_url"></span>

@@ -14,7 +14,7 @@
                 <p style="margin-top: 1rem;"><?php _e("This section allows to set up hooks which MPG will fire on, update (actualize) structure of MPG's tables after an update. The same result can be achieved by activating and deactivating the plugin", 'multiple-pages-generator-by-porthas'); ?></p>
 
 
-                <button id="mpg_update_tables_structure" class="btn btn-primary"><?php _e("Update", 'multiple-pages-generator-by-porthas'); ?></button>
+                <button id="mpg_update_tables_structure" class="button btn btn-primary"><?php _e("Update", 'multiple-pages-generator-by-porthas'); ?></button>
             </section>
 
 
@@ -49,8 +49,8 @@
                         <option value="100"><?php _e('Low', 'multiple-pages-generator-by-porthas'); ?></option>
                     </select>
 
-                    <button type="submit" class="btn btn-primary"><?php _e('Update', 'multiple-pages-generator-by-porthas'); ?></button>
-                    <button type="submit" class="btn btn-primary btn-reset" disabled><?php esc_html_e( 'Reset', 'multiple-pages-generator-by-porthas' ); ?></button>
+                    <button type="submit" class="button btn btn-primary"><?php _e('Update', 'multiple-pages-generator-by-porthas'); ?></button>
+                    <button type="submit" class="button btn btn-primary btn-reset" disabled><?php esc_html_e( 'Reset', 'multiple-pages-generator-by-porthas' ); ?></button>
                 </form>
             </section>
 
@@ -66,7 +66,7 @@
                         <option value="wp-content">Path based on wp-content folder location</option>
                     </select>
 
-                    <button type="submit" class="btn btn-primary"><?php _e('Update', 'multiple-pages-generator-by-porthas'); ?></button>
+                    <button type="submit" class="button btn btn-primary"><?php _e('Update', 'multiple-pages-generator-by-porthas'); ?></button>
                 </form>
             </section>
 
@@ -84,7 +84,7 @@
                             <option value="left">Left</option>
                         </select>
 
-                        <button type="submit" class="btn btn-primary"><?php _e('Update', 'multiple-pages-generator-by-porthas'); ?></button>
+                        <button type="submit" class="button btn btn-primary"><?php _e('Update', 'multiple-pages-generator-by-porthas'); ?></button>
                     </form>
                 </section>
             <?php } ?>
