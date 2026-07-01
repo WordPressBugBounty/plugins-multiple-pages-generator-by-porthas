@@ -271,18 +271,18 @@ class MPG_CoreController
 		        ]
 	        ], $content );
 
-	        echo '{"success": true, "data":"' . str_replace( "\n", '<br>', $results ) . '"}';
-	        wp_die();
-        } catch (Exception $e) {
-           
-            // translators: $s: the error message.
+	        $results = wp_kses_post( str_replace( "\n", '<br>', $results ) );
+
+	        wp_send_json_success( $results );
+        } catch ( Exception $e ) {
+            // translators: %s: the error message.
             do_action(
                 'themeisle_log_event',
                 MPG_NAME,
-                printf(
-                    __('Can\'t show preview due to error.', 'multiple-pages-generator-by-porthas') + ' ' 
+                sprintf(
+                    __( 'Can\'t show preview due to error. ', 'multiple-pages-generator-by-porthas' )
                     // translators: %s: the error message.
-                    + __('Details: %s', 'multiple-pages-generator-by-porthas'),
+                    . __( 'Details: %s', 'multiple-pages-generator-by-porthas' ),
                     $e->getMessage()
                 ),
                 'debug',
@@ -290,16 +290,10 @@ class MPG_CoreController
                 __LINE__
             );
 
-            echo json_encode([
+            wp_send_json( [
                 'success' => false,
-                'error' => sprintf(
-                    __('Can\'t show preview due to error.', 'multiple-pages-generator-by-porthas') + ' ' 
-                    // translators: %s: the error message.
-                    + __('Details: %s', 'multiple-pages-generator-by-porthas'),
-                    $e->getMessage()
-                )
-            ]);
-            wp_die();
+                'error'   => __( 'Can\'t show preview due to error.', 'multiple-pages-generator-by-porthas' ),
+            ] );
         }
     }
 

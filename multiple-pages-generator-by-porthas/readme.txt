@@ -3,7 +3,7 @@ Contributors: themeisle
 Tags: bulk pages, programmatic seo, landing pages, seo, csv import
 Requires at least: 5.6
 Tested up to: 7.0
-Stable tag: 4.1.7
+Stable tag: 4.1.8
 Requires PHP: 7.2
 License: GPLv2
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -204,14 +204,9 @@ For manual installation:
 
 == Changelog ==
 
-#####   Version 4.1.7 (2026-05-19)
+#####   Version 4.1.8 (2026-07-01)
 
-- Added Self-Healing for uploaded file projects (Prevent 404s and SEO Penalties)
-- Prevent URL column from replacing modified column
-- Improved compatibility with WP 7.0
-- Prevent spintax cache regeneration for mpg_ placeholder 
-- Fixed issue where MPG shortcodes are not replaced in RankMath Schema Generator fields (JSON-LD)
-- Updated dependencies
+- Enhanced security
 
 
 

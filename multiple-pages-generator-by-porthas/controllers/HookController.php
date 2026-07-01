@@ -420,7 +420,6 @@ class MPG_HookController
 
         // Shortcodes tab
         add_action('wp_ajax_mpg_shortcode', ['MPG_CoreController', 'mpg_shortcode_ajax']);
-        add_action('wp_ajax_nopriv_mpg_shortcode', ['MPG_CoreController', 'mpg_shortcode_ajax']);
 
         //Sitemap tab
         add_action('wp_ajax_mpg_generate_sitemap', ['MPG_ProjectController', 'mpg_generate_sitemap']);

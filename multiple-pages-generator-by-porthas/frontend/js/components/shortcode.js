@@ -477,7 +477,7 @@ jQuery('#shortcode .shortcode-preview').on('click', async function () {
         }
 
         // ==================  AJAX =================
-        let shortcodePreview = await jQuery.post(ajaxurl, {
+        let shortcodePreviewData = await jQuery.post(ajaxurl, {
             action: 'mpg_shortcode',
             content,
             projectId,
@@ -489,8 +489,6 @@ jQuery('#shortcode .shortcode-preview').on('click', async function () {
             uniqueRows,
             securityNonce: backendData.securityNonce,
         });
-
-        let shortcodePreviewData = JSON.parse(shortcodePreview);
 
         if (!shortcodePreviewData.success) {
             toastr.error(shortcodePreviewData.error, __('Error', 'multiple-pages-generator-by-porthas'));
