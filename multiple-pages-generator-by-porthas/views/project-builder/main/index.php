@@ -76,7 +76,7 @@
                                                     <div class="d-flex align-items-center gap-5">
                                                         <?php esc_html_e('Sync frequency', 'multiple-pages-generator-by-porthas'); ?>
                                                         <?php echo ! $is_higher_plan ? '<span class="pro-field">Pro</span>' : ''; ?>
-                                                        <div class="tooltip-circle" data-tippy-content="<?php esc_html_e('Set how often MPG will fetch the dataset above.', 'multiple-pages-generator-by-porthas'); ?>">
+                                                        <div class="tooltip-circle" data-tippy-content="<?php esc_html_e('Set how often MPG re-fetches the source file. Each sync updates both the data and the columns, so new columns in your file become available automatically.', 'multiple-pages-generator-by-porthas'); ?>">
                                                             <span class="dashicons dashicons-info-outline"></span>
                                                         </div>
                                                     </div>
@@ -595,7 +595,7 @@
                 </div>
                 <div class="alert alert-primary" role="alert">
                     <div class="icon">
-                        <img src=<?php echo esc_url( MPG_BASE_IMG_PATH . '/alert-primary.png' ); ?> alt="" />
+                        <span class="dashicons dashicons-info-outline" aria-hidden="true"></span>
                     </div>
                     <div class="info">
                         <?php

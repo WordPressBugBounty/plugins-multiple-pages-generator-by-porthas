@@ -15,7 +15,6 @@ class MPG_HookController
 
     public static function init_base()
     {
-
         $rest_prefix = trailingslashit( rest_get_url_prefix() );
         // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
         $is_rest_api_request = isset( $_SERVER['REQUEST_URI'] ) ? strpos( wp_unslash( $_SERVER['REQUEST_URI'] ), $rest_prefix ) !== false : false;
@@ -56,17 +55,15 @@ class MPG_HookController
             }
         );
 
-        // Excluding template pages from search / loop
+        // Excluding template pages from search / loop (but never the template page's own request).
 	    add_action( 'pre_get_posts', function ( $query ) {
-		    if ( ! empty( $_GET['elementor-preview'] ) && is_numeric( $_GET['elementor-preview'] ) ) {
+		    if ( defined( 'TI_UNIT_TESTING' ) ) {
 			    return;
 		    }
-		    if ( function_exists( 'is_user_logged_in' ) && ! is_user_logged_in() && ! defined( 'TI_UNIT_TESTING' ) ) {
-			    $templates_ids = MPG_ProjectModel::mpg_get_all_templates_id();
-			    if ( $templates_ids ) {
-				    $query->query_vars['post__not_in'] = $templates_ids;
-			    }
+		    if ( function_exists( 'is_user_logged_in' ) && is_user_logged_in() ) {
+			    return;
 		    }
+		    self::exclude_templates_from_listing_query( $query );
 	    } );
 
 
@@ -88,6 +85,7 @@ class MPG_HookController
         add_filter('cron_schedules', array('MPG_Helper', 'mpg_cron_weekly'));
         // Register additional (monthly) interval for cron because WP hasn't monthly period
         add_filter('cron_schedules', array('MPG_Helper', 'mpg_cron_monthly'));
+
 	    add_action( 'admin_head', function () {
 
 		    if ( ! empty( get_option( 'mpg_legacy_user', '' ) ) ) {
@@ -136,7 +134,7 @@ class MPG_HookController
 			    return;
 		    }
 		    MPG_Helper::mpg_activation_events();
-	    } );
+	    }, 20 );
         // Allow usage of mpg shortcode inside link controls.
 	    add_action( 'elementor/widget/before_render_content', function ($widget) {
 		    add_filter(
@@ -149,17 +147,28 @@ class MPG_HookController
 			    return $good_protocol_url;
 		    },99, 3 );
 	    }, 99, 1 );
-        // Ставим noindex для страницы шаблона
-        add_filter('template_redirect', function () {
-            $templates_ids = MPG_ProjectModel::mpg_get_all_templates_id();
-
-            $queried_obj_id = get_queried_object_id();
-            global $wp;
-
-            if (in_array($queried_obj_id, $templates_ids) && in_array(get_post($queried_obj_id)->guid, [home_url($wp->request), home_url($wp->request) . '/'])) {
-                header('X-Robots-Tag: noindex');
+        // Mark template pages excluded from robots as noindex. They stay reachable at their own
+        // URL (see exclude_templates_from_listing_query / issue #674), so this is what keeps them
+        // out of search engines. Generated virtual pages reuse the template post ID but define
+        // MPG_IS_SINGLE, so they must never be marked.
+        add_action('template_redirect', function () {
+            if ( defined( 'MPG_IS_SINGLE' ) ) {
+                return;
             }
-        }, 1, 1);
+
+            $templates_ids = MPG_ProjectModel::mpg_get_all_templates_id();
+            if ( empty( $templates_ids ) || ! in_array( get_queried_object_id(), $templates_ids, true ) ) {
+                return;
+            }
+
+            header( 'X-Robots-Tag: noindex' );
+            // Also emit the robots meta tag (WP 5.7+), which SEO plugins respect and which survives
+            // proxies that strip response headers.
+            add_filter( 'wp_robots', function ( $robots ) {
+                $robots['noindex'] = true;
+                return $robots;
+            } );
+        }, 10);
 
         // Filter language URL in the menu switcher.
 	    add_filter(
@@ -286,7 +295,7 @@ class MPG_HookController
         // Handle WP default loop.
         add_action( 'pre_get_posts', array( 'MPG_Helper', 'mpg_pre_get_posts' ) );
         add_action( 'posts_results', array( 'MPG_Helper', 'mpg_posts_results' ), 10, 2 );
-        add_filter( 'found_posts', array( 'MPG_Helper', 'mpg_found_posts' ) );
+        add_filter( 'found_posts', array( 'MPG_Helper', 'mpg_found_posts' ), 10, 2 );
 
         // Yoast SEO compatibility.
         $yoast_seo_options = get_option( 'wpseo', array() );
@@ -329,6 +338,27 @@ class MPG_HookController
             return array_merge( $exclude_ids, $exclude_template_ids );
         });
     }
+
+	/**
+	 * Exclude template pages marked exclude_in_robots from search/listing queries, but never from the
+	 * singular query for the template page itself (that would 404 it; noindex is applied on
+	 * template_redirect). See issue #674.
+	 *
+	 * @param WP_Query $query The query being prepared.
+	 * @return void
+	 */
+	public static function exclude_templates_from_listing_query( $query ) {
+		if ( ! empty( $_GET['elementor-preview'] ) && is_numeric( $_GET['elementor-preview'] ) ) {
+			return;
+		}
+		if ( $query->is_singular() ) {
+			return;
+		}
+		$templates_ids = MPG_ProjectModel::mpg_get_all_templates_id();
+		if ( $templates_ids ) {
+			$query->query_vars['post__not_in'] = $templates_ids;
+		}
+	}
 
 	/**
 	 * Check the validity of sitemaps for multiple projects and regenerate them if they are invalid.

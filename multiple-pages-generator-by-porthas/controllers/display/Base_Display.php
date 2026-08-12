@@ -13,6 +13,15 @@ if ( ! defined( 'ABSPATH' ) ) {
 abstract class Base_Display implements DisplayInterface {
 
 	/**
+	 * Whether the last translate_conditions() call resolved a current-page context tag
+	 * (e.g. {{mpg_current_title}}). Loops use this to keep the current page's own row,
+	 * which is otherwise excluded as a self-link (#734).
+	 *
+	 * @var bool
+	 */
+	protected $conditions_used_context_tag = false;
+
+	/**
 	 * Logical AND operator for conditions.
 	 * Used to require all conditions to be met.
 	 */
@@ -320,31 +329,91 @@ abstract class Base_Display implements DisplayInterface {
 	 * @return array The translated conditions with placeholders replaced by actual values.
 	 */
 	public function translate_conditions( $conditions ) {
+		$this->conditions_used_context_tag = false;
+		// Dataset-column tags need a current project + row (loop rendered inside a generated MPG page);
+		// context tags like {{mpg_current_title}} don't — they resolve against the queried WP page, so
+		// they must still work when there is no current project (e.g. loop on a normal single post). See #530.
 		$current_project = \MPG_ProjectModel::get_current_project_id();
-		if ( empty( $current_project ) ) {
-			return $conditions;
+		$data_row        = null;
+		$headers         = null;
+		if ( ! empty( $current_project ) ) {
+			$data_row = \MPG_CoreModel::get_current_datarow( $current_project );
+			// Dataset-column tags can only resolve when a row is available; otherwise leave them
+			// untouched (get_current_datarow() returns false when no row matches the request).
+			if ( is_array( $data_row ) && ! empty( $data_row ) ) {
+				$project_data = \MPG_ProjectModel::get_project_by_id( $current_project );
+				$headers      = \MPG_ProjectModel::get_headers_from_project( $project_data );
+			}
 		}
-		$data_row     = \MPG_CoreModel::get_current_datarow( $current_project );
-		$project_data = \MPG_ProjectModel::get_project_by_id( $current_project );
-		$headers      = \MPG_ProjectModel::get_headers_from_project( $project_data );
 
 		foreach ( $conditions as $index => $condition ) {
 			if ( ! isset( $condition['value'] ) || empty( $condition['value'] ) ) {
 				continue;
 			}
-			preg_match_all('/{{mpg_\S+}}/m', $condition['value'], $matches, PREG_SET_ORDER, 0);
+			// PREG_PATTERN_ORDER so $matches[0] holds every tag in the value, not only the first one.
+			preg_match_all('/{{mpg_\S+?}}/m', $condition['value'], $matches, PREG_PATTERN_ORDER, 0);
 
-			if ( ! empty( $matches )  ) {
-				foreach ( $matches[0] as $match ) {
+			foreach ( $matches[0] as $match ) {
+				if ( null !== $headers ) {
 					$column_index = \MPG_ProjectModel::headers_have_column( $headers, $match );
-					if ( $column_index === false ) {
+					if ( $column_index !== false ) {
+						$conditions[ $index ]['value'] = str_replace( $match, $data_row[ $column_index ], $conditions[ $index ]['value'] );
 						continue;
 					}
-					$conditions[ $index ]['value'] = str_replace( $match, $data_row[ $column_index ],$conditions[ $index ]['value'] );
+				}
+				// Not a dataset column: resolve current-page context tags (e.g. {{mpg_current_title}})
+				// or a developer-supplied value. Unknown tags are left untouched. See issue #530.
+				$resolved = $this->resolve_current_context_tag( $match );
+				if ( null !== $resolved ) {
+					$conditions[ $index ]['value'] = str_replace( $match, $resolved, $conditions[ $index ]['value'] );
+					$this->conditions_used_context_tag = true;
 				}
 			}
 		}
 		return $conditions;
+	}
+
+	/**
+	 * Resolve a filter tag against the current page context (issue #530).
+	 *
+	 * Built-in: {{mpg_current_title}} -> the title of the page the loop is rendered on. Any tag can
+	 * be resolved by developers via the `mpg/{tag}` filter, e.g. add_filter( 'mpg/mpg_current_author', ... ).
+	 *
+	 * @param string $tag The full tag, e.g. "{{mpg_current_title}}".
+	 * @return string|null The resolved value, or null to leave the tag untouched.
+	 */
+	protected function resolve_current_context_tag( string $tag ) {
+		$name  = trim( $tag, '{}' ); // e.g. "mpg_current_title".
+		$value = null;
+
+		if ( 'mpg_current_title' === $name ) {
+			$queried_object = get_queried_object();
+			// Generated MPG pages reuse the real template ID but carry their replaced title on the
+			// request's queried object. Reloading by ID would return the raw {{mpg_*}} template title
+			// from the post cache. The raw post_title is used instead of get_the_title() because the
+			// display filters texturize punctuation ("-" becomes &#8211;), which would never match the
+			// raw spreadsheet values these conditions are compared against (#734).
+			$value = $queried_object instanceof \WP_Post ? $queried_object->post_title : '';
+		}
+
+		/**
+		 * Resolve a loop-filter tag to a value from the current page context.
+		 *
+		 * Return null to leave the tag untouched.
+		 *
+		 * @param string|null $value The resolved value, or null when unknown.
+		 * @param string      $tag   The full tag, e.g. "{{mpg_current_title}}".
+		 */
+		return apply_filters( 'mpg/' . $name, $value, $tag );
+	}
+
+	/**
+	 * Whether the last translate_conditions() call resolved a current-page context tag.
+	 *
+	 * @return bool True when a tag such as {{mpg_current_title}} was substituted.
+	 */
+	public function conditions_used_context_tag(): bool {
+		return $this->conditions_used_context_tag;
 	}
 
 	/**
@@ -366,7 +435,7 @@ abstract class Base_Display implements DisplayInterface {
 	 * @return bool True if the row meets the conditions based on the specified logic, false otherwise.
 	 * @throws \Exception
 	 */
-	public function evaluate_row_for_conditions( array $conditions, string $logic, array $headers, array $row = [], int $project_id = null ): bool {
+	public function evaluate_row_for_conditions( array $conditions, string $logic, array $headers, array $row = [], ?int $project_id = null ): bool {
 
 		$current_project_id = (int) empty( $project_id ) ? \MPG_ProjectModel::get_current_project_id() : $project_id;
 		$current_row        = empty( $row ) ? \MPG_CoreModel::get_current_datarow( $current_project_id ) : $row;

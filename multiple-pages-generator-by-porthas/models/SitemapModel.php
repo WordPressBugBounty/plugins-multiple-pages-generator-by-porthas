@@ -383,6 +383,10 @@ class MPG_SitemapGenerator
 		if ( get_option( 'mpg_site_basepath' ) ) {
 			$site_root_path = rtrim( get_option( 'mpg_site_basepath' )['value'], '/' ) . '/';
 		} else {
+			// Admin-only helper; cron/frontend requests don't load it (#729).
+			if ( ! function_exists( 'get_home_path' ) ) {
+				require_once ABSPATH . 'wp-admin/includes/file.php';
+			}
 			$site_root_path = get_home_path();
 
 			if ( ! is_writable( $site_root_path ) && ! empty( $_SERVER['DOCUMENT_ROOT'] ) ) {

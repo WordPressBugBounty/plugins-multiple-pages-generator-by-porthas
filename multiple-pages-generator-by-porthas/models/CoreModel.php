@@ -81,6 +81,15 @@ class MPG_CoreModel
 						if ( $project->urls_array ) {
 							$urls_array = is_array( $project->urls_array ) ? $project->urls_array : array();
 						}
+						// After a live refresh, reload the index so $urls_data matches the new build —
+						// otherwise the stale {chunk,offset} mapping resolves the wrong row (#680).
+						if ( is_array( $project->urls_array ) ) {
+							$refreshed_index = MPG_DatasetModel::get_index( $project->id, 'permalinks' );
+							if ( ! empty( $refreshed_index ) ) {
+								$urls_data  = $refreshed_index;
+								$urls_array = array_keys( $urls_data );
+							}
+						}
 					}
 				}
 			} catch ( \Exception $exception ) {
@@ -183,6 +192,17 @@ class MPG_CoreModel
 							self::$current_row[ $project->id . '_index' ] = $item;
 						}
 
+					// A future created_date is a publication schedule, not just display metadata. Keep the
+					// request unresolved (and therefore 404) until that instant. Continue looking in case a
+					// different project owns the same URL and is already published. See issue #525.
+					$created_date = MPG_ProjectModel::get_vpage_created_date( $project );
+					if ( false !== $created_date && $created_date > current_datetime()->getTimestamp() ) {
+						self::$current_row[ $project->id ] = false;
+						unset( self::$current_row[ $project->id . '_index' ] );
+						$redirect_rules = array();
+						continue 2;
+					}
+
 					break 2; // Останавливаем весь цикл. Ведь один УРЛ найден.
 				}
 			}
@@ -278,6 +298,8 @@ class MPG_CoreModel
 		    if ( ! is_array( $strings ) ) {
 			    return $content;
 		    }
+		    // Strip the url/mpg_url column to align the raw row with the shortcode list (#687).
+		    $strings = self::update_dataset_by_removing_url_column( $project_id, $strings );
 		    // In the URL column, there is a relative address, like /new-york/, and if the user writes [mpg]{{mpg_url}}[/mpg]
 		    // then if their WP is installed in a subdirectory (sub), the address will be domain.com/new-york/, not domain.com/sub/new-york
 		    // Therefore, we replace the URL in such a way that it is correct.
@@ -325,7 +347,9 @@ class MPG_CoreModel
 
 		$alt_text_column = in_array( 'featured_image_alt', $headers ) ? array_search( 'featured_image_alt', $headers ) : false;
 		if ( $alt_text_column !== false && ! empty( $strings[ $alt_text_column ] ) ) {
-			$thumbnail_html .= ' alt="' . esc_attr( trim( strip_tags( self::replace_shortcodes_in_content( $strings[ $alt_text_column ], $headers, $strings ) ) ) ) . '" ';
+			// Use the main replacer so raw rows with an early url/mpg_url column are aligned before
+			// positional shortcode replacement, including {{mpg_url}} in alt text.
+			$thumbnail_html .= ' alt="' . esc_attr( trim( strip_tags( self::mpg_shortcode_replacer( $strings[ $alt_text_column ], $project_id ) ) ) ) . '" ';
 		}
 		// data-attributes-empty is used as placeholder to replace with attributes such as class, style from post_thumbnail_html filter.
 		$thumbnail_html .= ' data-attributes-empty />';
@@ -428,7 +452,8 @@ class MPG_CoreModel
 	}
 
 	/**
-	 * Return the current row details from the dataset.
+	 * Return the raw current row (column order matches the project headers). Consumers that pair it
+	 * positionally with mpg_shortcodes_composer() must call update_dataset_by_removing_url_column().
 	 *
 	 * @param $project_id
 	 *
@@ -448,14 +473,14 @@ class MPG_CoreModel
 			$dataset = MPG_DatasetModel::get_dataset_row( $project_id, $item['chunk'], $item['offset'], $item['build_id'] ?? null );
 
 			if ( is_array( $dataset ) && ! empty( $dataset ) ) {
-				return self::update_dataset_by_removing_url_column( $project_id, $dataset );
+				return $dataset;
 			}
 		}
 
 		$project       = MPG_ProjectModel::get_project_by_id( $project_id );
 		$dataset_array = MPG_Helper::mpg_get_dataset_array( $project );
 
-		return $dataset_array[ $index + 1 ] ? self::update_dataset_by_removing_url_column( $project_id, $dataset_array[ $index + 1 ] ) : false;
+		return $dataset_array[ $index + 1 ] ?? false;
 	}
 	/**
 	 * Get the current row details from the dataset.
@@ -517,11 +542,15 @@ class MPG_CoreModel
 	/**
 	 * Update dataset by removing URL column if exists, to prevent it from being used in shortcodes replacement.
 	 *
+	 * Any consumer that pairs a raw dataset row positionally with mpg_shortcodes_composer() must
+	 * strip the url/mpg_url columns first — the composer skips them and appends mpg_url last, so a
+	 * url column that is not the last one shifts every replacement by one position (#728).
+	 *
 	 * @param int $project_id Project id.
 	 * @param array $dataset Dataset row to update.
 	 * @return array Updated dataset row.
 	 */
-	private static function update_dataset_by_removing_url_column( $project_id, $dataset ) {
+	public static function update_dataset_by_removing_url_column( $project_id, $dataset ) {
 		$project = MPG_ProjectModel::get_project_by_id( $project_id );
 		$headers = MPG_ProjectModel::get_headers_from_project( $project);
 		$headers = array_map( 'strtolower', $headers );

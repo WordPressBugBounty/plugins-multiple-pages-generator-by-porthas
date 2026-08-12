@@ -94,13 +94,15 @@ class MPG_DatasetController
 
             $download_dataset = MPG_DatasetModel::download_file($source_path, $destination_path);
 
+            // A string second argument fataled with a TypeError on PHP 8 (Exception::$code is int),
+            // so the failure path itself crashed instead of reporting the error (#753).
             if ($download_dataset !== true) {
-                throw new Exception($download_dataset, 'multiple-pages-generator-by-porthas');
+                throw new Exception(__('The dataset file could not be saved. Check that the uploads directory is writable and try again.', 'multiple-pages-generator-by-porthas'));
             }
             if ( ! file_exists( $destination_path ) ) {
                 $download_dataset = MPG_DatasetModel::download_file($source_path, $destination_path);
                 if ($download_dataset !== true) {
-                    throw new Exception($download_dataset, 'multiple-pages-generator-by-porthas');
+                    throw new Exception(__('The dataset file could not be saved. Check that the uploads directory is writable and try again.', 'multiple-pages-generator-by-porthas'));
                 }
             }
 

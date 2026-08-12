@@ -72,6 +72,9 @@ class Block extends Core {
 
 		$current_project_backup = \MPG_ProjectModel::get_current_project_id();
 
+		// Cast to int so a missing/invalid project id reaches render() as 0 and is rejected with a
+		// friendly exception instead of a TypeError that breaks the whole request (#735).
+		$attributes['project_id'] = (int) ( $attributes['project_id'] ?? 0 );
 		if ( ! empty( $attributes['limit'] ) ) {
 			$attributes['limit'] = (int) $attributes['limit'] > 0 ? (int) $attributes['limit']  : '';
 		}
@@ -85,7 +88,7 @@ class Block extends Core {
 			], $content,$block );
 			\MPG_ProjectModel::set_current_project_id( $current_project_backup );
 			return $content;
-		} catch (\Exception $e) {
+		} catch (\Throwable $e) {
 			\MPG_LogsController::mpg_write($attributes['project_id'], 'error', sprintf( 'Exception in MPG Loop Block: %s %s', $e->getMessage(), var_export($attributes,true) ), __FILE__, __LINE__);
 			\MPG_ProjectModel::set_current_project_id( $current_project_backup );
 

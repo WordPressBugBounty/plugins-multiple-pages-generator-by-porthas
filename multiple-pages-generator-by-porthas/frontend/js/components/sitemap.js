@@ -20,9 +20,10 @@ async function mpgGenerateSitempa(filename, maxUrlPerFile, frequency, addToRobot
     if (!sitemapData.success) {
         toastr.error(sitemapData.error, __('Failed', 'multiple-pages-generator-by-porthas'));
     } else {
-        // Безем название карты сайта из ссылки, которая пришла из сервака. Там может быть просто file.xml, а может быть file-index.xml
-        // В случае, если в дотасете данных больше чем установлен лимит.
-        mpgUpdateState('sitemapFilename', sitemapData.data.split('/').pop().replace('.xml', ''));
+        // The response URL can be file.xml or file-index.xml (multi-file sitemap).
+        // Strip the -index suffix so the editable filename stays the base name and
+        // does not grow an extra -index on every regeneration.
+        mpgUpdateState('sitemapFilename', sitemapData.data.split('/').pop().replace('.xml', '').replace(/-index$/, ''));
 
         jQuery('#mpg_sitemap_url').html(`<a target="_blank" href="${sitemapData.data}">${sitemapData.data}</a>`);
 

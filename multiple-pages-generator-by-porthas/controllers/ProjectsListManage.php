@@ -90,7 +90,10 @@ if ( ! class_exists( 'ProjectsListManage' ) ) {
 
 			$project = MPG_ProjectModel::get_project_by_id( $project_id );
 			if ( ! empty( $project ) ) {
-				MPG_ProjectModel::deleteFileByPath( MPG_DatasetModel::get_dataset_path_by_project( $project ) );
+				$dataset_path = MPG_DatasetModel::get_dataset_path_by_project( $project );
+				foreach ( MPG_DatasetModel::mpg_get_storage_path_variants( $dataset_path ) as $storage_path ) {
+					MPG_ProjectModel::deleteFileByPath( $storage_path );
+				}
 			}
 
 			if ( ! empty( $project->sitemap_filename ) ) {
@@ -117,7 +120,7 @@ if ( ! class_exists( 'ProjectsListManage' ) ) {
 
 			// Удаляем крон-задачу, если есть
 			if ( $project->schedule_source_link && $project->schedule_notificate_about && $project->schedule_periodicity && $project->schedule_notification_email ) {
-				MPG_ProjectModel::mpg_remove_cron_task_by_project_id( $project_id, [ $project ] ); // we are using [project] just to maintain compatibility with the function.
+				MPG_ProjectModel::mpg_remove_cron_task_by_project_id( $project_id, $project );
 			}
 
 			if ( $project->exclude_in_robots ) {
@@ -338,6 +341,19 @@ if ( ! class_exists( 'ProjectsListManage' ) ) {
 					do_action( 'themeisle_log_event', MPG_NAME, sprintf( 'Unable to download file = %s', print_r( $destination, true ) ), 'debug', __FILE__, __LINE__ );
 				}
 				$update_options_array = array( 'source_path' => basename( $destination ), 'urls_array' => true ); // If set to true, it means we need to regenerate the file.
+
+				// The export strips the stored headers, and without them the Project Builder never
+				// renders its data preview — repopulate them from the downloaded dataset (#736).
+				if ( $download_dataset ) {
+					try {
+						$headers = MPG_DatasetController::get_headers( $destination );
+						if ( ! empty( $headers ) && is_array( $headers ) ) {
+							$update_options_array['headers'] = wp_json_encode( $headers );
+						}
+					} catch ( Exception $e ) {
+						do_action( 'themeisle_log_event', MPG_NAME, sprintf( 'Unable to read headers from imported dataset: %s', $e->getMessage() ), 'debug', __FILE__, __LINE__ );
+					}
+				}
 
 				MPG_ProjectModel::mpg_update_project_by_id( $new_id, $update_options_array );
 			}

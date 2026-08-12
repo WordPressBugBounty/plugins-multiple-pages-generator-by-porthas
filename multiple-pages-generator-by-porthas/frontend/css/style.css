@@ -1837,6 +1837,15 @@ table#mpg_dataset_limited_rows_table tr:hover {
     background-color: rgba(224, 239, 255, 1);
     color: rgba(68, 68, 68, 1);
 }
+.alert .icon .dashicons {
+    width: 24px;
+    height: 24px;
+    font-size: 24px;
+    line-height: 1;
+}
+.alert.alert-primary .icon .dashicons {
+    color: #303A9E;
+}
 .mpg-card .input-checkbox {
     max-width: inherit;
     width: auto;

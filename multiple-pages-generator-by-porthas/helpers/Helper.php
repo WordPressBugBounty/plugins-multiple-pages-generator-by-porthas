@@ -68,25 +68,25 @@ class MPG_Helper
                     $uploads_folder_path = MPG_UPLOADS_DIR . $blog_index;
 
                     if (!file_exists($uploads_folder_path)) {
-                        mkdir($uploads_folder_path);
+                        wp_mkdir_p($uploads_folder_path);
                     }
 
 
                     $cache_folder_path = MPG_CACHE_DIR . $blog_index;
 
                     if (!file_exists($cache_folder_path)) {
-                        mkdir($cache_folder_path);
+                        wp_mkdir_p($cache_folder_path);
                     }
 
                     MPG_ProjectModel::mpg_create_database_tables($blog_index);
                 }
             } else {
-                if ( ! file_exists( WP_CONTENT_DIR . '/mpg-uploads' ) ) {
-                    mkdir( WP_CONTENT_DIR . '/mpg-uploads' );
+                if ( ! file_exists( MPG_UPLOADS_DIR ) ) {
+                    wp_mkdir_p( MPG_UPLOADS_DIR );
                 }
 
-                if ( ! file_exists( WP_CONTENT_DIR . '/mpg-cache' ) ) {
-                    mkdir( WP_CONTENT_DIR . '/mpg-cache' );
+                if ( ! file_exists( MPG_CACHE_DIR ) ) {
+                    wp_mkdir_p( MPG_CACHE_DIR );
                 }
 
                 MPG_ProjectModel::mpg_create_database_tables('');
@@ -109,9 +109,6 @@ class MPG_Helper
             }
         }
     }
-
-
-
 
     public static function mpg_send_analytics_data()
     {
@@ -393,7 +390,7 @@ class MPG_Helper
         return $reader;
     }
 
-    public static function mpg_get_dataset_array( stdClass $project = null )
+    public static function mpg_get_dataset_array( ?stdClass $project = null )
     {
 	    $project_id         = isset( $project->id ) ? $project->id : 0;
 	    $dataset_path       = MPG_DatasetModel::get_dataset_path_by_project( $project );
@@ -471,7 +468,7 @@ class MPG_Helper
     /**
      * Live project data update.
      */
-    public static function mpg_live_project_data_update( stdClass $project = null ) {
+    public static function mpg_live_project_data_update( ?stdClass $project = null ) {
 
         $project_id         = isset( $project->id ) ? $project->id : 0;
         $dataset_path       = MPG_DatasetModel::get_dataset_path_by_project( $project );
@@ -507,8 +504,18 @@ class MPG_Helper
             $fields_array = array();
             self::$urls_array = $urls_array;
             $fields_array['urls_array'] = true; // If set to true, it means we need to regenerate the file.
+
+            // Keep stored headers in sync with the source so newly added columns become usable,
+            // logging a warning when previously stored columns disappear (#462).
+            $fields_array = array_merge( $fields_array, MPG_ProjectModel::mpg_prepare_headers_sync( $project, $dataset_path ) );
+
             MPG_ProjectModel::mpg_update_project_by_id( $project_id, $fields_array, true );
             MPG_ProjectModel::update_last_check( $project_id );
+            if ( isset( $fields_array['headers'] ) ) {
+                // Redirect matching continues with this in-memory object. Keep it aligned with the
+                // freshly published index so publication/date checks use the new column positions.
+                $project->headers = $fields_array['headers'];
+            }
             $project->urls_array = $urls_array;
             MPG_SitemapGenerator::maybe_create_sitemap( $project, $urls_array );
         }
@@ -533,14 +540,31 @@ class MPG_Helper
 		return defined( 'MPG_WEBHOOK_KEY' ) ? MPG_WEBHOOK_KEY : ( defined( 'SECURE_AUTH_KEY' ) ? SECURE_AUTH_KEY : 'mpgftw' );
 	}
     /**
+     * Whether MPG default-loop entries apply to this query.
+     *
+     * @param object $query Query to check.
+     * @return bool
+     */
+    private static function is_default_loop_query( $query ) {
+        return $query instanceof WP_Query
+            && ! is_admin()
+            && $query->is_main_query()
+            && ( $query->is_home || $query->is_search );
+    }
+
+    /**
      * Filter found posts.
      *
-     * @param int $found_posts WP_Post found posts.
+     * @param int    $found_posts WP_Post found posts.
+     * @param object $query WP_Query object.
      * @return int
      */
-    public static function mpg_found_posts( $found_posts ) {
+    public static function mpg_found_posts( $found_posts, $query ) {
         global $mpg_default_posts;
-        return $mpg_default_posts > 0 ? count( $mpg_default_posts ) + $found_posts : $found_posts;
+        if ( empty( $mpg_default_posts ) || ! self::is_default_loop_query( $query ) ) {
+            return $found_posts;
+        }
+        return $found_posts + count( $mpg_default_posts );
     }
 
     /**
@@ -551,31 +575,36 @@ class MPG_Helper
      * @return array
      */
     public static function mpg_posts_results( $posts, $query ) {
-	if ( ! $query instanceof WP_Query || ( ! $query->is_home && ! $query->is_search ) ) {
-	    return $posts;
-	}
-        if ( is_admin() ) {
-            return $posts;
-        }
         global $mpg_default_posts;
-        if ( empty( $mpg_default_posts ) ) {
+        if ( empty( $mpg_default_posts ) || ! self::is_default_loop_query( $query ) ) {
             return $posts;
         }
-        $posts_per_page = $query->get( 'posts_per_page' );
-        $posts_per_page = $posts_per_page > 0 ? $posts_per_page : get_option( 'posts_per_page' );
-        $paged          = $query->get( 'paged' );
-        $paged          = $paged > 1 ? $paged - 1 : 0;
-        if ( empty( $posts ) ) {
-            $total_publish_post = wp_count_posts();
-            $total_publish_post = (int) $total_publish_post->publish;
-            $posts              = range( 1, $total_publish_post );
+        $posts_per_page = (int) $query->get( 'posts_per_page' );
+        $posts_per_page = $posts_per_page > 0 ? $posts_per_page : (int) get_option( 'posts_per_page' );
+        $paged          = max( 1, (int) $query->get( 'paged' ) );
+
+        // found_posts already includes the MPG entries (see mpg_found_posts) and
+        // WordPress derived max_num_pages from it. Never recalculate them here —
+        // only append MPG entries to the free slots at the end of the paged loop,
+        // after all real posts (see #671).
+        $slots = $posts_per_page - count( $posts );
+        if ( $slots <= 0 ) {
+            return $posts;
         }
-        $posts                = array_merge( $posts, $mpg_default_posts );
-        $query->found_posts   = is_array( $posts ) ? count( $posts ) : $query->found_posts;
-        $posts                = array_chunk( $posts, $posts_per_page );
-        $query->max_num_pages = ceil( $query->found_posts / $posts_per_page );
-        $query->posts         = isset( $posts[ $paged ] ) ? $posts[ $paged ] : array();
-        return $query->posts;
+        $real_total = (int) $query->found_posts - count( $mpg_default_posts );
+        if ( $real_total < 0 ) {
+            // WordPress skips FOUND_ROWS (and the found_posts filter) when a paged
+            // query returns no rows, leaving found_posts at 0. Rebuild the totals
+            // here so the trailing MPG-only pages resolve instead of 404ing.
+            // ponytail: uses the global published-post count — exact for is_home;
+            // search archives beyond the last real page may still 404.
+            $real_total           = (int) wp_count_posts()->publish;
+            $query->found_posts   = $real_total + count( $mpg_default_posts );
+            $query->max_num_pages = (int) ceil( $query->found_posts / $posts_per_page );
+        }
+        $offset = max( 0, ( ( $paged - 1 ) * $posts_per_page ) - $real_total );
+
+        return array_merge( $posts, array_slice( $mpg_default_posts, $offset, $slots ) );
     }
 
     /**
@@ -585,10 +614,7 @@ class MPG_Helper
      * @return void
      */
     public static function mpg_pre_get_posts( $query ) {
-	if ( ! $query instanceof WP_Query || ( ! $query->is_home && ! $query->is_search ) ) {
-	    return;
-	}
-        if ( is_admin() ) {
+        if ( ! self::is_default_loop_query( $query ) ) {
             return;
         }
         $where       = ' WHERE `participate_in_default_loop` = 1';
@@ -600,6 +626,9 @@ class MPG_Helper
             return;
         }
         global $mpg_default_posts;
+        // Reset once per query — projects append below, so several projects can
+        // contribute entries instead of the last one overwriting the others.
+        $mpg_default_posts = array();
         foreach ( $project_ids as $project_id ) {
             $project       = \MPG_ProjectModel::get_project_by_id( $project_id );
             $dataset_array = MPG_Helper::mpg_get_dataset_array( $project );
@@ -621,14 +650,16 @@ class MPG_Helper
             $featured_image_url = array_search( 'mpg_image', $headers_array, true );
             $template_id        = isset( $project->template_id ) ? (int) $project->template_id : 0;
             $template           = get_post( $template_id );
-            $mpg_default_posts  = array();
             if ( $template instanceof \WP_Post ) {
                 $template_name    = $template->post_title;
                 $template_content = $template->post_content;
                 $short_codes      = \MPG_CoreModel::mpg_shortcodes_composer( $headers_array );
                 foreach ( $urls_array as $index => $url ) {
                     $index   = ++$index;
-                    $strings = $dataset_array[ $index ];
+                    // Strip the url/mpg_url column so the row aligns with the composed shortcode list,
+                    // which skips it and expects mpg_url last (#728).
+                    $strings = \MPG_CoreModel::update_dataset_by_removing_url_column( $project_id, $dataset_array[ $index ] );
+                    $strings[ count( $short_codes ) - 1 ] = \MPG_CoreModel::path_to_url( $url );
 
                     // Create duplicate post array.
                     $duplicate_post                   = new \WP_Post( new stdClass() );

@@ -33,7 +33,7 @@
                             <div class="block-with-tooltip">
                                 <div class="left">
                                     <?php _e('Frequency', 'multiple-pages-generator-by-porthas'); ?>
-                                    <div class="tooltip-circle" data-tippy-content="<?php _e('Tell search engine how frequently you expect to update the pages. This setting typically doesn’t carry a lot of wait unless the content is cornerstone.', 'multiple-pages-generator-by-porthas');?>">
+                                    <div class="tooltip-circle" data-tippy-content="<?php _e('Tell search engine how frequently you expect to update the pages. This setting typically doesn’t carry a lot of weight unless the content is cornerstone.', 'multiple-pages-generator-by-porthas');?>">
                                         <span class="dashicons dashicons-info-outline"></span>
                                     </div>
                                 </div>

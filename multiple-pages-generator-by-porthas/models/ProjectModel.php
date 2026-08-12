@@ -586,11 +586,76 @@ class MPG_ProjectModel
 		delete_transient( $key_name );
 	}
 
+	/**
+	 * Build the `headers` update field for a source sync (#462).
+	 *
+	 * Keeps stored headers in sync with the freshly fetched file so new columns become usable,
+	 * but not silently: when previously stored columns disappear from the source, a warning is
+	 * written to the project log so broken {{mpg_*}} tags can be traced to the source change.
+	 *
+	 * @param object $project      The project object (with the currently stored headers).
+	 * @param string $dataset_path Path to the freshly fetched dataset file.
+	 * @return array Fields to merge into the project update: [ 'headers' => json ] when the
+	 *               headers changed, an empty array otherwise.
+	 */
+	public static function mpg_prepare_headers_sync( $project, $dataset_path ) {
+		$new_headers = MPG_DatasetController::get_headers( $dataset_path );
+		if ( empty( $new_headers ) || ! is_array( $new_headers ) ) {
+			return array();
+		}
+
+		$old_headers = array();
+		if ( ! empty( $project->headers ) ) {
+			$decoded = json_decode( $project->headers, true );
+			if ( is_array( $decoded ) ) {
+				$old_headers = array_values( $decoded );
+			}
+		}
+
+		if ( $old_headers === array_values( $new_headers ) ) {
+			return array();
+		}
+
+		$removed = array_diff( $old_headers, $new_headers );
+		if ( ! empty( $removed ) ) {
+			MPG_LogsController::mpg_write(
+				$project->id ?? 0,
+				'warning',
+				sprintf(
+					// translators: %s: comma-separated list of the removed column names.
+					__( 'The source file no longer contains the column(s): %s. Any {{mpg_*}} tags or URL parts using them will stop rendering.', 'multiple-pages-generator-by-porthas' ),
+					implode( ', ', $removed )
+				)
+			);
+		}
+
+		return array( 'headers' => json_encode( $new_headers ) );
+	}
+
+    /**
+     * Build the rebuild failure message, appending the specific cause when known (#679).
+     *
+     * @param string $reason The specific failure reason, if any.
+     * @return string
+     */
+    public static function mpg_rebuild_error_message( string $reason = '' ) {
+        $message = __( 'Can\'t rebuild project index.', 'multiple-pages-generator-by-porthas' );
+        $reason  = trim( $reason );
+        if ( '' !== $reason ) {
+            // translators: %s: the specific reason the rebuild failed.
+            $message .= ' ' . sprintf( __( 'Details: %s', 'multiple-pages-generator-by-porthas' ), $reason );
+        }
+        return $message;
+    }
+
     public static function mpg_update_project_by_id(int $project_id, $fields_array, $delete_dataset = false )
     {
         global $wpdb;
         $generate_index = false;
         $index_lock_token = null;
+		$database_updated = false;
+		$original_fields  = array();
+		$deferred_fields  = array();
 
         try {
             if ( empty( $fields_array['worksheet_id'] ) ) {
@@ -609,14 +674,47 @@ class MPG_ProjectModel
             if ( $generate_index ) {
 	            $index_lock_token = MPG_DatasetModel::begin_index_generation( $project_id );
 	            if ( false === $index_lock_token ) {
-		            throw new Exception( __( 'Can\'t rebuild project index.', 'multiple-pages-generator-by-porthas' ) );
+		            throw new Exception( self::mpg_rebuild_error_message( __( 'Another rebuild is already in progress for this project.', 'multiple-pages-generator-by-porthas' ) ) );
 	            }
+
+				// The active file snapshot is published atomically by create_index(), so its associated
+				// project metadata must be atomic too. Keep the previous values of the fields written
+				// before the build (source_path/source_type and friends) so a failed rebuild can be
+				// compensated back to the file the still-active chunks were built from.
+				$current_fields = $wpdb->get_row(
+					$wpdb->prepare(
+						"SELECT * FROM {$wpdb->prefix}" . MPG_Constant::MPG_PROJECTS_TABLE . ' WHERE id = %d LIMIT 1',
+						$project_id
+					),
+					ARRAY_A
+				);
+				if ( ! is_array( $current_fields ) ) {
+					throw new Exception( __( 'The project no longer exists.', 'multiple-pages-generator-by-porthas' ) );
+				}
+				// `headers` describes the column order of the build that is about to be created, and
+				// renderers resolve it from the project row (get_headers_from_project()). Writing it
+				// now would have front-end requests pair the new column order with the still-active
+				// previous build for the whole duration of the rebuild — the very #728 misalignment.
+				// The builder does not read it (create_index() and create_dataset_chunks() both take
+				// their headers from the dataset file), so hold it back until the build is published.
+				// `source_path`/`source_type` must still land first: get_dataset_path_by_project()
+				// resolves the file to index from the row.
+				if ( array_key_exists( 'headers', $fields_array ) ) {
+					$deferred_fields['headers'] = $fields_array['headers'];
+					unset( $fields_array['headers'] );
+				}
+
+				$original_fields = array_intersect_key( $current_fields, $fields_array );
             }
 
-            $wpdb->update($wpdb->prefix .  MPG_Constant::MPG_PROJECTS_TABLE, $fields_array, ['id' => $project_id]);
+            // Staging `headers` can leave nothing to write when it was the only requested field.
+            if ( ! empty( $fields_array ) ) {
+                $wpdb->update($wpdb->prefix .  MPG_Constant::MPG_PROJECTS_TABLE, $fields_array, ['id' => $project_id]);
 
-            if ($wpdb->last_error) {
-                throw new Exception($wpdb->last_error);
+                if ($wpdb->last_error) {
+                    throw new Exception($wpdb->last_error);
+                }
+                $database_updated = true;
             }
 
             if ( $delete_dataset ) {
@@ -629,7 +727,18 @@ class MPG_ProjectModel
 
 	        if ( $generate_index ) {
                 if ( ! MPG_DatasetModel::create_index( $project_id, $index_lock_token ) ) {
-	                throw new Exception( __( 'Can\'t rebuild project index.', 'multiple-pages-generator-by-porthas' ) );
+	                throw new Exception( self::mpg_rebuild_error_message( MPG_DatasetModel::get_last_index_error() ) );
+                }
+
+                // The new chunks are live, so the column order that describes them can be published.
+                if ( ! empty( $deferred_fields ) ) {
+                    $wpdb->update( $wpdb->prefix . MPG_Constant::MPG_PROJECTS_TABLE, $deferred_fields, array( 'id' => $project_id ) );
+
+                    if ( $wpdb->last_error ) {
+                        throw new Exception( $wpdb->last_error );
+                    }
+
+                    unset( self::$projects[ $project_id ] );
                 }
             }
 
@@ -639,6 +748,26 @@ class MPG_ProjectModel
 
             return true;
         } catch (Exception $e) {
+			if ( $generate_index && $database_updated && ! empty( $original_fields ) ) {
+				$rollback_result = $wpdb->update(
+					$wpdb->prefix . MPG_Constant::MPG_PROJECTS_TABLE,
+					$original_fields,
+					array( 'id' => $project_id )
+				);
+
+				if ( false === $rollback_result ) {
+					do_action(
+						'themeisle_log_event',
+						MPG_NAME,
+						__( 'Can\'t roll back project metadata after an index rebuild failure.', 'multiple-pages-generator-by-porthas' ) . ' ' . $wpdb->last_error,
+						'error',
+						__FILE__,
+						__LINE__
+					);
+				}
+
+				unset( self::$projects[ $project_id ] );
+			}
 
             do_action(
                 'themeisle_log_event',
@@ -1104,22 +1233,106 @@ class MPG_ProjectModel
 
 		// If the 'update_modified_on_sync' property is set to 'column', retrieve the modified date from the dataset
 		if ( $project->update_modified_on_sync === 'column' ) {
-			$headers = MPG_ProjectModel::get_headers_from_project( $project );
-
-			// Check if the 'modified_date' column exists in the headers
-			$column_index = \MPG_ProjectModel::headers_have_column( $headers, 'modified_date' );
-			if ( $column_index === false ) {
-				return false;
-			}
-
-			// Get the current data row for the project
-			$datarow = MPG_CoreModel::get_current_datarow( $project->id );
-
-			// Return the modified date if it is a valid timestamp, otherwise try to convert it to a timestamp
-			return MPG_Validators::is_timestamp( $datarow[ $column_index ] ) ? $datarow[ $column_index ] : ( strtotime( $datarow[ $column_index ] ) === false ? false : strtotime( $datarow[ $column_index ] ) );
+			// Read via the url-aware helper: get_current_datarow() strips the url column, so indexing the
+			// full headers directly was off by one — it read the wrong cell or an undefined index. See #525.
+			return self::parse_date_cell( self::get_current_row_value( $project, 'modified_date' ) );
 		}
 
 		return false;
+	}
+
+	/**
+	 * Get the creation (published) date for the current virtual page from a `created_date` column.
+	 *
+	 * Mirrors get_vpage_modified_date(): reads the current data row's `created_date` value. Pro only.
+	 * See issue #525.
+	 *
+	 * @param object $project The project object.
+	 * @return int|false The creation date as a timestamp if found, false otherwise.
+	 */
+	public static function get_vpage_created_date( $project ) {
+		if ( ! mpg_app()->is_license_of_type( 2 ) ) {
+			return false;
+		}
+
+		return self::parse_date_cell( self::get_current_row_value( $project, 'created_date' ) );
+	}
+
+	/**
+	 * Parse a dataset date cell to a Unix timestamp (issue #525).
+	 *
+	 * Handles three shapes a date column can arrive in:
+	 *  - a date string ("2020-03-15", "March 15 2020"), parsed in the site timezone;
+	 *  - a spreadsheet date serial (days since 1899-12-30, e.g. Excel/Google Sheets export a
+	 *    date-typed cell as a number like 43905) — a bare number here is NOT a Unix timestamp, so
+	 *    treating it as seconds since 1970 would render every page as 1970-01-01;
+	 *  - a genuine Unix timestamp (large integer).
+	 *
+	 * @param string|int|null $value The raw cell value.
+	 * @return int|false The timestamp, or false when the value can't be interpreted.
+	 */
+	private static function parse_date_cell( $value ) {
+		if ( null === $value || '' === $value ) {
+			return false;
+		}
+
+		if ( is_numeric( $value ) ) {
+			$number = (float) $value;
+			// Spreadsheet date serials stay well below 100000 (that's already the year ~2160), while a
+			// real Unix timestamp for any modern date is far larger — so a small number is a serial.
+			if ( $number > 0 && $number < 100000 ) {
+				$date = date_create( '1899-12-30', wp_timezone() );
+				$date->modify( '+' . (int) round( $number ) . ' days' );
+
+				return $date->getTimestamp();
+			}
+
+			return (int) $number;
+		}
+
+		// Parse in the site timezone (strtotime would use the server default). A timezone embedded
+		// in the value itself still takes precedence, matching WordPress behaviour.
+		$date = date_create( $value, wp_timezone() );
+
+		return $date === false ? false : $date->getTimestamp();
+	}
+
+	/**
+	 * Read the current data row's value for a header name.
+	 *
+	 * get_current_datarow() strips the url column from the row, so the header list is aligned the
+	 * same way before indexing — otherwise the column index (taken from the full headers) would be
+	 * off by one and read the neighbouring column. See issue #525.
+	 *
+	 * @param object $project The project object.
+	 * @param string $column  The header name to read (e.g. 'created_date').
+	 * @return string|null The cell value, or null when the row/column is unavailable.
+	 */
+	private static function get_current_row_value( $project, $column ) {
+		$datarow = MPG_CoreModel::get_current_datarow( $project->id );
+		if ( ! is_array( $datarow ) ) {
+			return null;
+		}
+
+		$full_headers = self::get_headers_from_project( $project );
+		$stripped_headers = array_values( array_filter(
+			$full_headers,
+			function ( $header ) {
+				return ! in_array( strtolower( $header ), array( 'url', 'mpg_url' ), true );
+			}
+		) );
+
+		// get_current_datarow() usually strips the url column, but not in every build state — so pick the
+		// header list whose length matches the actual row rather than assuming. Indexing the wrong list
+		// shifts every column by one (created reads the column before it, etc). See issue #525.
+		$headers = ( count( $datarow ) === count( $full_headers ) ) ? $full_headers : $stripped_headers;
+
+		$column_index = self::headers_have_column( $headers, $column );
+		if ( $column_index === false || ! isset( $datarow[ $column_index ] ) ) {
+			return null;
+		}
+
+		return $datarow[ $column_index ];
 	}
 
 }

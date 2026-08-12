@@ -17,6 +17,32 @@ class MPG_DatasetModel
 	protected static $resolved_build_ids = [];
 
 	/**
+	 * Reason for the most recent index build failure, surfaced in the rebuild report email (#679).
+	 *
+	 * @var string
+	 */
+	protected static $last_index_error = '';
+
+	/**
+	 * Get the reason for the most recent index build failure.
+	 *
+	 * @return string Empty string when the last build succeeded or no build has run.
+	 */
+	public static function get_last_index_error() {
+		return self::$last_index_error;
+	}
+
+	/**
+	 * Record the reason for an index build failure.
+	 *
+	 * @param string $message The failure reason.
+	 * @return void
+	 */
+	protected static function set_index_error( $message ) {
+		self::$last_index_error = (string) $message;
+	}
+
+	/**
 	 * Get the chunk size to use for dataset chunking.
 	 *
 	 * @return int The chunk size
@@ -120,7 +146,7 @@ class MPG_DatasetModel
 	 * @return bool Whether the dataset is chunked
 	 */
 	public static function is_dataset_chunked( $project_id ) {
-		return file_exists( self::get_index_path( $project_id ) );
+		return file_exists( self::mpg_with_legacy_fallback( self::get_index_path( $project_id ) ) );
 	}
 
 	/**
@@ -134,7 +160,7 @@ class MPG_DatasetModel
 			return self::$resolved_build_ids[ $project_id ];
 		}
 
-		$manifest_path = self::get_active_build_manifest_path( $project_id );
+		$manifest_path = self::mpg_with_legacy_fallback( self::get_active_build_manifest_path( $project_id ) );
 		$build_id      = false;
 
 		if ( file_exists( $manifest_path ) ) {
@@ -142,7 +168,7 @@ class MPG_DatasetModel
 			$manifest_data     = json_decode( $manifest_contents, true );
 			if ( isset( $manifest_data['build_id'] ) && is_string( $manifest_data['build_id'] ) ) {
 				$manifest_build_id = sanitize_file_name( $manifest_data['build_id'] );
-				if ( $manifest_build_id !== '' && file_exists( self::get_index_path( $project_id, $manifest_build_id ) ) ) {
+				if ( $manifest_build_id !== '' && file_exists( self::mpg_with_legacy_fallback( self::get_index_path( $project_id, $manifest_build_id ) ) ) ) {
 					$build_id = $manifest_build_id;
 				}
 			}
@@ -160,10 +186,13 @@ class MPG_DatasetModel
 	 * @return bool Whether the index was created successfully
 	 */
 	public static function create_index( $project_id, $lock_token = null ) {
+		self::$last_index_error = '';
+
 		$has_external_lock = is_string( $lock_token ) && '' !== $lock_token;
 		if ( ! $has_external_lock ) {
 			$lock_token = self::acquire_index_generation_lock( $project_id );
 			if ( false === $lock_token ) {
+				self::set_index_error( __( 'Another rebuild is already in progress for this project.', 'multiple-pages-generator-by-porthas' ) );
 				return false;
 			}
 		}
@@ -173,6 +202,9 @@ class MPG_DatasetModel
 
 		try {
 			if ( ! self::create_dataset_chunks( $project_id, $build_id ) ) {
+				if ( '' === self::$last_index_error ) {
+					self::set_index_error( __( 'The dataset could not be processed.', 'multiple-pages-generator-by-porthas' ) );
+				}
 				return false;
 			}
 
@@ -198,6 +230,7 @@ class MPG_DatasetModel
 			$index_temp_path      = self::get_index_temp_path( $index_path, 'index', $run_token );
 			$permalinks_file      = fopen( $permalinks_temp_path, 'w' );
 			if ( ! $permalinks_file ) {
+				self::set_index_error( __( 'The index files could not be written. Please check that the uploads directory is writable.', 'multiple-pages-generator-by-porthas' ) );
 				return false;
 			}
 
@@ -262,6 +295,7 @@ class MPG_DatasetModel
 
 			$index_file = fopen( $index_temp_path, 'w' );
 			if ( ! $index_file ) {
+				self::set_index_error( __( 'The index files could not be written. Please check that the uploads directory is writable.', 'multiple-pages-generator-by-porthas' ) );
 				self::cleanup_on_error( null, $permalinks_temp_path, $index_temp_path );
 				return false;
 			}
@@ -372,7 +406,7 @@ class MPG_DatasetModel
 	 */
 	public static function delete_index( $project_id, $build_id = null ) {
 		$resolved_build_id = self::resolve_build_id_context( $project_id, $build_id );
-		$index_path        = self::get_index_path( $project_id, $resolved_build_id );
+		$index_path        = self::mpg_with_legacy_fallback( self::get_index_path( $project_id, $resolved_build_id ) );
 		self::delete_index_cache( $project_id, $resolved_build_id );
 
 		if ( file_exists( $index_path ) ) {
@@ -397,7 +431,10 @@ class MPG_DatasetModel
 			return isset( $chunked_index['indexes'][ $key ] ) ? $chunked_index['indexes'][ $key ] : $chunked_index;
 		}
 
-		$index_path = self::get_index_path( $project_id, $build_id );
+		// Read via the legacy fallback: right after the plugin update the index may still live in
+		// the old wp-content/mpg-uploads/ location until the uploads migration runs on admin_init.
+		// Without this, front-end URL matching returns no permalinks and virtual pages 404 (#686).
+		$index_path = self::mpg_with_legacy_fallback( self::get_index_path( $project_id, $build_id ) );
 
 		if ( ! file_exists( $index_path ) ) {
 			return array();
@@ -536,6 +573,11 @@ class MPG_DatasetModel
 		$chunk_size = self::get_chunk_size();
 		$project_path = self::get_dataset_path_by_project( $project_id );
 
+		if ( empty( $project_path ) || ! file_exists( $project_path ) ) {
+			self::set_index_error( __( 'The dataset file is missing.', 'multiple-pages-generator-by-porthas' ) );
+			return false;
+		}
+
 		$ext = MPG_Helper::mpg_get_extension_by_path( $project_path );
 		$reader = MPG_Helper::mpg_get_spout_reader_by_extension( $ext );
 		$reader->setShouldFormatDates( true );
@@ -568,6 +610,7 @@ class MPG_DatasetModel
 
 			// If we don't have enough rows, don't bother chunking
 			if ( $total_rows <= 1 ) {
+				self::set_index_error( __( 'The dataset is empty — it has no data rows.', 'multiple-pages-generator-by-porthas' ) );
 				return false;
 			}
 
@@ -645,6 +688,8 @@ class MPG_DatasetModel
 				if ( is_string( $build_id ) && '' !== $build_id ) {
 					self::delete_build_snapshot( $project_id, $build_id );
 				}
+				// translators: %s: the underlying error message from the dataset reader.
+				self::set_index_error( sprintf( __( 'The dataset file could not be read: %s', 'multiple-pages-generator-by-porthas' ), $e->getMessage() ) );
 				do_action( 'themeisle_log_event', MPG_NAME, $e->getMessage(), 'debug', __FILE__, __LINE__ );
 				return false;
 			}
@@ -664,7 +709,7 @@ class MPG_DatasetModel
 			return $cached_chunk;
 		}
 		
-		$chunk_path = self::get_chunk_path( $project_id, $chunk_number, $resolved_build_id );
+		$chunk_path = self::mpg_with_legacy_fallback( self::get_chunk_path( $project_id, $chunk_number, $resolved_build_id ) );
 
 		if ( file_exists( $chunk_path ) ) {
 			$chunk_content = file_get_contents( $chunk_path );
@@ -735,7 +780,7 @@ class MPG_DatasetModel
 			return $meta;
 		}
 		// Fallback: Try to read from index file's meta section
-		$index_path = self::get_index_path( $project_id, $resolved_build_id );
+		$index_path = self::mpg_with_legacy_fallback( self::get_index_path( $project_id, $resolved_build_id ) );
 		if ( file_exists( $index_path ) ) {
 			$index_content = file_get_contents( $index_path );
 			if ( $index_content ) {
@@ -876,34 +921,108 @@ class MPG_DatasetModel
 	 */
 	public static function delete_project_folders( $project_id ) {
 		$project_path = self::get_project_path( $project_id );
+		$project_root = untrailingslashit( $project_path );
 		$builds_dir   = self::get_builds_dir( $project_id );
+		$legacy_path  = MPG_LEGACY_UPLOADS_DIR . substr( $project_path, strlen( MPG_UPLOADS_DIR ) );
+		$legacy_root  = untrailingslashit( $legacy_path );
 
-		self::delete_dataset_chunks( $project_id, false );
-		self::delete_index( $project_id, false );
+		if ( is_link( $project_root ) ) {
+			// A migrated project directory may itself be a link. Remove only the link; resolving index,
+			// chunk or build paths below it would delete files outside MPG's storage tree.
+			@unlink( $project_root ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+		} else {
+			self::delete_dataset_chunks( $project_id, false );
+			self::delete_index( $project_id, false );
 
-		if ( file_exists( $builds_dir ) ) {
-			$build_paths = glob( $builds_dir . '*' );
-			if ( is_array( $build_paths ) ) {
-				foreach ( $build_paths as $build_path ) {
-					if ( is_dir( $build_path ) ) {
-						self::delete_build_snapshot( $project_id, basename( $build_path ) );
+			if ( file_exists( $builds_dir ) ) {
+				$build_paths = glob( $builds_dir . '*' );
+				if ( is_array( $build_paths ) ) {
+					foreach ( $build_paths as $build_path ) {
+						if ( is_dir( $build_path ) ) {
+							self::delete_build_snapshot( $project_id, basename( $build_path ) );
+						}
 					}
 				}
+
+				@rmdir( $builds_dir );
 			}
 
-			@rmdir( $builds_dir );
-		}
+			$manifest_path = self::get_active_build_manifest_path( $project_id );
+			if ( file_exists( $manifest_path ) ) {
+				unlink( $manifest_path );
+			}
 
-		$manifest_path = self::get_active_build_manifest_path( $project_id );
-		if ( file_exists( $manifest_path ) ) {
-			unlink( $manifest_path );
+			if ( file_exists( $project_root ) ) {
+				self::delete_directory_tree( $project_root );
+			}
 		}
 
 		delete_option( self::get_index_generation_lock_key( $project_id ) );
 
-		if ( file_exists( $project_path ) ) {
-			rmdir( $project_path );
+		// A skipped or partial uploads migration can leave the complete active snapshot in the
+		// legacy tree. Delete it explicitly rather than following the read fallback (which chooses
+		// only one location), so project deletion does not retain customer dataset artifacts.
+		$legacy_builds_dir = $legacy_path . 'builds/';
+		if ( ! is_link( $legacy_root ) && is_dir( $legacy_builds_dir ) ) {
+			$legacy_build_paths = glob( $legacy_builds_dir . '*' );
+			if ( is_array( $legacy_build_paths ) ) {
+				foreach ( $legacy_build_paths as $legacy_build_path ) {
+					if ( is_dir( $legacy_build_path ) ) {
+						$legacy_build_id = basename( $legacy_build_path );
+						self::delete_index_cache( $project_id, $legacy_build_id );
+						self::delete_dataset_chunks_cache( $project_id, $legacy_build_id );
+					}
+				}
+			}
 		}
+
+		self::delete_directory_tree( $legacy_root );
+		unset( self::$resolved_build_ids[ $project_id ] );
+	}
+
+	/**
+	 * Recursively delete one exact project storage directory.
+	 *
+	 * @param string $path Absolute project directory path.
+	 * @return void
+	 */
+	private static function delete_directory_tree( $path ) {
+		if ( is_link( $path ) ) {
+			@unlink( $path ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+			return;
+		}
+		if ( ! is_dir( $path ) ) {
+			return;
+		}
+
+		global $wp_filesystem;
+		if ( ! function_exists( 'WP_Filesystem' ) ) {
+			require_once ABSPATH . 'wp-admin/includes/file.php';
+		}
+		WP_Filesystem();
+
+		if ( $wp_filesystem instanceof WP_Filesystem_Base && $wp_filesystem->delete( $path, true ) ) {
+			return;
+		}
+
+		// Direct-filesystem fallback for hosts where WP_Filesystem requires credentials. Project
+		// deletion already uses direct unlink/rmdir operations elsewhere in this class.
+		$entries = @scandir( $path ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+		if ( ! is_array( $entries ) ) {
+			return;
+		}
+		foreach ( $entries as $entry ) {
+			if ( '.' === $entry || '..' === $entry ) {
+				continue;
+			}
+			$entry_path = $path . DIRECTORY_SEPARATOR . $entry;
+			if ( is_dir( $entry_path ) && ! is_link( $entry_path ) ) {
+				self::delete_directory_tree( $entry_path );
+			} else {
+				@unlink( $entry_path ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+			}
+		}
+		@rmdir( $path ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
 	}
 
 	/**
@@ -931,12 +1050,12 @@ class MPG_DatasetModel
 
 			WP_Filesystem();
 			global $wp_filesystem;
-			// Make dir if not exists.
-			if ( ! $wp_filesystem->exists( MPG_UPLOADS_DIR ) ) {
-				$wp_filesystem->mkdir( MPG_UPLOADS_DIR, FS_CHMOD_DIR );
-			}
-			if ( ! $wp_filesystem->exists( dirname($destination_path) ) ) {
-				$wp_filesystem->mkdir( dirname($destination_path), FS_CHMOD_DIR );
+			// WP_Filesystem's mkdir() is single-level, so a never-used custom uploads base (no parent
+			// dirs yet) failed silently here — create the whole tree and fail loudly instead (#753).
+			$destination_dir = dirname( $destination_path );
+			if ( ! $wp_filesystem->exists( $destination_dir ) && ! wp_mkdir_p( $destination_dir ) ) {
+				// translators: %s: the directory path.
+				throw new Exception( sprintf( __( 'Unable to create destination directory: %s', 'multiple-pages-generator-by-porthas' ), $destination_dir ) );
 			}
 
 			// Move temp file to final destination.
@@ -945,7 +1064,14 @@ class MPG_DatasetModel
 			// File delete and re-fetch in case of the file is not writeable.
 			if ( ! $updated && is_readable( $destination_path ) ) {
 				$wp_filesystem->delete( $destination_path );
-				return $wp_filesystem->move( $tmp_path, $destination_path, true );
+				$updated = $wp_filesystem->move( $tmp_path, $destination_path, true );
+			}
+
+			if ( ! $updated ) {
+				// The result must reflect the move: reporting success while nothing was written leaves
+				// the caller creating projects for a dataset that does not exist on disk (#753).
+				// translators: %s: the dataset destination path.
+				throw new Exception( sprintf( __( 'Unable to save the dataset file to: %s', 'multiple-pages-generator-by-porthas' ), $destination_path ) );
 			}
 
 			return true;
@@ -982,6 +1108,43 @@ class MPG_DatasetModel
 		}
 		return $base_url;
 	}
+
+	/**
+	 * Fall back to the legacy uploads path when a file only exists in the old location (#686).
+	 *
+	 * @param string $path Absolute path under the new uploads directory.
+	 * @return string The new path, or the legacy path when only the legacy file exists.
+	 */
+	public static function mpg_with_legacy_fallback( $path ) {
+		if ( '' === $path || file_exists( $path ) ) {
+			return $path;
+		}
+		if ( 0 === strpos( (string) $path, MPG_UPLOADS_DIR ) ) {
+			$legacy_path = MPG_LEGACY_UPLOADS_DIR . substr( $path, strlen( MPG_UPLOADS_DIR ) );
+			if ( file_exists( $legacy_path ) ) {
+				return $legacy_path;
+			}
+		}
+		return $path;
+	}
+
+	/**
+	 * Return both possible storage locations for a path during the uploads migration window.
+	 *
+	 * @param string $path Absolute path in either the current or legacy MPG uploads tree.
+	 * @return array<string> Unique absolute path variants, with the supplied path first.
+	 */
+	public static function mpg_get_storage_path_variants( $path ) {
+		$paths = array( $path );
+		if ( 0 === strpos( (string) $path, MPG_UPLOADS_DIR ) ) {
+			$paths[] = MPG_LEGACY_UPLOADS_DIR . substr( $path, strlen( MPG_UPLOADS_DIR ) );
+		} elseif ( 0 === strpos( (string) $path, MPG_LEGACY_UPLOADS_DIR ) ) {
+			$paths[] = MPG_UPLOADS_DIR . substr( $path, strlen( MPG_LEGACY_UPLOADS_DIR ) );
+		}
+
+		return array_values( array_unique( $paths ) );
+	}
+
 	/**
 	 * Get the dataset path by project.
 	 *
@@ -1011,7 +1174,7 @@ class MPG_DatasetModel
 		$base_path = self::uploads_base_path();
 		//We check if the path has any directory separator, if not we assume it is a filename.
 		if ( strpos( $dataset_path, DIRECTORY_SEPARATOR ) === false ) {
-			return $base_path . $dataset_path;
+			return self::mpg_with_legacy_fallback( $base_path . $dataset_path );
 		}
 		//This is a legacy code, we need to check if the path is relative or absolute using wp-content.
 		if ( false === strpos( $dataset_path, 'wp-content' ) ) {
@@ -1019,24 +1182,24 @@ class MPG_DatasetModel
 			$dataset_path = MPG_UPLOADS_DIR . $dataset_path;
 			$filename     = basename( $dataset_path );
 			$wpdb->update( $wpdb->prefix . MPG_Constant::MPG_PROJECTS_TABLE, [ 'source_path' => $filename ], [ 'id' => $project_id ] );
-			return $dataset_path;
+			return self::mpg_with_legacy_fallback( $dataset_path );
 		}
 		// We check if the path is absolute, and convert it to relative.
 		if( str_starts_with( $dataset_path, $base_path ) ) {
 			$filename     = basename( $dataset_path );
 			//We update the source file with the proper one.
 			$wpdb->update( $wpdb->prefix . MPG_Constant::MPG_PROJECTS_TABLE, [ 'source_path' => $filename ], [ 'id' => $project_id ] );
-			return $dataset_path;
+			return self::mpg_with_legacy_fallback( $dataset_path );
 		}
 		//The path is absolute but is using a different directory, maybe due to server migration or hosting change.
 		if( ! str_starts_with( $dataset_path, MPG_UPLOADS_DIR ) ) {
 			$filename     = basename( $dataset_path );
 			$wpdb->update( $wpdb->prefix . MPG_Constant::MPG_PROJECTS_TABLE, [ 'source_path' => $filename ], [ 'id' => $project_id ] );
 
-			return $base_path . $filename;
+			return self::mpg_with_legacy_fallback( $base_path . $filename );
 		}
 
-		return $dataset_path;
+		return self::mpg_with_legacy_fallback( $dataset_path );
 	}
 
 	/**
@@ -1068,14 +1231,28 @@ class MPG_DatasetModel
 	}
 
 	/**
-	 * Read dataset from file.
+	 * Surface a missing/unreadable dataset file in the MPG Logs tab when the file maps to a
+	 * project, falling back to the debug-only themeisle_log_event action otherwise (#726).
+	 *
+	 * @param string $file    The dataset file path.
+	 * @param string $message The error message to log.
+	 */
+	protected static function log_unreadable_dataset( string $file, string $message ): void {
+		$project_id = self::get_project_id_by_dataset_path( $file );
+		if ( $project_id ) {
+			MPG_LogsController::mpg_write( $project_id, 'error', $message, __FILE__, __LINE__ );
+		} else {
+			do_action( 'themeisle_log_event', MPG_NAME, $message, 'error', __FILE__, __LINE__ );
+		}
+	}
+
+	/**
+	 * Read dataset from file. Returns an empty array when the file is missing or unreadable (#726).
 	 *
 	 * @param string $file
 	 * @param bool $headers_only If true, only headers will be read.
 	 *
 	 * @return array
-	 * @throws \Box\Spout\Common\Exception\IOException
-	 * @throws \Box\Spout\Reader\Exception\ReaderNotOpenedException
 	 */
 	public static function read_dataset_original( string $file, bool $headers_only = false ):array {
 		if ( ! $headers_only ) {
@@ -1085,14 +1262,28 @@ class MPG_DatasetModel
 			}
 		}
 
+		// Spout throws an uncatchable-upstream IOException on missing files (#726); fail soft instead.
+		if ( ! is_readable( $file ) ) {
+			self::log_unreadable_dataset(
+				$file,
+				sprintf(
+					// translators: %s is the dataset file path.
+					esc_html__( 'Dataset file is missing or unreadable: %s', 'multiple-pages-generator-by-porthas' ),
+					$file
+				)
+			);
+			return [];
+		}
+
 		$dataset_array = ! mpg_app()->is_premium() ? new MpgArray( [],mpg_app()->is_legacy_user() ? 300000 : 0 ) : new MpgLargeArray();
 
 		$ext    = MPG_Helper::mpg_get_extension_by_path( $file );
 		$reader = MPG_Helper::mpg_get_spout_reader_by_extension( $ext );
 		$reader->setShouldFormatDates( true );
-		$reader->open( $file );
 
 		try {
+			// Inside the try: the file can still vanish between is_readable() and open() (#726).
+			$reader->open( $file );
 			foreach ( $reader->getSheetIterator() as $sheet ) {
 				foreach ( $sheet->getRowIterator() as $row ) {
 					$row = $row->toArray();
@@ -1104,6 +1295,13 @@ class MPG_DatasetModel
 					}
 				}
 			}
+		} catch ( \Box\Spout\Common\Exception\IOException $e ) {
+			// The file vanished between is_readable() and open() — same missing-file case as above.
+			// Return before set_cache()/update_last_check() so the failed read is not recorded as a
+			// successful empty check.
+			self::log_unreadable_dataset( $file, $e->getMessage() );
+			$reader->close();
+			return [];
 		} catch ( Exception $e ) {
 			do_action( 'themeisle_log_event', MPG_NAME, $e->getMessage(), 'debug', __FILE__, __LINE__ );
 		}
@@ -1127,8 +1325,6 @@ class MPG_DatasetModel
 	 * @param int|null $offset Optional offset to start reading from
 	 *
 	 * @return array
-	 * @throws \Box\Spout\Common\Exception\IOException
-	 * @throws \Box\Spout\Reader\Exception\ReaderNotOpenedException
 	 */
 	public static function read_dataset( string $file, bool $headers_only = false, $project_id = null, $limit = null, $offset = null ):array {
 		if ( $project_id !== null && self::is_dataset_chunked( $project_id ) ) {
@@ -1151,8 +1347,6 @@ class MPG_DatasetModel
 	 * @param int|null $offset Optional offset to start reading from
 	 * 
 	 * @return array The dataset rows
-	 * @throws \Box\Spout\Common\Exception\IOException
-	 * @throws \Box\Spout\Reader\Exception\ReaderNotOpenedException
 	 */
 	public static function get_dataset( string $file, $project_id = null, $limit = null, $offset = null ) {
 		$dataset = self::read_dataset( $file, false, $project_id, $limit, $offset );
@@ -1171,8 +1365,6 @@ class MPG_DatasetModel
 	 * @param int|null $project_id Project ID for caching
 	 * 
 	 * @return int The total number of rows in the dataset
-	 * @throws \Box\Spout\Common\Exception\IOException
-	 * @throws \Box\Spout\Reader\Exception\ReaderNotOpenedException
 	 */
 	public static function get_dataset_row_count( $current_data, $project_id = null  ) {
 		if ( $project_id !== null && self::is_dataset_chunked( $project_id ) ) {
@@ -1710,7 +1902,7 @@ class MPG_DatasetModel
 	 */
 	public static function regenerate_index( $project_id, $project ) {
 		$build_id   = self::get_active_build_id( $project_id );
-		$index_path = self::get_index_path( $project_id, $build_id );
+		$index_path = self::mpg_with_legacy_fallback( self::get_index_path( $project_id, $build_id ) );
 		$success    = false;
 
 		if ( file_exists( $index_path ) ) {

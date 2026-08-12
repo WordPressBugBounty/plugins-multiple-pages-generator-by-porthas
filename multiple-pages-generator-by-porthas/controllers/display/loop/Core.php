@@ -72,10 +72,14 @@ abstract class Core extends Base_Display {
 		}
 		$limit = ! empty( $args['limit'] ) ? intval( $args['limit'] ) : 10000; // We really don't need to show more than this items on a page.
 
+		$include_current_row = false;
 		if ( ! empty( $args['conditions']['conditions'] ) ) {
 
 			//Translate placeholders to actual values. We need to do this before changing the current project id since the placeholders reference the current loop.
 			$args['conditions']['conditions'] = $this->translate_conditions( $args['conditions']['conditions'] );
+			// A filter anchored to the viewed page (e.g. {{mpg_current_title}}) deliberately selects
+			// the current page's own row, so the self-link exclusion below must not drop it (#734).
+			$include_current_row = $this->conditions_used_context_tag();
 		}
 		\MPG_ProjectModel::set_current_project_id( $project_id );
 		$filtered_dataset_index = [];
@@ -140,7 +144,9 @@ abstract class Core extends Base_Display {
 			}else{
 				$content_template = $content;
 			}
-			$strings                              = $dataset_array[ $index ];
+			// Strip the url/mpg_url column so the row aligns with the composed shortcode list, which
+			// skips it and expects mpg_url last — otherwise a url-first dataset shifts every value (#728).
+			$strings = \MPG_CoreModel::update_dataset_by_removing_url_column( $project_id, $dataset_array[ $index ] );
 
 			if ( \MPG_DatasetModel::is_dataset_chunked( $project_id ) ) {
 				$base_url = \MPG_ProjectModel::mpg_generate_url_for_row( $dataset_array[ $index ], $headers, $project_data->url_structure, $project_data->space_replacer );
@@ -158,7 +164,7 @@ abstract class Core extends Base_Display {
 			}
 
 			// Skip if the generated URL matches the current request URI
-			if ( parse_url( $strings[ count( $short_codes ) - 1 ], PHP_URL_PATH ) === $current_url ) {
+			if ( ! $include_current_row && parse_url( $strings[ count( $short_codes ) - 1 ], PHP_URL_PATH ) === $current_url ) {
 				continue;
 			}
 

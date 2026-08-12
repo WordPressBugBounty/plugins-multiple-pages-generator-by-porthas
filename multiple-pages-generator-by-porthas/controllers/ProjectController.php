@@ -11,6 +11,72 @@ require_once(realpath(__DIR__) . '/../models/DatasetModel.php');
 
 class MPG_ProjectController
 {
+	/**
+	 * Replace a project's recurring cron event without orphaning the previous argument set.
+	 *
+	 * WordPress identifies cron events by hook plus serialized arguments. Persisting new schedule
+	 * fields before clearing the old argument set makes that old event impossible to reconstruct.
+	 *
+	 * @param int         $project_id       Project ID.
+	 * @param object|null $previous_project Project state before the schedule fields are updated.
+	 * @param string      $direct_link      New source URL.
+	 * @param string      $notificate_about New notification mode.
+	 * @param string      $periodicity      New recurrence.
+	 * @param string|null $notification_email Notification recipient.
+	 * @param string|null $fetch_date_time  First execution in Y/m/d H:i format.
+	 * @param string|null $timezone         Timezone for the first execution.
+	 * @return void
+	 * @throws Exception When the supplied schedule cannot be created.
+	 */
+	public static function mpg_replace_project_cron_event( $project_id, $previous_project, $direct_link, $notificate_about, $periodicity, $notification_email, $fetch_date_time, $timezone ) {
+		$old_arguments = array();
+		if ( is_object( $previous_project ) && ! empty( $previous_project->schedule_source_link ) && ! empty( $previous_project->schedule_notificate_about ) && ! empty( $previous_project->schedule_periodicity ) ) {
+			$old_arguments = array(
+				(int) $project_id,
+				$previous_project->schedule_source_link,
+				$previous_project->schedule_notificate_about,
+				$previous_project->schedule_periodicity,
+				$previous_project->schedule_notification_email ?? null,
+			);
+		}
+
+		$recurring = in_array( $periodicity, array( 'hourly', 'twicedaily', 'daily', 'weekly', 'monthly' ), true );
+		$new_arguments = $recurring && ! empty( $direct_link ) && ! empty( $notificate_about )
+			? array( (int) $project_id, $direct_link, $notificate_about, $periodicity, $notification_email )
+			: array();
+
+		if ( empty( $new_arguments ) || empty( $fetch_date_time ) || empty( $timezone ) ) {
+			// A changed or disabled schedule must not leave the old event active. When an otherwise
+			// identical recurring schedule omits its start time, keep the valid existing event until Save.
+			if ( ! empty( $old_arguments ) && $old_arguments !== $new_arguments ) {
+				wp_clear_scheduled_hook( 'mpg_schedule_execution', $old_arguments );
+			}
+			return;
+		}
+
+		$datetime = DateTime::createFromFormat( '!Y/m/d H:i', $fetch_date_time, new DateTimeZone( $timezone ) );
+		if ( false === $datetime ) {
+			throw new Exception( __( 'The scheduled sync date is invalid.', 'multiple-pages-generator-by-porthas' ) );
+		}
+		$execution_time = $datetime->getTimestamp();
+		$existing_time  = wp_next_scheduled( 'mpg_schedule_execution', $new_arguments );
+
+		if ( $old_arguments === $new_arguments && $existing_time === $execution_time ) {
+			return;
+		}
+
+		if ( ! empty( $old_arguments ) ) {
+			wp_clear_scheduled_hook( 'mpg_schedule_execution', $old_arguments );
+		}
+		// Clear an existing replacement too when only its requested start time changed.
+		if ( false !== $existing_time ) {
+			wp_clear_scheduled_hook( 'mpg_schedule_execution', $new_arguments );
+		}
+
+		if ( false === wp_schedule_event( $execution_time, $periodicity, 'mpg_schedule_execution', $new_arguments ) ) {
+			throw new Exception( __( 'The scheduled sync could not be created.', 'multiple-pages-generator-by-porthas' ) );
+		}
+	}
 
     public static function builder()
     {
@@ -68,6 +134,18 @@ class MPG_ProjectController
 
                 MPG_ProjectModel::mpg_processing_robots_txt($exclude_in_robots, $template_id);
 
+                // A retried create whose first response was lost must reuse the row the server already
+                // inserted instead of adding a duplicate, so creates can carry an idempotency token
+                // that maps back to the project id it produced (#741).
+                $creation_token     = isset( $_POST['creationToken'] ) ? sanitize_text_field( wp_unslash( $_POST['creationToken'] ) ) : '';
+                $creation_token_key = '' !== $creation_token ? 'mpg_create_token_' . md5( $creation_token ) : '';
+                if ( ! $project_id && '' !== $creation_token_key ) {
+                    $replayed_project_id = (int) get_transient( $creation_token_key );
+                    if ( $replayed_project_id > 0 && false !== MPG_ProjectModel::get_project_by_id( $replayed_project_id ) ) {
+                        $project_id = $replayed_project_id; // Falls through to the update branch with the retried values.
+                    }
+                }
+
                 // Если с фронта пришел project_id - значит это update, если null - значит создаем новый проект
 
                 if ($project_id) {
@@ -95,6 +173,10 @@ class MPG_ProjectController
 
                     // Ставим дефолтное название проекту, задаем created_at и updated_at время, и другие нужные данные
                     $project_id = MPG_ProjectModel::mpg_create_base_carcass($project_name, $entity_type, $template_id, $exclude_in_robots);
+
+                    if ( '' !== $creation_token_key && $project_id ) {
+                        set_transient( $creation_token_key, (int) $project_id, DAY_IN_SECONDS );
+                    }
 
                     echo json_encode([
                         'success' => true,
@@ -151,24 +233,19 @@ class MPG_ProjectController
 			if ( ! $folder_path || ( ! is_readable( $folder_path ) || ! str_contains( $folder_path, MPG_DatasetModel::uploads_base_path() ) ) ) {
 				throw new Exception( __( 'The file could not be uploaded. Double-check the file format and size, then try again.', 'multiple-pages-generator-by-porthas' ) );
 			}
-			$headers = MPG_DatasetController::get_headers( $folder_path, false, $project_id );
+			// Read the headers from the file that was just received. Passing the project id would
+			// prefer the previous build's chunks and persist that file's header row instead (#728).
+			$headers = MPG_DatasetController::get_headers( $folder_path );
 			if ( empty( $headers ) || ! is_array( $headers ) ) {
 				throw new Exception( __( 'The CSV file contains empty or invalid headers. Please check and ensure all headers are correct.', 'multiple-pages-generator-by-porthas' ) );
 			}
 
             $limit = 6;
-            $dataset = MPG_DatasetModel::get_dataset( $folder_path, $project_id, $limit );
-            $dataset_array = array_slice( $dataset['data'], 1, $limit );
-            $total_rows = $dataset['total'];
-
-			if ( empty( $dataset ) || ! is_array( $dataset ) ) {
-				throw new Exception( __( 'Some rows in the file are invalid. Double-check the data and try uploading once more.', 'multiple-pages-generator-by-porthas' ) );
-			}
 
             $sanitized_filename = sanitize_file_name( basename( $folder_path ) );
 			$new_path = self::get_project_path( $project_id, $sanitized_filename );
 
-			// Move the file to mpg-uploads folder.
+			// Move the file to the uploads/mpg folder.
 			$success = rename( $folder_path, $new_path );
 			if ( ! $success ) {
                 // translators: $s the name of the new location.
@@ -192,10 +269,62 @@ class MPG_ProjectController
 			$fields_array = [
 				'source_type' => $type,
 				'source_path' => basename( $new_path ),
-				'headers'     => json_encode( $headers )
+				'headers'     => json_encode( $headers ),
+				// Publish the headers together with an index rebuilt from this same file. Storing them
+				// on their own leaves the still-active chunks read with the new column order until the
+				// next "Save changes" rebuild — permanently if the user never returns (#728).
+				'urls_array'  => true,
 			];
+			$sync_args   = array();
+			$periodicity = null;
+
+			// Persist worksheet/sync-frequency from the direct-link "Fetch and use" form (#688);
+			// recurring events are replaced here too so persisted arguments never drift from wp-cron.
+			if ( MPG_Validators::SOURCE_TYPE_URL === $type ) {
+				if ( isset( $_POST['worksheetId'] ) ) {
+					$worksheet_id                 = (int) $_POST['worksheetId'];
+					$fields_array['worksheet_id'] = 0 !== $worksheet_id ? $worksheet_id : null;
+				}
+
+				$sync_args   = apply_filters( 'mpg_update_project_args', [] ); // Pro-gated; empty array on free plans.
+				$periodicity = ! empty( $sync_args ) ? ( $sync_args['periodicity'] ?? null ) : null;
+				// Only touch the stored schedule when the request actually submitted a sync
+				// frequency — a re-fetch without the sync fields (hidden form, stale admin JS)
+				// must not wipe an existing schedule. 'now' (Live) intentionally stores null.
+				if ( ! empty( $periodicity ) ) {
+					$fields_array['schedule_periodicity']    = 'now' !== $periodicity ? $periodicity : null;
+					$fields_array['update_modified_on_sync'] = 'once' === $periodicity ? 'no-update' : ( $sync_args['update_modified_on_sync'] ?? 'no-update' );
+
+					if ( ! empty( $_POST['directLink'] ) ) {
+						$fields_array['schedule_source_link'] = esc_url_raw( wp_unslash( $_POST['directLink'] ) );
+					}
+					if ( ! empty( $sync_args['notificate_about'] ) ) {
+						$fields_array['schedule_notificate_about']   = $sync_args['notificate_about'];
+						$fields_array['schedule_notification_email'] = $sync_args['notification_email'] ?? null;
+					}
+				}
+			}
 
 			MPG_ProjectModel::mpg_update_project_by_id( $project_id, $fields_array );
+			if ( MPG_Validators::SOURCE_TYPE_URL === $type && ! empty( $periodicity ) ) {
+				self::mpg_replace_project_cron_event(
+					$project_id,
+					$project,
+					$fields_array['schedule_source_link'] ?? ( $project->schedule_source_link ?? '' ),
+					$fields_array['schedule_notificate_about'] ?? ( $project->schedule_notificate_about ?? '' ),
+					$periodicity,
+					$fields_array['schedule_notification_email'] ?? ( $project->schedule_notification_email ?? null ),
+					$sync_args['fetch_date_time'] ?? null,
+					$sync_args['timezone'] ?? null
+				);
+			}
+
+			// Preview rows and the row count come from the build that was just published. Reading the
+			// raw upload instead would materialize — and transient-cache — every row to show six (#728).
+			$first_chunk   = MPG_DatasetModel::get_dataset_chunk( $project_id, 0 );
+			$dataset_array = array_slice( $first_chunk, 1, $limit );
+			$chunks_meta   = MPG_DatasetModel::get_dataset_chunks_meta( $project_id );
+			$total_rows    = isset( $chunks_meta['total_rows'] ) ? $chunks_meta['total_rows'] : count( $first_chunk );
 
 			echo json_encode( [
 				'success' => true,
@@ -283,25 +412,26 @@ class MPG_ProjectController
             // С какими параметрами крон-задача ставится, с такими ее надо и отключать. Поэтому храним это в базе
             // Это список аргументов которые надо передеать в хук.
 
-            // now - это для тех случаев, когда человке хочет применить файл сейчас. И ему не нужно заводить крон-таб
-	        if ( ! empty( $direct_link ) && ! empty( $fetch_date_time ) && ! in_array( $periodicity, array(
-			        'now',
-			        'once',
-			        'ondemand'
-		        ), true ) ) {
-                $datetime = DateTime::createFromFormat('Y/m/d H:i', $fetch_date_time, new DateTimeZone($timezone));
-                $hook_execution_time = $datetime->getTimestamp();
+			// now - это для тех случаев, когда человке хочет применить файл сейчас. И ему не нужно заводить крон-таб
+			if ( ! empty( $periodicity ) ) {
+				self::mpg_replace_project_cron_event(
+					$project_id,
+					$project,
+					$direct_link,
+					$notificate_about,
+					$periodicity,
+					$notification_email,
+					$fetch_date_time,
+					$timezone
+				);
+			}
 
-                $data_for_hook = [$project_id, $direct_link, $notificate_about, $periodicity, $notification_email];
-
-                if (in_array($periodicity, ['hourly', 'twicedaily', 'daily', 'weekly', 'monthly'])) {
-                    if (!wp_next_scheduled('mpg_schedule_execution')) {
-
-                        wp_schedule_event($hook_execution_time, $periodicity, 'mpg_schedule_execution', $data_for_hook);
-                    }
-                }
-
-                $update_options_array = array_merge($update_options_array, [
+			if ( ! empty( $direct_link ) && ! empty( $fetch_date_time ) && ! in_array(
+				$periodicity,
+				array( 'now', 'once', 'ondemand' ),
+				true
+			) ) {
+				$update_options_array = array_merge($update_options_array, [
                     'schedule_source_link' => $direct_link,
                     'schedule_periodicity' => $periodicity,
                     'schedule_notificate_about' => $notificate_about,
@@ -372,6 +502,21 @@ class MPG_ProjectController
             }
 
             if ( isset($project->source_path ) ) {
+                // Imported projects carry no stored headers (the export strips them) and the builder
+                // renders its data preview only when headers are present — derive them from the
+                // dataset and persist so the project self-heals on first edit (#736).
+                if ( empty( $project->headers ) ) {
+                    try {
+                        $derived_headers = MPG_ProjectModel::get_headers_from_project( $project );
+                        if ( ! empty( $derived_headers ) ) {
+                            $response['headers'] = wp_json_encode( $derived_headers );
+                            MPG_ProjectModel::mpg_update_project_by_id( $project_id, array( 'headers' => $response['headers'] ) );
+                        }
+                    } catch ( Exception $e ) {
+                        do_action( 'themeisle_log_event', MPG_NAME, sprintf( 'Unable to derive headers for project %d: %s', $project_id, $e->getMessage() ), 'debug', __FILE__, __LINE__ );
+                    }
+                }
+
                 $limit = 6;
                 $dataset = MPG_DatasetModel::get_dataset( MPG_DatasetModel::get_dataset_path_by_project( $project ), $project_id, $limit );
                 $dataset_array = array_slice( $dataset['data'], 1, $limit );
@@ -584,15 +729,10 @@ class MPG_ProjectController
 				}
 			}
 
-			MPG_SitemapGenerator::run( $urls_list, $filename, $max_url, $update_freq, $add_to_robots, $project_id );
-
-			if ( count( $urls_list ) >= $max_url ) {
-				$sitemap_filename = $filename ? $filename . '-index.xml' : 'multipage-sitemap-index.xml';
-			} else {
-				$sitemap_filename = $filename ? $filename . '.xml' : 'multipage-sitemap.xml';
-			}
-
-			$sitemap_full_path = untrailingslashit( get_site_url() ) . '/' . $sitemap_filename;
+			// The generator returns the URL of the file it actually wrote (the index
+			// when the URLs were split into several files, the base sitemap otherwise).
+			// Re-deriving the name here can disagree with what exists on disk.
+			$sitemap_full_path = MPG_SitemapGenerator::run( $urls_list, $filename, $max_url, $update_freq, $add_to_robots, $project_id );
 
 			MPG_ProjectModel::mpg_update_project_by_id( $project_id, [ 'sitemap_url' => $sitemap_full_path ] );
 
@@ -645,22 +785,24 @@ class MPG_ProjectController
 
 	        $urls_array = MPG_ProjectModel::mpg_generate_urls_from_dataset( $source_path, $url_structure, $space_replacer );
 
-            MPG_ProjectModel::mpg_update_project_by_id( $project_id, [ 'urls_array' => true ], true );
+            // Keep stored headers in sync with the source so newly added columns become usable,
+            // logging a warning when previously stored columns disappear (#462).
+            $update_fields = array_merge( [ 'urls_array' => true ], MPG_ProjectModel::mpg_prepare_headers_sync( $project, $source_path ) );
+
+            MPG_ProjectModel::mpg_update_project_by_id( $project_id, $update_fields, true );
 	        MPG_SitemapGenerator::maybe_create_sitemap( $project, $urls_array );
 
             // Теперь, когда мы заменили файл с данными на тот, что пользователь указал по ссылке пользователь
 	        if ( $notificate_about === 'every-time' && ! empty( $notification_email ) ) {
-		        if ($notificate_about === 'every-time') {
-                    wp_mail(
-                        $notification_email,
-                        __('MPG schedule execution report: ok', 'multiple-pages-generator-by-porthas'),
-                        __('Hi.', 'multiple-pages-generator-by-porthas')
-                        . ' <br>'
-                        . __('Scheduled task was completed successfully.', 'multiple-pages-generator-by-porthas')
-                        . ' '
-                        . __('File was deployed:', 'multiple-pages-generator-by-porthas') . ' ' . $direct_link
-                    );
-                }
+                wp_mail(
+                    $notification_email,
+                    __('MPG schedule execution report: ok', 'multiple-pages-generator-by-porthas'),
+                    __('Hi.', 'multiple-pages-generator-by-porthas')
+                    . ' <br>'
+                    . __('Scheduled task was completed successfully.', 'multiple-pages-generator-by-porthas')
+                    . ' '
+                    . __('File was deployed:', 'multiple-pages-generator-by-porthas') . ' ' . $direct_link
+                );
 	        }
 
         } catch (Exception $e) {
@@ -668,7 +810,8 @@ class MPG_ProjectController
             // translators: %s: the error message.
             do_action( 'themeisle_log_event', MPG_NAME, sprintf( __( 'Hi. <br>In process of execution the next error occurred: %s', 'multiple-pages-generator-by-porthas' ), $e->getMessage() ), 'debug', __FILE__, __LINE__ );
 
-            if ($notificate_about === 'errors-only') {
+            // "Every time" covers both outcomes, so failures must notify too, not only "errors only" (#739).
+            if ( in_array( $notificate_about, array( 'errors-only', 'every-time' ), true ) && ! empty( $notification_email ) ) {
                 wp_mail(
                     $notification_email,
                     __('MPG schedule execution report: failed', 'multiple-pages-generator-by-porthas'),

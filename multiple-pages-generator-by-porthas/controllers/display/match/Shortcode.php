@@ -18,7 +18,7 @@ class Shortcode extends Core {
 	 *
 	 * @return string
 	 */
-	public function shortcode( array $atts, string $content = null ): string {
+	public function shortcode( array $atts, ?string $content = null ): string {
 
 		$atts = shortcode_atts( array(
 			'column1'     => '',

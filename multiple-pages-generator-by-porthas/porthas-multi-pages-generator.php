@@ -8,7 +8,7 @@
  *
  * Author: Themeisle
  * Author URI: https://themeisle.com
- * Version: 4.1.8
+ * Version: 4.2.0
  */
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -18,14 +18,42 @@ defined( 'MPG_BASENAME' ) || define( 'MPG_BASENAME', __FILE__ );
 defined( 'MPG_MAIN_DIR' ) || define( 'MPG_MAIN_DIR', dirname( __FILE__ ) );
 defined( 'MPG_PRODUCT_SLUG' ) || define( 'MPG_PRODUCT_SLUG', basename( MPG_MAIN_DIR ) );
 defined( 'MPG_MAIN_URL' ) || define( 'MPG_MAIN_URL', plugins_url( '', __FILE__ ));
-defined( 'MPG_UPLOADS_DIR' ) || define( 'MPG_UPLOADS_DIR', WP_CONTENT_DIR . DIRECTORY_SEPARATOR . 'mpg-uploads' . DIRECTORY_SEPARATOR );
-defined( 'MPG_UPLOADS_URL' ) || define( 'MPG_UPLOADS_URL', WP_CONTENT_URL . DIRECTORY_SEPARATOR . 'mpg-uploads' . DIRECTORY_SEPARATOR );
+// Files live under the site's uploads dir (uploads/mpg/); the old mpg-uploads/ path is kept for
+// migration/fallback (#686). We resolve the real uploads location (UPLOADS constant, upload_path
+// option) so backup/staging tools that operate on it see our files. On multisite the base comes
+// from the network's main site — its uploads base carries no per-site suffix — so the per-blog
+// subfolders stay under one shared (and configurable) tree (#742).
+defined( 'MPG_LEGACY_UPLOADS_DIR' ) || define( 'MPG_LEGACY_UPLOADS_DIR', WP_CONTENT_DIR . DIRECTORY_SEPARATOR . 'mpg-uploads' . DIRECTORY_SEPARATOR );
+if ( ! defined( 'MPG_UPLOADS_DIR' ) || ! defined( 'MPG_UPLOADS_URL' ) ) {
+	$mpg_uploads_basedir = WP_CONTENT_DIR . DIRECTORY_SEPARATOR . 'uploads';
+	$mpg_uploads_baseurl = WP_CONTENT_URL . '/uploads';
+	if ( ! is_multisite() ) {
+		$mpg_wp_uploads = wp_upload_dir( null, false );
+	} else {
+		$mpg_main_site_id = get_main_site_id();
+		$mpg_has_switched = $mpg_main_site_id > 0 && get_current_blog_id() !== $mpg_main_site_id;
+		if ( $mpg_has_switched ) {
+			switch_to_blog( $mpg_main_site_id );
+		}
+		$mpg_wp_uploads = wp_upload_dir( null, false );
+		if ( $mpg_has_switched ) {
+			restore_current_blog();
+		}
+	}
+	if ( empty( $mpg_wp_uploads['error'] ) && ! empty( $mpg_wp_uploads['basedir'] ) && ! empty( $mpg_wp_uploads['baseurl'] ) ) {
+		$mpg_uploads_basedir = $mpg_wp_uploads['basedir'];
+		$mpg_uploads_baseurl = $mpg_wp_uploads['baseurl'];
+	}
+	defined( 'MPG_UPLOADS_DIR' ) || define( 'MPG_UPLOADS_DIR', $mpg_uploads_basedir . DIRECTORY_SEPARATOR . 'mpg' . DIRECTORY_SEPARATOR );
+	defined( 'MPG_UPLOADS_URL' ) || define( 'MPG_UPLOADS_URL', $mpg_uploads_baseurl . '/mpg/' );
+	unset( $mpg_uploads_basedir, $mpg_uploads_baseurl, $mpg_wp_uploads, $mpg_main_site_id, $mpg_has_switched );
+}
 defined( 'MPG_CACHE_DIR' ) || define( 'MPG_CACHE_DIR', WP_CONTENT_DIR . DIRECTORY_SEPARATOR . 'mpg-cache' . DIRECTORY_SEPARATOR );
 defined( 'MPG_CACHE_URL' ) || define( 'MPG_CACHE_URL', WP_CONTENT_URL . DIRECTORY_SEPARATOR . 'mpg-cache' . DIRECTORY_SEPARATOR );
 defined( 'MPG_NAME' ) || define( 'MPG_NAME', 'Multiple Pages Generator' );
 defined( 'MPG_BASE_IMG_PATH' ) || define( 'MPG_BASE_IMG_PATH', plugin_dir_url( __FILE__ ) . 'frontend/images' );
-defined( 'MPG_DATABASE_VERSION' ) || define( 'MPG_DATABASE_VERSION', '1.0.0' );
-defined( 'MPG_PLUGIN_VERSION' ) || define( 'MPG_PLUGIN_VERSION', '4.1.8' );
+defined( 'MPG_DATABASE_VERSION' ) || define( 'MPG_DATABASE_VERSION', '1.1.0' );
+defined( 'MPG_PLUGIN_VERSION' ) || define( 'MPG_PLUGIN_VERSION', '4.2.0' );
 defined( 'MPG_FREE_SLUG' ) || define( 'MPG_FREE_SLUG', 'multiple-pages-generator-by-porthas' );
 defined( 'MPG_TRANSLATION_CACHE_KEY_PREFIX' ) || define( 'MPG_TRANSLATION_CACHE_KEY_PREFIX', 'mpg_translation_check' );
 
@@ -90,6 +118,10 @@ if ( ! function_exists( 'mpg_run' ) ) {
 			$products[] = __FILE__;
 
 			return $products;
+		} );
+
+		add_filter( MPG_PRODUCT_SLUG . '_sdk_migrations_path', function() {
+			return MPG_MAIN_DIR . '/migrations/';
 		} );
 
 		$product_key = str_replace( '-', '_', MPG_PRODUCT_SLUG);

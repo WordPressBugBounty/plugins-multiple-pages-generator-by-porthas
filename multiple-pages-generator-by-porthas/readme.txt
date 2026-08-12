@@ -3,7 +3,7 @@ Contributors: themeisle
 Tags: bulk pages, programmatic seo, landing pages, seo, csv import
 Requires at least: 5.6
 Tested up to: 7.0
-Stable tag: 4.1.8
+Stable tag: 4.2.0
 Requires PHP: 7.2
 License: GPLv2
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -37,7 +37,7 @@ MPG makes bulk page creation fast and easy—ideal for beginners and scalable fo
 
 ### 📋 Step 1: Upload Your Data
 Import your spreadsheet (CSV, XLSX, ODS) or connect a live Google Sheet. 
-Each row = a unique page.
+This upload step drives the entire mass page workflow, automatically generating pages from CSV or Google Sheets.
 
 **Example:**
 
@@ -59,6 +59,7 @@ Each row = a unique page.
 ### 🚀 Step 3: Generate & Go Live
 - Click "Generate" to instantly build pages.
 - Preview before publishing.
+- Bulk edit pages after you generate them, with a single sync or on a schedule.
 
 ## 🔥 Core Features (Free Version)
 
@@ -70,6 +71,8 @@ Each row = a unique page.
 ✅ Universal Compatibility – Works with any WordPress theme and page builder
 ✅ Search Integration – Built-in search functionality for generated pages
 ✅ Template Management – Choose pages or posts as templates
+
+MPG is an automated page creation tool that also works as a page generator, mass page builder, and mass content creator for any dataset you upload.
 
 ## 💎 MPG Pro - Unlimited Automation Power
 
@@ -204,9 +207,40 @@ For manual installation:
 
 == Changelog ==
 
-#####   Version 4.1.8 (2026-07-01)
+####   Version 4.2.0 (2026-08-12)
 
-- Enhanced security
+- Fixed an issue where syncing data from a file would not update the column headers used by generated pages.
+- Added the ability to set the publish date of generated pages from a creation date column in your data source.
+- Added support for using the current pages own data in loop filters, so related listings can adapt to the page being viewed.
+- Added a warning about unsaved project changes before leaving the builder, so edits are no longer lost by accident.
+- Replaced the low-resolution notice icon with a crisp icon that looks sharp on all screens.
+- Fixed an issue where template pages could return a 404 error when they were excluded from search engine results.
+- Improved scheduled rebuilds to automatically clear stale locks and report the specific cause when a rebuild fails.
+- Fixed an issue where pages using a direct data link could show outdated content from a previous refresh after the data was updated.
+- Fixed generated pages showing the wrong SEO title and meta information when used together with Divi and Yoast SEO or Rank Math.
+- Fixed generated pages displaying the wrong title, SEO data, or layout because the page was not kept in sync with the main query.
+- Moved plugin file storage to the standard WordPress uploads directory for better compatibility with backups and hosting setups.
+- Fixed conditional content evaluating the wrong column when a URL column appears before the condition column in the data source.
+- Fixed the direct-link Fetch and use option not remembering the selected worksheet and sync frequency after the initial fetch.
+- Fixed a small typo in the sitemap frequency tooltip.
+- Improved the plugins automated testing setup so future updates are verified more thoroughly before release.
+- Fixed blog and archive pagination collapsing to fewer pages than it should when the default loop integration was enabled.
+- Fixed the saved sitemap URL pointing to a file that was never created, and the -index suffix being carried over into the next sitemap filename.
+- Fixed conditional content ignoring dynamic placeholders in the comparison value, so [mpg-if] conditions now match against the current pages data.
+- Fixed the block editor failing to save a page when the MPG loop was used without selecting a project.
+- Fixed loop filters that use the current pages title showing no results on generated pages.
+- Fixed the data preview appearing empty when editing an imported project.
+- Fixed duplicate projects being created when saving a new project was retried after a connection problem.
+- Sync notifications set to send every time now also send an email when a sync fails, including the reason.
+- Fixed the custom uploads folder location being ignored on multisite networks.
+- Fixed data columns becoming misaligned when the URL column is first and spreadsheet columns are added or removed.
+- Fixed a critical error when deleting a project that has an active sync schedule.
+- Fixed a crash on generated pages when a projects data file is missing from disk; the problem is now logged and the page degrades gracefully.
+- Fixed a scheduled sitemap check crashing outside of admin requests.
+- Cleared PHP 8.1 deprecation notices from the debug log.
+- Fixed dataset uploads reporting success even though the uploads folder could not be created; the folder is now created automatically and real failures show a clear error.
+- Fixed duplicate canonical tags appearing on generated pages when Rank Math is active.
+- Updated dependencies
 
 
 

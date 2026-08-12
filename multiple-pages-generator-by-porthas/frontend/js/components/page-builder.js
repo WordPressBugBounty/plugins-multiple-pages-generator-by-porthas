@@ -17,13 +17,17 @@ import {
     fillDataPreviewAndUrlGeneration,
     renderTableWithAllURLs,
 } from '../models/page-builder-model.js';
+import {
+    hasUnsavedChanges,
+    markUnsavedChanges,
+    persistProjectChanges,
+} from './unsaved-changes.js';
 
 // При переходе на определенный проект = надо грузить конфиг с БД и закидывать в стейт именно для него.
 // А если проект новый - то загружать дефолтный конфиг.
 (function mpg_init() {
     mpgUpdateState('separator', '-'); // @todo: првоерить что это нормально работает.
 })();
-
 
 // Save project source block.
 var projectSourceBlockSave = async function (pid = 0) {
@@ -84,11 +88,21 @@ var projectSourceBlockSave = async function (pid = 0) {
         {timeOut: 5000}
     );
 
+    // Retain the worksheet and sync settings chosen in the direct-link form, so selecting a
+    // sync frequency and clicking "Fetch and use" persists them (not only the main "Save changes").
     let sourceBlockRawResponse = await jQuery.post(ajaxurl, {
         action: 'mpg_upsert_project_source_block',
         projectId: projectId,
         type: 'direct_link',
         path: uploadFileResponse.data.path,
+        directLink: fileUrl,
+        worksheetId: worksheetId,
+        periodicity: jQuery('select[name="periodicity"]:visible').val(),
+        timezone: jQuery('input[name="mpg_timezone_name"]').val(),
+        fetchDateTime: jQuery('input[name="datetime_upload_remote_file"]').val(),
+        notificateAbout: jQuery('select[name="notification_level"]:visible').val(),
+        notificationEmail: jQuery('input[name="notification_email"]:visible').val(),
+        update_modified_on_sync: jQuery('select[name="update_modified_on_sync"]').val(),
         securityNonce: backendData.securityNonce,
     });
 
@@ -103,6 +117,9 @@ var projectSourceBlockSave = async function (pid = 0) {
         );
         return;
     }
+
+    // The source is saved, but it reshapes the headers/URL structure that "Save changes" persists (#564).
+    markUnsavedChanges();
 
     if (setHeaders(sourceBlockResponse)) {
         const headers = mpgGetState('headers');
@@ -124,6 +141,10 @@ var projectSourceBlockSave = async function (pid = 0) {
     );
 };
 
+// One idempotency token per builder page load: a retried create whose first response was lost
+// reuses the project the server already inserted, while a fresh visit still creates a new one (#741).
+let mpgCreationToken = null;
+
 // Main project save.
 var mainProjectSave = async function () {
     let projectIdValue = getProjectIdFromUrl();
@@ -138,10 +159,19 @@ var mainProjectSave = async function () {
     if (!projectIdValue) {
         projectIdValue = mpgGetState('projectId');
     }
+    if (!projectIdValue && !mpgCreationToken) {
+        mpgCreationToken = window.crypto?.randomUUID
+            ? window.crypto.randomUUID()
+            : 'mpg-' +
+              Date.now() +
+              '-' +
+              Math.random().toString(36).slice(2);
+    }
     const payload = {
         action: 'mpg_upsert_project_main',
         // null - это знак, что надо создавать новй проект, а если projectId есть, то обновляем
         projectId: projectIdValue,
+        creationToken: projectIdValue ? null : mpgCreationToken,
         projectName,
         entityType,
         templateId,
@@ -197,7 +227,6 @@ var mainProjectSave = async function () {
     });
     window?.tiTrk?.uploadEvents();
 
-
     return mpgGetState('projectId');
 };
 
@@ -221,7 +250,7 @@ var projectUrlBlockSave = async function (pid = 0) {
             __('Your URL must contain at least one shortcode', 'multiple-pages-generator-by-porthas'),
             __('Wrong URL structure', 'multiple-pages-generator-by-porthas')
         );
-        return;
+        return false;
     }
 
     let dataObject = {
@@ -283,7 +312,7 @@ var projectUrlBlockSave = async function (pid = 0) {
                 , 'multiple-pages-generator-by-porthas'),
             __('Can not update project', 'multiple-pages-generator-by-porthas')
         );
-        return;
+        return false;
     }
 
     toastr.success(
@@ -308,12 +337,30 @@ var projectUrlBlockSave = async function (pid = 0) {
     });
 
     window?.tiTrk?.uploadEvents();
+
+    return true;
 };
 
 
 export function pageBuilderInit() {
-    jQuery(window).on('beforeunload', function () {
+    jQuery(window).on('beforeunload', function (event) {
         localStorage.removeItem('mpg_state');
+        if (hasUnsavedChanges()) {
+            event.preventDefault();
+            event.originalEvent.returnValue = ''; // Triggers the browser's "unsaved changes" prompt (#564).
+            return '';
+        }
+    });
+
+    // Flag genuine user edits to the main project config so beforeunload can warn (#564).
+    // Real user events carry originalEvent; the .trigger()/select2 calls fired on load do not.
+    jQuery('#main').on('input change', 'input, select, textarea, [contenteditable]', function (event) {
+        if (event.originalEvent) {
+            markUnsavedChanges();
+        }
+    });
+    jQuery('#main').on('select2:select select2:unselect', function () {
+        markUnsavedChanges();
     });
 
 // ========  Delete project  ========
@@ -420,7 +467,10 @@ export function pageBuilderInit() {
         jQuery('#direct_link input[name="direct_link_input"]').val('');
 
         // Create project before upload.
-        await mainProjectSave();
+        const savedProjectId = await mainProjectSave();
+        if (!savedProjectId) {
+            return;
+        }
 
         // try {
         let uploadFileRawResponse = await upload.doUpload();
@@ -442,10 +492,7 @@ export function pageBuilderInit() {
             {timeOut: 5000}
         );
 
-        let projectId = getProjectIdFromUrl();
-        if (!projectId) {
-            projectId = mpgGetState('projectId');
-        }
+        const projectId = savedProjectId;
 
         let sourceBlockRawResponse = await jQuery.post(ajaxurl, {
             action: 'mpg_upsert_project_source_block',
@@ -476,6 +523,10 @@ export function pageBuilderInit() {
         if (!sourceBlockResponse.data.url_structure) {
             fillUrlStructureShortcodes(headers);
         }
+
+        // Uploading a file can generate a new URL structure programmatically; it still needs the
+        // main Save changes action before navigation is safe (#564).
+        markUnsavedChanges();
 
         jQuery(this)
             .parents('.sub-section')
@@ -568,6 +619,7 @@ export function pageBuilderInit() {
 
         mpgUpdateState('separator', jQuery(this).text());
         jQuery('#mpg_url_constructor').trigger('mpg_render_urls');
+        markUnsavedChanges(); // #564
     });
 
 // При выборе шорткода из выпадающего списка, вставляем его в поле билдера для url.
@@ -588,6 +640,7 @@ export function pageBuilderInit() {
         function () {
             jQuery(this).parent().remove();
             jQuery('#mpg_url_constructor').trigger('mpg_render_urls');
+            markUnsavedChanges(); // #564
         }
     );
 
@@ -726,9 +779,14 @@ export function pageBuilderInit() {
         jQuery(this).parent('.save-changes-block').find('button').attr('disabled', true);
 
 
-        var projectId = await mainProjectSave();
+        const saveResult = await persistProjectChanges(mainProjectSave, projectUrlBlockSave);
+        if (!saveResult.success) {
+            jQuery(this).parent('.save-changes-block').find('span.spinner').removeClass('is-active');
+            jQuery(this).parent('.save-changes-block').find('button').attr('disabled', false);
+            return;
+        }
 
-        await projectUrlBlockSave(projectId);
+        const projectId = saveResult.projectId;
 
         setTimeout(() => {
             window.location.href =
@@ -747,6 +805,11 @@ export function pageBuilderInit() {
 
         // Create project before save source block.
         var projectId = await mainProjectSave();
+        if (!projectId) {
+            submitButton.next('span.spinner').removeClass('is-active');
+            submitButton.attr('disabled', false);
+            return;
+        }
 
         await projectSourceBlockSave(projectId);
 

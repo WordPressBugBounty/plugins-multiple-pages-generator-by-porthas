@@ -2,6 +2,59 @@
 
 class MPG_SEOModel
 {
+    /**
+     * Render the canonical tag of the virtual page which is currently rendered.
+     *
+     * @param object|false|null $project Project the current virtual page belongs to.
+     *
+     * @return void
+     */
+    public static function mpg_add_canonical_url( $project = null ) {
+        remove_action( 'wp_head', 'ampforwp_home_archive_rel_canonical', 1 );
+        remove_action( 'wp_head', 'rel_canonical' );
+        remove_action( 'template_redirect', 'redirect_canonical' );
+
+        add_action( 'wp_head', function () use ( $project ) {
+
+            $canonical_url = self::mpg_get_canonical_url( $project );
+
+            if ( empty( $canonical_url ) ) {
+                return;
+            }
+
+            printf( '<link rel="canonical" href="%1$s">' . "\n", esc_url_raw( $canonical_url ) );
+
+        }, 1, 1 );
+    }
+
+    /**
+     * Build the canonical URL of the virtual page which is currently rendered.
+     *
+     * @param object|false|null $project Project the current virtual page belongs to.
+     *
+     * @return string Canonical URL, empty string when it can't be resolved.
+     */
+    public static function mpg_get_canonical_url( $project = null ) {
+        global $wp;
+
+        if ( ! $wp instanceof WP ) {
+            return '';
+        }
+
+        $url      = home_url( $wp->request );
+        $url_mode = is_object( $project ) && ! empty( $project->url_mode ) ? $project->url_mode : '';
+
+        if ( 'without-trailing-slash' === $url_mode ) {
+            return untrailingslashit( $url );
+        }
+
+        if ( 'with-trailing-slash' === $url_mode ) {
+            return trailingslashit( $url );
+        }
+
+        // Both formats are allowed for this project, so follow the site permalink structure.
+        return user_trailingslashit( $url );
+    }
 
     public static function mpg_yoast($project_id)
     {
@@ -183,6 +236,23 @@ class MPG_SEOModel
             },
             99
         );
+
+        $canonical_url = self::mpg_get_canonical_url( MPG_ProjectModel::get_project_by_id( $project_id ) );
+
+        if ( empty( $canonical_url ) ) {
+            return;
+        }
+
+        add_filter( 'rank_math/frontend/canonical', function () use ( $canonical_url, $project_id ) {
+            if ( apply_filters( 'mpg_enable_canonical_url_generate', true ) ) {
+                return false;
+            }
+            return MPG_CoreModel::mpg_shortcode_replacer( $canonical_url, $project_id );
+        }, 1, 1 );
+
+        add_filter( 'rank_math/opengraph/url', function () use ( $canonical_url ) {
+            return $canonical_url;
+        }, 1, 1 );
     }
 
     public static function mpg_seopress($project_id)

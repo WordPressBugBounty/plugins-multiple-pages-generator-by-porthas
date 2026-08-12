@@ -41,6 +41,10 @@ abstract class Core extends Base_Display {
 		$project_data = \MPG_ProjectModel::get_project_by_id( $current_project_id );
 		$headers = \MPG_ProjectModel::get_headers_from_project( $project_data );
 
+		// Dynamic values such as {{mpg_country}} must be resolved against the current row
+		// before evaluation, same as the loop flow does. See issue #712.
+		$conditions = $this->translate_conditions( $conditions );
+
 		return $this->evaluate_row_for_conditions( $conditions, $logic, $headers );
 	}
 }

@@ -11,8 +11,9 @@ class Shortcode extends Core {
 		add_shortcode( 'mpg', [ $this, 'shortcode' ] );
 	}
 
-	public function shortcode( array $atts, string $content = null ): string {
+	public function shortcode( $atts, ?string $content = null ): string {
 
+		// WP passes an empty string instead of an array when the shortcode has no attributes.
 		$atts = shortcode_atts( array(
 			'column1'     => '',
 			'value1'      => '',
@@ -42,7 +43,9 @@ class Shortcode extends Core {
 		//Get project if we are a single virtual page context, to set back the project id to be used afterwards.
 		$current_project_backup = \MPG_ProjectModel::get_current_project_id();
 		$atts['limit']          = $this->normalize_condition_part( $atts['limit'] );
-		$atts['project-id']     = $this->normalize_condition_part( $atts['project-id'] );
+		// Cast to int so a missing/non-numeric project id reaches render() as 0 and is rejected with
+		// a friendly exception instead of a TypeError that breaks the whole request (#735).
+		$atts['project-id']     = (int) $this->normalize_condition_part( $atts['project-id'] );
 		$atts['logic']          = $this->normalize_condition_part( $atts['logic'] );
 		$atts['order-by']       = $this->normalize_condition_part( $atts['order-by'] );
 		$atts['direction']      = $this->normalize_condition_part( $atts['direction'] );
@@ -73,7 +76,7 @@ class Shortcode extends Core {
 			\MPG_ProjectModel::set_current_project_id( $current_project_backup );
 
 			return $content;
-		} catch ( \Exception $e ) {
+		} catch ( \Throwable $e ) {
 			\MPG_LogsController::mpg_write( $atts['project-id'], 'error', sprintf( 'Exception in [mpg] shortcode: %s %s', $e->getMessage(), var_export( $atts, true ) ), __FILE__, __LINE__ );
 			\MPG_ProjectModel::set_current_project_id( $current_project_backup );
 

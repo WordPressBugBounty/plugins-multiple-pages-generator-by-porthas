@@ -10,7 +10,12 @@ class MPG_CoreController
 {
     public static function core($redirect_rules, $post, $template_post_id, $path)
     {
-        global  $wp_query;
+        global  $wp_query, $wp_the_query;
+
+        // The template post may be missing (deleted/invalid id); bail before dereferencing it.
+        if ( ! $post instanceof WP_Post ) {
+            return;
+        }
 
         // do changes in title and content
         $project_id = $redirect_rules['project_id'];
@@ -23,22 +28,38 @@ class MPG_CoreController
 	    } );
 
         $project = MPG_ProjectModel::get_project_by_id($project_id);
+	    // Set the published (creation) date from a `created_date` column, if provided (issue #525).
+	    // This runs BEFORE the modified-date block below so the modified guard compares against the
+	    // real published date (created_date), not the template post's own creation date.
+	    $post_created = MPG_ProjectModel::get_vpage_created_date( $project );
+	    if ( $post_created !== false ) {
+		    // Store GMT and derive the local date from it, so post_date reflects the site timezone.
+		    $post->post_date_gmt = gmdate( 'Y-m-d H:i:s', $post_created );
+		    $post->post_date     = get_date_from_gmt( $post->post_date_gmt );
+
+		    add_filter( 'get_the_date', function ( $the_date, $format, $current_post ) use ( $post_created, $post ) {
+			    if ( empty( $current_post ) || $current_post->ID !== $post->ID ) {
+				    return $the_date;
+			    }
+
+			    return wp_date( ! empty( $format ) ? $format : get_option( 'date_format' ), $post_created );
+		    }, 99, 3 );
+	    }
+
 	    $post_modified = MPG_ProjectModel::get_vpage_modified_date( $project );
 	    if ( $post_modified !== false ) {
-		    $post_date = $post->post_date;
 		    //We choose which is the lastest one between those two, to avoid changing the date of the post to something older vs the current one.
-		    if ( strtotime( $post_date ) < $post_modified ) {
-			    $post->post_modified     = date( 'Y-m-d H:i:s', $post_modified );
+		    if ( get_post_timestamp( $post ) < $post_modified ) {
 			    $post->post_modified_gmt = gmdate( 'Y-m-d H:i:s', $post_modified );
+			    $post->post_modified     = get_date_from_gmt( $post->post_modified_gmt );
 
 			    add_filter( 'get_the_modified_date', function ( $the_time, $format, $current_post ) use ( $post_modified, $post ) {
-				    if ( $current_post->ID !== $post->ID ) {
+				    if ( empty( $current_post ) || $current_post->ID !== $post->ID ) {
 					    return $the_time;
 				    }
 
-				    return date( ! empty( $format ) ? $format : get_option( 'date_format' ), $post_modified );
+				    return wp_date( ! empty( $format ) ? $format : get_option( 'date_format' ), $post_modified );
 			    }, 99, 3 );
-			    wp_cache_replace( $post->ID, $post, 'posts' );
 		    }
 	    }
 
@@ -47,18 +68,7 @@ class MPG_CoreController
 	    $post->post_content = MPG_CoreModel::mpg_shortcode_replacer($post->post_content, $project_id);
         // Override canonical URL.
         if ( apply_filters( 'mpg_enable_canonical_url_generate', true ) ) {
-            remove_action( 'wp_head', 'ampforwp_home_archive_rel_canonical', 1 );
-            remove_action( 'wp_head', 'rel_canonical' );
-            remove_action( 'template_redirect', 'redirect_canonical' );
-
-            add_action( 'wp_head', function () use ($project) {
-                global $wp;
-
-                $trail_slash = $project->url_mode === 'without-trailing-slash' ? '' : '/';
-
-                printf('<link rel="canonical" href="%1$s' . $trail_slash . '">' . "\n",  esc_url_raw(home_url($wp->request)));
-
-            }, 1, 1 );
+            MPG_SEOModel::mpg_add_canonical_url( $project );
         }
 
 		$thumbnail_info = MPG_CoreModel::mpg_thumbnail_replacer( $project_id );
@@ -193,6 +203,12 @@ class MPG_CoreController
             $wp_query->is_page = true;
             $wp_query->is_singular = true;
         }
+
+        // Sync the post and master query ref so the virtual page survives wp_reset_query() /
+        // wp_reset_postdata() (called by Yoast/Divi before the loop). Do not remove. See #684, #685.
+        $wp_query->post = $post;
+        $wp_the_query   = $wp_query;
+
 	    defined( 'MPG_IS_SINGLE' ) || define( 'MPG_IS_SINGLE', true );
     }
 
@@ -228,7 +244,7 @@ class MPG_CoreController
             $template_post_id = $redirect_rules['template_id'];
             $post = get_post($template_post_id);
 
-            if (is_404() && $post->post_status !== 'draft') {
+            if ($post instanceof WP_Post && is_404() && $post->post_status !== 'draft') {
                 // define('IS_MPG_PAGE', true);
                 // echo 'DEFINE CONST';
                 self::core($redirect_rules, $post, $template_post_id, $path);

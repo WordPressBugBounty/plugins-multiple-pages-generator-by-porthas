@@ -101,12 +101,17 @@ class MPG_SearchController
 
                             foreach ($urls_array as $index => $url) {
 
+                                // Raw row for positional header lookups (featured image below).
                                 $strings = $dataset_array[$index + 1];
+                                // Url-stripped row for shortcode replacement: the composed list skips
+                                // url/mpg_url and expects mpg_url last (#728).
+                                $replace_strings = MPG_CoreModel::update_dataset_by_removing_url_column($entity['project_id'], $strings);
+                                $replace_strings[count($short_codes) - 1] = MPG_CoreModel::path_to_url($url);
 
-                                $replaced_shortcodes_string_title = preg_replace($short_codes, $strings, $template_name);
+                                $replaced_shortcodes_string_title = preg_replace($short_codes, $replace_strings, $template_name);
                                 $replaced_shortcodes_string = $replaced_shortcodes_string_title;
                                 if ( ! self::is_res_found($case_sensitive, $replaced_shortcodes_string, $search_string) && $search_in_content ) {
-                                    $replaced_shortcodes_string = preg_replace($short_codes, $strings, $template_content);
+                                    $replaced_shortcodes_string = preg_replace($short_codes, $replace_strings, $template_content);
                                 }
                                 if (self::is_res_found($case_sensitive, $replaced_shortcodes_string, $search_string)) {
 
@@ -119,7 +124,7 @@ class MPG_SearchController
                                         $results[] = [
                                             'page_title' => $replaced_shortcodes_string_title,
                                             'page_url' => MPG_CoreModel::path_to_url( $url ),
-                                            'page_excerpt' => MPG_Helper::mpg_prepare_post_excerpt($short_codes, $strings, $template_content),
+                                            'page_excerpt' => MPG_Helper::mpg_prepare_post_excerpt($short_codes, $replace_strings, $template_content),
                                             'page_author_nickname' => $author_nickname,
                                             'page_author_email' => $author_email,
                                             'page_author_url' => $author_url,
