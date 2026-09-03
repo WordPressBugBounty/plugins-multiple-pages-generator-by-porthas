@@ -209,6 +209,12 @@ class MPG_CoreController
         $wp_query->post = $post;
         $wp_the_query   = $wp_query;
 
+        // Custom Permalinks reads $wp_query->post in make_redirect() (template_redirect, priority 5,
+        // after MPG's interception at priority 1) and 301s the generated URL to the template
+        // permalink whenever the template page carries a custom_permalink meta. Opt out of its
+        // redirect for the current (virtual page) request only. See #774.
+        add_filter( 'custom_permalinks_avoid_redirect', '__return_true' );
+
 	    defined( 'MPG_IS_SINGLE' ) || define( 'MPG_IS_SINGLE', true );
     }
 

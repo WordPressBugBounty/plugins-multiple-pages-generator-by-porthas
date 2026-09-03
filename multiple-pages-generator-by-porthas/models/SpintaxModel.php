@@ -21,7 +21,15 @@ class MPG_SpintaxModel
                         },
                         $parts
                     );
-                    $parts = array_filter( $parts );
+                    $parts = array_filter(
+                        $parts,
+                        function( $p ) {
+                            return '' !== $p;
+                        }
+                    );
+                    if ( empty( $parts ) ) {
+                        return '';
+                    }
                     return $parts[ array_rand( $parts ) ];
                 },
                 $spintax_string
