@@ -1,9 +1,9 @@
 === MPG – Multiple Page Generator, Bulk Landing Pages & Programmatic SEO ===
 Contributors: themeisle
-Tags: bulk pages, programmatic seo, landing pages, seo, csv import
+Tags: bulk pages, programmatic seo, landing pages, location pages, csv import
 Requires at least: 5.6
 Tested up to: 7.1
-Stable tag: 4.2.1
+Stable tag: 4.2.2
 Requires PHP: 7.2
 License: GPLv2
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -207,10 +207,10 @@ For manual installation:
 
 == Changelog ==
 
-#####   Version 4.2.1 (2026-09-03)
+#####   Version 4.2.2 (2026-09-08)
 
-- Fixed empty Spintax groups causing frontend pages to fail.
-- Fixed generated pages redirecting to template pages with Custom Permalinks enabled.
+- Fixed search crashes when project headers are unavailable.
+- Enhanced Security.
 
 
 

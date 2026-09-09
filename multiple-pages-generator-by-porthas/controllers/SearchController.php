@@ -82,8 +82,7 @@ class MPG_SearchController
 
                             $project = MPG_ProjectModel::get_project_by_id($entity['project_id']);
                             $dataset_array = MPG_Helper::mpg_get_dataset_array( $project );
-                            $headers = $project->headers;
-                            $headers_array = json_decode($headers);
+                            $headers_array = MPG_ProjectModel::get_headers_from_project( $project );
                             $headers_array = array_map(function ($raw_header) {
                                 $header = str_replace(' ', '_', strtolower($raw_header));
                                 if (strpos($header, 'mpg_') !== 0) {

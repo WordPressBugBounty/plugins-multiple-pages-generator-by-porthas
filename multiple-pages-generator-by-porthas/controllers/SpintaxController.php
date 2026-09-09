@@ -39,7 +39,12 @@ class MPG_SpintaxController
     public static function get_cached_records_count($project_id)
     {
         global $wpdb;
-        $query = $wpdb->get_results("SELECT  COUNT( DISTINCT `url` ) FROM {$wpdb->prefix}" .  MPG_Constant::MPG_SPINTAX_TABLE . " WHERE `project_id` = " . $project_id);
+        $query = $wpdb->get_results(
+            $wpdb->prepare(
+                "SELECT  COUNT( DISTINCT `url` ) FROM {$wpdb->prefix}" . MPG_Constant::MPG_SPINTAX_TABLE . " WHERE `project_id` = %d",
+                $project_id
+            )
+        );
     
         return (array) $query[0]? array_values((array) $query[0])[0] : 0;
     }
@@ -63,7 +68,13 @@ class MPG_SpintaxController
             $table_name = $wpdb->prefix .  MPG_Constant::MPG_SPINTAX_TABLE;
             $requested_url = MPG_Helper::mpg_get_request_uri();
 
-            $spintax_string = $wpdb->get_results('SELECT `spintax_string`, `id` FROM ' . $table_name . ' WHERE `url` = "' . $requested_url . '" and `block_id` = "' . $block_id . '"');
+            $spintax_string = $wpdb->get_results(
+                $wpdb->prepare(
+                    'SELECT `spintax_string`, `id` FROM ' . $table_name . ' WHERE `url` = %s AND `block_id` = %s',
+                    $requested_url,
+                    $block_id
+                )
+            );
 
             if ( ! empty( $spintax_string ) ) {
                 $spintax_content = $spintax_string[0]->spintax_string;
