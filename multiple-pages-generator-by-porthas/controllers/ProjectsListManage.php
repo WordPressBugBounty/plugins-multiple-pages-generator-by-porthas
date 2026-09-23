@@ -280,6 +280,28 @@ if ( ! class_exists( 'ProjectsListManage' ) ) {
 		}
 
 		/**
+		 * Writable column names of the projects table.
+		 *
+		 * Read from the schema rather than hardcoded so columns added by migrations or by the Pro
+		 * add-on keep importing, while nothing outside the schema can reach the query.
+		 *
+		 * @return array
+		 */
+		public static function get_project_columns() {
+			global $wpdb;
+
+			$table = $wpdb->prefix . MPG_Constant::MPG_PROJECTS_TABLE;
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			$columns = $wpdb->get_col( "SHOW COLUMNS FROM `$table`" );
+
+			if ( empty( $columns ) ) {
+				return array();
+			}
+
+			return array_values( array_diff( $columns, array( 'id' ) ) );
+		}
+
+		/**
 		 * Import projects.
 		 */
 		public function import_projects() {
@@ -302,6 +324,41 @@ if ( ! class_exists( 'ProjectsListManage' ) ) {
 			if ( empty( $import_data ) ) {
 				wp_die( __( 'Invalid Project JSON file', 'multiple-pages-generator-by-porthas' ) );
 			}
+
+			// A direct-link import names the dataset to fetch. Validate it up front so a rejected
+			// import leaves no project row or template post behind.
+			$direct_link = '';
+			$ext         = '';
+			if ( isset( $import_data['source_type'] ) && 'direct_link' === $import_data['source_type'] ) {
+				$original_file_url = isset( $import_data['original_file_url'] ) ? $import_data['original_file_url'] : '';
+				$worksheet_id      = ! empty( $import_data['worksheet_id'] ) ? $import_data['worksheet_id'] : '';
+				$direct_link       = MPG_Helper::mpg_get_direct_csv_link( $original_file_url, $worksheet_id );
+				$ext               = strtolower( MPG_Helper::mpg_get_extension_by_path( $direct_link ) );
+
+				// The sibling AJAX handler validates the same two things; without them an import
+				// could name any local file and have it copied into the public uploads folder.
+				if ( false === wp_http_validate_url( $direct_link ) ) {
+					wp_die( esc_html__( 'Invalid Project JSON file', 'multiple-pages-generator-by-porthas' ) );
+				}
+
+				if ( ! in_array( $ext, array( 'csv', 'xls', 'xlsx', 'ods' ), true ) ) {
+					wp_die( esc_html__( 'Unsupported file extension', 'multiple-pages-generator-by-porthas' ) );
+				}
+			}
+
+			$project_fields = array_intersect_key( $import_data, array_flip( self::get_project_columns() ) );
+
+			$project_fields = array_filter(
+				$project_fields,
+				function ( $value ) {
+					return is_scalar( $value ) || is_null( $value );
+				}
+			);
+
+			if ( empty( $project_fields ) ) {
+				wp_die( esc_html__( 'Invalid Project JSON file', 'multiple-pages-generator-by-porthas' ) );
+			}
+
 			$template_id = 0;
 
 			if ( ! empty( $import_data['template_name'] ) ) {
@@ -319,9 +376,10 @@ if ( ! class_exists( 'ProjectsListManage' ) ) {
 				}
 				unset( $import_data['template_name'], $import_data['template_content'] );
 			}
-			$import_data['template_id'] = $template_id;
-
 			$table = $wpdb->prefix . MPG_Constant::MPG_PROJECTS_TABLE;
+
+			$import_data                = $project_fields;
+			$import_data['template_id'] = $template_id;
 
 			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
 			$wpdb->insert( $table, $import_data );
@@ -329,13 +387,8 @@ if ( ! class_exists( 'ProjectsListManage' ) ) {
 			$urls_array = array();
 
 			if ( isset( $import_data['source_type'] ) && 'direct_link' === $import_data['source_type'] ) {
-				$original_file_url = isset( $import_data['original_file_url'] ) ? $import_data['original_file_url'] : '';
-
-				$worksheet_id      = ! empty( $import_data['worksheet_id'] ) ? $import_data['worksheet_id'] : '';
-				$original_file_url = MPG_Helper::mpg_get_direct_csv_link( $original_file_url, $worksheet_id );
-				$ext               = MPG_Helper::mpg_get_extension_by_path( $original_file_url );
-				$destination       = MPG_DatasetModel::uploads_base_path() . $new_id . '.' . $ext;
-				$download_dataset = MPG_DatasetModel::download_file( $original_file_url, $destination );
+				$destination      = MPG_DatasetModel::uploads_base_path() . $new_id . '.' . $ext;
+				$download_dataset = MPG_DatasetModel::download_file( $direct_link, $destination );
 				if ( ! $download_dataset ) {
 					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_print_r
 					do_action( 'themeisle_log_event', MPG_NAME, sprintf( 'Unable to download file = %s', print_r( $destination, true ) ), 'debug', __FILE__, __LINE__ );

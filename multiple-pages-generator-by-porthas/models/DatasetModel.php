@@ -1026,13 +1026,63 @@ class MPG_DatasetModel
 	}
 
 	/**
+	 * Whether a local path may be used as a dataset source.
+	 *
+	 * Datasets are staged either in the plugin's uploads folder or in the temporary directory
+	 * download_url() and PHP uploads write to.
+	 *
+	 * @param string $path Local path to check.
+	 * @return bool
+	 */
+	public static function is_allowed_local_source( $path ) {
+		if ( empty( $path ) || ! is_string( $path ) ) {
+			return false;
+		}
+
+		$real_path = realpath( $path );
+		if ( false === $real_path ) {
+			return false;
+		}
+
+		// get_temp_dir() already resolves WP_TEMP_DIR, upload_tmp_dir and the system temp folder,
+		// so listing the system folder separately would only widen this.
+		$allowed_bases = array(
+			MPG_UPLOADS_DIR,
+			get_temp_dir(),
+		);
+
+		/**
+		 * Filters the directories a local dataset source may be read from.
+		 *
+		 * @param array  $allowed_bases Absolute directory paths.
+		 * @param string $real_path     The resolved source path being checked.
+		 */
+		$allowed_bases = apply_filters( 'mpg_allowed_local_dataset_dirs', $allowed_bases, $real_path );
+
+		foreach ( $allowed_bases as $base ) {
+			$real_base = realpath( $base );
+			if ( false === $real_base ) {
+				continue;
+			}
+			$real_base = rtrim( $real_base, DIRECTORY_SEPARATOR ) . DIRECTORY_SEPARATOR;
+			if ( 0 === strpos( $real_path, $real_base ) ) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	/**
 	 * Download a file from a URL to a specified destination path.
 	 *
 	 * @param string $link The URL of the file to download.
 	 * @param string $destination_path The local path where the file should be saved.
+	 * @param bool   $allow_local_source Whether $link may be a local path the plugin staged itself.
+	 *                                   Never pass true for a value derived from a request.
 	 * @return bool True on success, false on failure.
 	 */
-	public static function download_file( $link, $destination_path ): bool {
+	public static function download_file( $link, $destination_path, $allow_local_source = false ): bool {
 		try {
 			if ( empty( $destination_path ) ) {
 				throw new Exception( 'Destination path is empty' );
@@ -1045,6 +1095,12 @@ class MPG_DatasetModel
 					throw new Exception( $tmp_path->get_error_message() );
 				}
 			} else {
+				// A non-URL source is a local path. Moving an arbitrary file into uploads is unsafe,
+				// so only plugin-staged files are allowed.
+				if ( ! $allow_local_source || ! self::is_allowed_local_source( $link ) ) {
+					// translators: %s: the rejected source path.
+					throw new Exception( sprintf( __( 'Refused to read the dataset from an unsupported location: %s', 'multiple-pages-generator-by-porthas' ), $link ) );
+				}
 				$tmp_path = $link;
 			}
 

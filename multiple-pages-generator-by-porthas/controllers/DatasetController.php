@@ -335,6 +335,10 @@ class MPG_DatasetController
 					throw new Exception(__('Unsupported file extension', 'multiple-pages-generator-by-porthas'));
 				}
 
+                if ( false === wp_http_validate_url( $direct_link ) ) {
+                    throw new Exception(__('Document is not accessible.', 'multiple-pages-generator-by-porthas'));
+                }
+
                 $destination = MPG_DatasetModel::uploads_base_path() . 'temp-unlinked_file.' . $ext;
 
                 if (MPG_DatasetModel::download_file($direct_link, $destination)) {
@@ -351,7 +355,7 @@ class MPG_DatasetController
                         ]
                     ]);
                 }else{
-					throw new Exception(__('Document is not accesible.', 'multiple-pages-generator-by-porthas'));
+					throw new Exception(__('Document is not accessible.', 'multiple-pages-generator-by-porthas'));
                 }
             } else {
                 throw new Exception(__('Link or project ID is missing', 'multiple-pages-generator-by-porthas'));

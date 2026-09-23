@@ -1,9 +1,9 @@
 <?php return array(
     'root' => array(
         'name' => 'codeinwp/multi-pages-plugin',
-        'pretty_version' => 'v4.2.2',
-        'version' => '4.2.2.0',
-        'reference' => 'abc0aa7d42b5fda894ace731d8cf3e13a7ba4f55',
+        'pretty_version' => 'v4.2.3',
+        'version' => '4.2.3.0',
+        'reference' => 'ff5089c43a219e08a8b3c592c2ac8a36f6134ff3',
         'type' => 'wordpress-plugin',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -11,9 +11,9 @@
     ),
     'versions' => array(
         'codeinwp/multi-pages-plugin' => array(
-            'pretty_version' => 'v4.2.2',
-            'version' => '4.2.2.0',
-            'reference' => 'abc0aa7d42b5fda894ace731d8cf3e13a7ba4f55',
+            'pretty_version' => 'v4.2.3',
+            'version' => '4.2.3.0',
+            'reference' => 'ff5089c43a219e08a8b3c592c2ac8a36f6134ff3',
             'type' => 'wordpress-plugin',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),

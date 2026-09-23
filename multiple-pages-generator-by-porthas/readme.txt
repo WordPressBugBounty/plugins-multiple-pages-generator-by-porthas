@@ -3,7 +3,7 @@ Contributors: themeisle
 Tags: bulk pages, programmatic seo, landing pages, location pages, csv import
 Requires at least: 5.6
 Tested up to: 7.1
-Stable tag: 4.2.2
+Stable tag: 4.2.3
 Requires PHP: 7.2
 License: GPLv2
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -207,10 +207,9 @@ For manual installation:
 
 == Changelog ==
 
-#####   Version 4.2.2 (2026-09-08)
+#####   Version 4.2.3 (2026-09-22)
 
-- Fixed search crashes when project headers are unavailable.
-- Enhanced Security.
+- Enhanced Security. Thank you Eunseong Lee (ieuns) for responsible disclosure.
 
 
 

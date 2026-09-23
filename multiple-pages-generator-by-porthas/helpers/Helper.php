@@ -9,10 +9,24 @@ use Box\Spout\Common\Type;
 
 class MPG_Helper
 {
+	/**
+	 * Spreadsheet formats a dataset may be downloaded as.
+	 */
+	const DATASET_EXTENSIONS = array( 'csv', 'xls', 'xlsx', 'ods' );
+
+	const WEBHOOK_KEY_OPTION = 'mpg_webhook_key';
+
+	const WEBHOOK_ORIGIN_OPTION = 'mpg_webhook_key_origin';
+
+	const WEBHOOK_ORIGIN_LEGACY = 'legacy';
+
+	const WEBHOOK_ORIGIN_CURRENT = 'current';
+
     public static $urls_array;
 
     public static function init() { 
         add_action( 'admin_enqueue_scripts', array( 'MPG_Helper', 'register_internal_pages' ) );
+        add_action( 'admin_init', array( 'MPG_Helper', 'record_webhook_key_origin' ) );
         add_filter( 'themeisle-sdk/survey/' . MPG_PRODUCT_SLUG, array( 'MPG_Helper', 'register_survey' ), 10, 2 );
     }
 
@@ -232,12 +246,26 @@ class MPG_Helper
         // то что после последней точки
         if ($matches) {
             return $matches[0][1];
-        } else {
-
-            $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
-            // Если в расширении есть точка - обрезаем,
-            return strpos($ext, '.') === 0 ? ltrim($ext, $ext[0]) : $ext;
         }
+
+        // Strip query strings and fragments before reading the extension.
+        $bare_path = $path;
+
+        foreach ( array( '?', '#' ) as $separator ) {
+            $position = strpos( $bare_path, $separator );
+
+            if ( false !== $position ) {
+                $bare_path = substr( $bare_path, 0, $position );
+            }
+        }
+
+        $ext = strtolower( pathinfo( $bare_path, PATHINFO_EXTENSION ) );
+
+        if ( ! in_array( $ext, self::DATASET_EXTENSIONS, true ) && preg_match_all( '/\.(csv|xls|xlsx|ods)(?:[?&#=]|$)/i', $path, $fallback ) ) {
+            $ext = strtolower( end( $fallback[1] ) );
+        }
+
+        return strpos($ext, '.') === 0 ? ltrim($ext, $ext[0]) : $ext;
     }
 
     public static function array_flatten($array)
@@ -534,10 +562,135 @@ class MPG_Helper
 	}
 
 	/*
-	 * Get the webhook key.
+	 * Get the webhook key used to sign new webhook URLs.
 	 */
 	public static function get_webhook_key() {
-		return defined( 'MPG_WEBHOOK_KEY' ) ? MPG_WEBHOOK_KEY : ( defined( 'SECURE_AUTH_KEY' ) ? SECURE_AUTH_KEY : 'mpgftw' );
+		$keys = self::get_webhook_keys();
+
+		return reset( $keys );
+	}
+
+	/**
+	 * Every key a webhook request may be signed with.
+	 *
+     * The first entry signs new URLs; additional entries may support future key rotation.
+     * The insecure published fallback is intentionally not accepted.
+	 *
+	 * @return array
+	 */
+	public static function get_webhook_keys() {
+		if ( defined( 'MPG_WEBHOOK_KEY' ) && MPG_WEBHOOK_KEY ) {
+			return array( MPG_WEBHOOK_KEY );
+		}
+
+		if ( defined( 'SECURE_AUTH_KEY' ) && SECURE_AUTH_KEY ) {
+			return array( SECURE_AUTH_KEY );
+		}
+
+		return array( self::get_generated_webhook_key() );
+	}
+
+	/**
+	 * Per-site webhook key, generated once for sites that define neither constant.
+	 *
+	 * @return string
+	 */
+	public static function get_generated_webhook_key() {
+		global $wpdb;
+
+		$key = get_option( self::WEBHOOK_KEY_OPTION );
+
+		if ( ! empty( $key ) ) {
+			return $key;
+		}
+
+		$candidate = wp_generate_password( 64, true, true );
+
+		// WordPress 5.6 only understands 'no'; newer core can decide autoloading.
+		$autoload = 'no';
+
+		if ( function_exists( 'wp_determine_option_autoload_value' ) ) {
+			$autoload = wp_determine_option_autoload_value( self::WEBHOOK_KEY_OPTION, $candidate, $candidate, false );
+		}
+
+        // Avoid add_option(): its cached miss can replace a key stored by another request.
+        // INSERT IGNORE ensures the first writer wins.
+		$wpdb->query(
+			$wpdb->prepare(
+				"INSERT IGNORE INTO `$wpdb->options` (`option_name`, `option_value`, `autoload`) VALUES (%s, %s, %s)",
+				self::WEBHOOK_KEY_OPTION,
+				$candidate,
+				$autoload
+			)
+		);
+
+		wp_cache_delete( self::WEBHOOK_KEY_OPTION, 'options' );
+
+		$notoptions = wp_cache_get( 'notoptions', 'options' );
+
+		if ( is_array( $notoptions ) && isset( $notoptions[ self::WEBHOOK_KEY_OPTION ] ) ) {
+			unset( $notoptions[ self::WEBHOOK_KEY_OPTION ] );
+			wp_cache_set( 'notoptions', $notoptions, 'options' );
+		}
+
+		$stored = get_option( self::WEBHOOK_KEY_OPTION );
+
+		if ( ! empty( $stored ) ) {
+			return $stored;
+		}
+
+		do_action( 'themeisle_log_event', MPG_NAME, 'Unable to read back the webhook key; a URL generated now may fail verification.', 'debug', __FILE__, __LINE__ );
+
+		return $candidate;
+	}
+
+	/**
+	 * Record once whether this site could have handed out webhook URLs signed with the published
+	 * fallback key.
+	 */
+	public static function record_webhook_key_origin() {
+		if ( get_option( self::WEBHOOK_ORIGIN_OPTION ) ) {
+			return;
+		}
+
+		$origin = self::uses_generated_webhook_key() && self::has_configured_webhook()
+			? self::WEBHOOK_ORIGIN_LEGACY
+			: self::WEBHOOK_ORIGIN_CURRENT;
+
+		// Autoloaded: the guard above then costs nothing on later requests.
+		add_option( self::WEBHOOK_ORIGIN_OPTION, $origin, '', true );
+	}
+
+	/**
+	 * Whether this site issued webhook URLs signed with the published fallback key.
+	 *
+	 * @return bool
+	 */
+	public static function had_legacy_webhook_urls() {
+		return self::WEBHOOK_ORIGIN_LEGACY === get_option( self::WEBHOOK_ORIGIN_OPTION );
+	}
+
+	/**
+	 * Whether any project has a usable on-demand webhook.
+	 *
+	 * @return bool
+	 */
+	public static function has_configured_webhook() {
+		global $wpdb;
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared
+		$count = $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM {$wpdb->prefix}" . MPG_Constant::MPG_PROJECTS_TABLE . ' WHERE schedule_periodicity = %s AND schedule_source_link IS NOT NULL AND schedule_source_link <> %s', 'ondemand', '' ) );
+
+		return ! empty( $count );
+	}
+
+	/**
+	 * Whether the site signs webhooks with the generated key instead of a constant.
+	 *
+	 * @return bool
+	 */
+	public static function uses_generated_webhook_key() {
+		return ! ( defined( 'MPG_WEBHOOK_KEY' ) && MPG_WEBHOOK_KEY ) && ! ( defined( 'SECURE_AUTH_KEY' ) && SECURE_AUTH_KEY );
 	}
     /**
      * Whether MPG default-loop entries apply to this query.

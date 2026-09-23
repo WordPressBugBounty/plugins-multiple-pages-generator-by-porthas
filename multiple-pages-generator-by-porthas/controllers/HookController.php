@@ -527,9 +527,13 @@ class MPG_HookController
 				if ( empty( $project_id ) || empty( $secret ) ) {
 					return false;
 				}
-				$hash = hash_hmac( 'sha256', $project_id, MPG_Helper::get_webhook_key() );
+				foreach ( MPG_Helper::get_webhook_keys() as $key ) {
+					if ( hash_equals( hash_hmac( 'sha256', $project_id, $key ), $secret ) ) {
+						return true;
+					}
+				}
 
-				return hash_equals( $hash, $secret );
+				return false;
 			}
 		) );
 	}

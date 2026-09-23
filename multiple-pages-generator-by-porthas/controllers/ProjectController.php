@@ -11,6 +11,8 @@ require_once(realpath(__DIR__) . '/../models/DatasetModel.php');
 
 class MPG_ProjectController
 {
+	const WEBHOOK_NOTICE_OPTION = 'mpg_webhook_key_notice_dismissed';
+
 	/**
 	 * Replace a project's recurring cron event without orphaning the previous argument set.
 	 *
@@ -1154,6 +1156,38 @@ class MPG_ProjectController
             </div>
             <?php
         }
+
+        self::show_webhook_key_notice();
+    }
+
+    /**
+     * Warn about webhook URLs that changed when the published fallback key was replaced.
+     *
+     * Only sites that define neither MPG_WEBHOOK_KEY nor SECURE_AUTH_KEY were signing with the old
+     * key, so only they have URLs to re-copy.
+     */
+    public static function show_webhook_key_notice() {
+        if ( ! MPG_Helper::uses_generated_webhook_key() || ! MPG_Helper::had_legacy_webhook_urls() || get_option( self::WEBHOOK_NOTICE_OPTION ) ) {
+            return;
+        }
+
+        if ( ! empty( $_GET['mpg_dismiss_webhook_notice'] ) && current_user_can( MPG_MenuController::MENU_ROLE ) && wp_verify_nonce( sanitize_text_field( wp_unslash( $_GET['mpg_dismiss_webhook_notice'] ) ), self::WEBHOOK_NOTICE_OPTION ) ) {
+            update_option( self::WEBHOOK_NOTICE_OPTION, 1, false );
+
+            return;
+        }
+
+        $dismiss_url = add_query_arg( 'mpg_dismiss_webhook_notice', wp_create_nonce( self::WEBHOOK_NOTICE_OPTION ) );
+        ?>
+        <div class="notice notice-warning">
+            <p>
+                <?php esc_html_e( 'Your MPG webhook URLs have changed. The previous URLs were signed with a key published in the plugin source, which allowed anyone to trigger your project updates. Open each project with an on-demand update and copy the new webhook URL to the service that calls it.', 'multiple-pages-generator-by-porthas' ); ?>
+            </p>
+            <p>
+                <a href="<?php echo esc_url( $dismiss_url ); ?>"><?php esc_html_e( 'Dismiss', 'multiple-pages-generator-by-porthas' ); ?></a>
+            </p>
+        </div>
+        <?php
     }
 
     // License
