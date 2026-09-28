@@ -3,7 +3,7 @@ Contributors: themeisle
 Tags: bulk pages, programmatic seo, landing pages, location pages, csv import
 Requires at least: 5.6
 Tested up to: 7.1
-Stable tag: 4.2.3
+Stable tag: 4.2.4
 Requires PHP: 7.2
 License: GPLv2
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -207,9 +207,11 @@ For manual installation:
 
 == Changelog ==
 
-#####   Version 4.2.3 (2026-09-22)
+#####   Version 4.2.4 (2026-09-28)
 
-- Enhanced Security. Thank you Eunseong Lee (ieuns) for responsible disclosure.
+- Fixed the See all URLs list to show the correct rows on each page
+- Fixed generated pages timing out during live CSV refreshes.
+- Enhanced security
 
 
 

@@ -260,7 +260,7 @@ class MPG_DatasetController
 			$project_id = (int) $_GET['projectId'];
 
 			$draw         = isset( $_POST['draw'] ) ? (int) $_POST['draw'] : 0;
-			$start        = isset( $_POST['start'] ) ? (int) $_POST['start'] : 1;
+			$start        = isset( $_POST['start'] ) ? (int) $_POST['start'] : 0;
 			$length       = isset( $_POST['length'] ) ? (int) $_POST['length'] : 10;
 			$search_value = isset( $_POST['search']['value'] ) ? sanitize_text_field( $_POST['search']['value'] ) : '';
 
@@ -275,20 +275,17 @@ class MPG_DatasetController
 			$search_string = trim( strtolower( $search_value ) );
 			$filtered      = 0;
 			$page_results  = 0;
-			foreach ( $urls_array as $index => $row ) {
-				$filtered ++;
-				if ( $index + 1 < $start ) {
+			foreach ( $urls_array as $row ) {
+				if ( ! empty( $search_string ) && ! str_contains( $row, $search_string ) ) {
 					continue;
 				}
-				if ( ! empty( $search_string ) && ! str_contains( $row, $search_string ) ) {
-					$filtered --;
+				$filtered ++;
+				// DataTables paging: `start` is the 0-based offset into the filtered list, `length` the page size (#785).
+				if ( $filtered <= $start || $page_results >= $length ) {
 					continue;
 				}
 				if ( $project->url_mode === 'without-trailing-slash' ) {
 					$row = rtrim( $row, '/' );
-				}
-				if ( $page_results > $length ) {
-					continue;
 				}
 				$data[] = [ '<a target="_blank" href="' . MPG_CoreModel::path_to_url( $row ) . '">' . MPG_CoreModel::path_to_url( $row ) . '</a>' ];
 				$page_results ++;

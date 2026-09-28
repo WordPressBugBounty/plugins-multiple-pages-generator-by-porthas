@@ -503,8 +503,6 @@ class MPG_Helper
         $periodicity        = isset( $project->schedule_periodicity ) ? $project->schedule_periodicity : null;
         $source_direct_link = isset( $project->original_file_url ) ? $project->original_file_url : '';
         $worksheet_id       = isset( $project->worksheet_id ) ? $project->worksheet_id : '';
-        $space_replacer     = isset( $project->space_replacer ) ? $project->space_replacer : '';
-        $url_structure      = isset( $project->url_structure ) ? $project->url_structure : '';
         $source_type = MPG_Validators::validate_source_type( $project->source_type ?? '', ! empty( $source_direct_link ) ? MPG_Validators::SOURCE_TYPE_URL : MPG_Validators::SOURCE_TYPE_UPLOAD );
 
         $expiration = 0;
@@ -527,18 +525,17 @@ class MPG_Helper
         if ( empty( $dataset_array ) && $expiration > 0 ) {
             $direct_link = MPG_Helper::mpg_get_direct_csv_link( $source_direct_link, $worksheet_id );
             MPG_DatasetModel::download_file( $direct_link, $dataset_path );
-            $urls_array = MPG_ProjectModel::mpg_generate_urls_from_dataset( $dataset_path, $url_structure, $space_replacer, true );
-            $urls_array = $urls_array['urls_array'];
-            $fields_array = array();
-            self::$urls_array = $urls_array;
-            $fields_array['urls_array'] = true; // If set to true, it means we need to regenerate the file.
 
             // Keep stored headers in sync with the source so newly added columns become usable,
             // logging a warning when previously stored columns disappear (#462).
-            $fields_array = array_merge( $fields_array, MPG_ProjectModel::mpg_prepare_headers_sync( $project, $dataset_path ) );
+            $fields_array = array_merge( array( 'urls_array' => true ), MPG_ProjectModel::mpg_prepare_headers_sync( $project, $dataset_path ) );
 
             MPG_ProjectModel::mpg_update_project_by_id( $project_id, $fields_array, true );
             MPG_ProjectModel::update_last_check( $project_id );
+            // The rebuild produced every permalink. Listing the URLs from the file first cost a full
+            // parse and a transient copy of the dataset inside the visitor request (#760).
+            $urls_array       = array_keys( MPG_DatasetModel::get_index( $project_id, 'permalinks' ) );
+            self::$urls_array = $urls_array;
             if ( isset( $fields_array['headers'] ) ) {
                 // Redirect matching continues with this in-memory object. Keep it aligned with the
                 // freshly published index so publication/date checks use the new column positions.

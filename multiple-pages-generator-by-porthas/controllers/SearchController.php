@@ -188,9 +188,36 @@ class MPG_SearchController
         }
     }
 
+    /**
+     * Drop author fields the result template does not render, so public search does not expose them.
+     *
+     * @param array{}|array{total: int, results: list<array{page_title: string|null, page_url: string, page_excerpt: string|null, page_author_nickname?: string, page_author_email?: string, page_author_url?: string, page_date: string|int|false, page_featured_image: mixed}>} $search Response from mpg_search().
+     * @param string $result_template Saved single-result template.
+     *
+     * @return array{}|array{total: int, results: list<array{page_title: string|null, page_url: string, page_excerpt: string|null, page_author_nickname?: string, page_author_email?: string, page_author_url?: string, page_date: string|int|false, page_featured_image: mixed}>}
+     */
+    private static function strip_unused_author_fields( array $search, string $result_template ): array
+    {
+        if ( empty( $search['results'] ) ) {
+            return $search;
+        }
+
+        foreach ( array( 'page_author_email', 'page_author_nickname', 'page_author_url' ) as $field ) {
+            if ( false !== strpos( $result_template, '{{mpg_' . $field . '}}' ) ) {
+                continue;
+            }
+            foreach ( array_keys( $search['results'] ) as $index ) {
+                unset( $search['results'][ $index ][ $field ] );
+            }
+        }
+
+        return $search;
+    }
+
     public static function mpg_search_ajax()
     {
-	    MPG_Validators::nonce_check();
+	    // Public action: nonce only, no admin capability.
+	    check_ajax_referer( MPG_BASENAME, 'securityNonce' );
 
         try {
 
@@ -201,9 +228,10 @@ class MPG_SearchController
             $case_sensitive = isset( $mpg_search_settings['mpg_ss_is_case_sensitive'] ) ? filter_var($mpg_search_settings['mpg_ss_is_case_sensitive'], FILTER_VALIDATE_BOOLEAN) : true;
             $featured_image_url = isset( $mpg_search_settings['mpg_ss_featured_image_url'] ) ? $mpg_search_settings['mpg_ss_featured_image_url'] : null;
             $mpg_excerpt_length = isset( $mpg_search_settings['mpg_ss_excerpt_length'] ) ? $mpg_search_settings['mpg_ss_excerpt_length'] : 0;
+            $result_template = isset( $mpg_search_settings['mpg_ss_result_template'] ) ? (string) $mpg_search_settings['mpg_ss_result_template'] : '';
             echo json_encode([
                 'success' => true,
-                'data' =>  self::mpg_search( $search_query, $search_limit, $case_sensitive, $featured_image_url, $mpg_excerpt_length ),
+                'data' =>  self::strip_unused_author_fields( self::mpg_search( $search_query, $search_limit, $case_sensitive, $featured_image_url, $mpg_excerpt_length ), $result_template ),
             ]);
         } catch (Exception $e) {
 
@@ -271,19 +299,20 @@ class MPG_SearchController
 
     public static function mpg_search_settings_get_options()
     {
-	    MPG_Validators::nonce_check();
+	    // Public action: nonce only; non-admins get just the render keys.
+	    check_ajax_referer( MPG_BASENAME, 'securityNonce' );
 
         try {
 
             $data = get_option('mpg_search_settings');
-            
+            if ( is_array( $data ) && ! current_user_can( MPG_MenuController::MENU_ROLE ) ) {
+                $data = array_intersect_key( $data, array_flip( array( 'mpg_ss_results_container', 'mpg_search_no_results_container', 'mpg_ss_intro_content', 'mpg_ss_result_template' ) ) );
+            }
+
             echo json_encode([
                 'success' => true,
                 'data' => $data
             ]);
-
-            wp_die();
-            //
         } catch (Exception $e) {
 
             do_action( 'themeisle_log_event', MPG_NAME, $e->getMessage(), 'debug', __FILE__, __LINE__ );
@@ -292,7 +321,8 @@ class MPG_SearchController
                 'success' => false,
                 'error' => $e->getMessage()
             ]);
-            wp_die();
         }
+
+        wp_die();
     }
 }
