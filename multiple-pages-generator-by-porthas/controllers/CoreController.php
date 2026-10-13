@@ -119,6 +119,8 @@ class MPG_CoreController
         MPG_SEOModel::mpg_squirrly_seo($project_id);
 
         MPG_SEOModel::mpg_the_seo_framework( $project_id );
+
+        MPG_SEOModel::mpg_slim_seo( $project_id );
 	    add_action( 'wp_head', function () use ( $project_id ) {
 		    ob_start( function ( $buffer ) use ( $project_id ) {
 			    return MPG_CoreModel::mpg_shortcode_replacer( $buffer, $project_id );

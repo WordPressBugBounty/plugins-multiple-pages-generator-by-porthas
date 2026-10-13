@@ -8,7 +8,7 @@
  *
  * Author: Themeisle
  * Author URI: https://themeisle.com
- * Version: 4.2.4
+ * Version: 4.2.5
  */
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -53,7 +53,7 @@ defined( 'MPG_CACHE_URL' ) || define( 'MPG_CACHE_URL', WP_CONTENT_URL . DIRECTOR
 defined( 'MPG_NAME' ) || define( 'MPG_NAME', 'Multiple Pages Generator' );
 defined( 'MPG_BASE_IMG_PATH' ) || define( 'MPG_BASE_IMG_PATH', plugin_dir_url( __FILE__ ) . 'frontend/images' );
 defined( 'MPG_DATABASE_VERSION' ) || define( 'MPG_DATABASE_VERSION', '1.1.0' );
-defined( 'MPG_PLUGIN_VERSION' ) || define( 'MPG_PLUGIN_VERSION', '4.2.4' );
+defined( 'MPG_PLUGIN_VERSION' ) || define( 'MPG_PLUGIN_VERSION', '4.2.5' );
 defined( 'MPG_FREE_SLUG' ) || define( 'MPG_FREE_SLUG', 'multiple-pages-generator-by-porthas' );
 defined( 'MPG_TRANSLATION_CACHE_KEY_PREFIX' ) || define( 'MPG_TRANSLATION_CACHE_KEY_PREFIX', 'mpg_translation_check' );
 
@@ -113,6 +113,8 @@ if ( ! function_exists( 'mpg_run' ) ) {
 		MPG_HookController::init_ajax();
 		// Инициализация бокового меню в WordPress
 		MPG_MenuController::init();
+		require_once 'controllers/AbilitiesController.php';
+		MPG_AbilitiesController::init();
 
 		add_filter( 'themeisle_sdk_products', function ( $products ) {
 			$products[] = __FILE__;
@@ -165,6 +167,26 @@ if ( ! function_exists( 'mpg_run' ) ) {
 						'<b>' . __( 'MPG PRO', 'multiple-pages-generator-by-porthas' ) . '</b>'
 					),
 					true
+				);
+			}
+		);
+
+		add_filter(
+			$product_key . '_ai_connect_metadata',
+			function () {
+				return array(
+					'name'         => __( 'MPG', 'multiple-pages-generator-by-porthas' ),
+					'notice_cases' => array(
+						__( 'rebuild a project from its source sheet', 'multiple-pages-generator-by-porthas' ),
+						__( 'preview the URLs a dataset will generate', 'multiple-pages-generator-by-porthas' ),
+						__( 'review your page generation projects', 'multiple-pages-generator-by-porthas' ),
+					),
+					'prompts'      => array(
+						__( 'Rebuild my "Locations" project from its source sheet in MPG.', 'multiple-pages-generator-by-porthas' ),
+						__( 'Preview the first 10 rows of my "Locations" project and flag URL conflicts.', 'multiple-pages-generator-by-porthas' ),
+						__( 'Create a project from my Google Sheet using my "City page" template, with URLs like /locations/{{city}}/.', 'multiple-pages-generator-by-porthas' ),
+					),
+					'ability_prefix'    => 'mpg',
 				);
 			}
 		);

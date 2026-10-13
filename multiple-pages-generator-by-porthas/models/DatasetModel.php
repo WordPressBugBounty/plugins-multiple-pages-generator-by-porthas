@@ -24,6 +24,14 @@ class MPG_DatasetModel
 	protected static $last_index_error = '';
 
 	/**
+	 * The chunk decoded last in this request, as [ key, rows ]. A generated page reads its row a
+	 * dozen times per request; decoding a 5,000-row chunk each time hit the execution limit (#771).
+	 *
+	 * @var array{0: string, 1: array}
+	 */
+	protected static $last_chunk = array( '', array() );
+
+	/**
 	 * Get the reason for the most recent index build failure.
 	 *
 	 * @return string Empty string when the last build succeeded or no build has run.
@@ -704,25 +712,37 @@ class MPG_DatasetModel
 	 */
 	public static function get_dataset_chunk( $project_id, $chunk_number, $build_id = null ) {
 		$resolved_build_id = self::resolve_build_id_context( $project_id, $build_id );
-		$cached_chunk      = self::get_dataset_chunk_cache( $project_id, $chunk_number, $resolved_build_id );
-		if ( ! empty( $cached_chunk ) ) {
-			return $cached_chunk;
+		$memo_key          = get_current_blog_id() . "_{$project_id}_{$chunk_number}_" . self::get_cache_build_token( $project_id, $resolved_build_id );
+		if ( $memo_key === self::$last_chunk[0] ) {
+			return self::$last_chunk[1];
 		}
-		
-		$chunk_path = self::mpg_with_legacy_fallback( self::get_chunk_path( $project_id, $chunk_number, $resolved_build_id ) );
 
-		if ( file_exists( $chunk_path ) ) {
-			$chunk_content = file_get_contents( $chunk_path );
-			if ( $chunk_content ) {
-				$chunk_data = json_decode( $chunk_content, true );
-				if ( is_array( $chunk_data ) ) {
-					self::set_dataset_chunk_cache( $project_id, $chunk_number, $chunk_data, $resolved_build_id );
-					return $chunk_data;
+		$chunk_data = self::get_dataset_chunk_cache( $project_id, $chunk_number, $resolved_build_id );
+		if ( empty( $chunk_data ) ) {
+			$chunk_data = array();
+			$chunk_path = self::mpg_with_legacy_fallback( self::get_chunk_path( $project_id, $chunk_number, $resolved_build_id ) );
+			if ( file_exists( $chunk_path ) ) {
+				$decoded = json_decode( (string) file_get_contents( $chunk_path ), true );
+				if ( is_array( $decoded ) ) {
+					self::set_dataset_chunk_cache( $project_id, $chunk_number, $decoded, $resolved_build_id );
+					$chunk_data = $decoded;
 				}
 			}
 		}
 
-		return [];
+		if ( ! empty( $chunk_data ) ) {
+			// One slot: a page reads one chunk. Widen to a small LRU if that changes.
+			self::$last_chunk = array( $memo_key, $chunk_data );
+		}
+
+		return $chunk_data;
+	}
+
+	/**
+	 * Drop the chunk memoised for this request, so a rewritten or deleted chunk is read again.
+	 */
+	public static function forget_loaded_chunk(): void {
+		self::$last_chunk = array( '', array() );
 	}
 	
 	/**
@@ -747,6 +767,7 @@ class MPG_DatasetModel
 	 * @return bool Whether the chunk was cached successfully
 	 */
 	public static function set_dataset_chunk_cache( $project_id, $chunk_number, $chunk_data, $build_id = null ) {
+		self::forget_loaded_chunk();
 		$expiration = MPG_ProjectModel::get_project_schedule_periodicity( $project_id );
 		$chunk_key = wp_hash( "mpg_dataset_chunk_{$project_id}_{$chunk_number}_" . self::get_cache_build_token( $project_id, $build_id ) );
 		$encoded_chunk = json_encode( $chunk_data, MPG_JSON_OPTIONS );
@@ -899,6 +920,7 @@ class MPG_DatasetModel
 	 * @return void
 	 */
 	protected static function delete_dataset_chunks_cache( $project_id, $build_id ) {
+		self::forget_loaded_chunk();
 		$chunks_meta  = self::get_dataset_chunks_meta( $project_id, $build_id );
 		$total_chunks = ( $chunks_meta !== false && isset( $chunks_meta['total_chunks'] ) )
 			? $chunks_meta['total_chunks']

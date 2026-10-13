@@ -267,6 +267,24 @@ class MPG_SEOModel
         });
     }
 
+    /**
+     * Slim SEO and Slim SEO Pro run these filters before rendering their own variables (#789).
+     *
+     * @param int $project_id Project of the virtual page.
+     */
+    public static function mpg_slim_seo( int $project_id ): void {
+        /**
+         * @param string $text Slim SEO meta title or description.
+         * @return string
+         */
+        $replace = static function ( $text ) use ( $project_id ) {
+            return MPG_CoreModel::mpg_shortcode_replacer( $text, $project_id );
+        };
+
+        add_filter( 'slim_seo_meta_title', $replace );
+        add_filter( 'slim_seo_meta_description', $replace );
+    }
+
     public static function mpg_squirrly_seo( $project_id = 0 ) {
         // Filter Squirrly SEO plugin title.
         add_filter(

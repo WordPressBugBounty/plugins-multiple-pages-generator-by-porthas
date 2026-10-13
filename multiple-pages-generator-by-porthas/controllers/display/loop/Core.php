@@ -129,6 +129,7 @@ abstract class Core extends Base_Display {
 		//We need to backup the internal row index to set it back once we are done.
 		$current_row_backup = \MPG_CoreModel::get_current_row( $project_id );
 		$current_url = \MPG_Helper::mpg_get_request_uri();
+		$url_prefix  = esc_url( $args['base_url'] ?? '' );
 		$added_count = 0;
 		foreach ( $filtered_dataset_index as $index ) {
 			if ( $added_count >= $limit ) {
@@ -159,8 +160,8 @@ abstract class Core extends Base_Display {
 				$strings[ count( $short_codes ) - 1 ] = \MPG_CoreModel::path_to_url( $urls_array[ $index - 1  ] );
 			}
 
-			if ( ! empty( $args['base_url'] ) ) {
-				$strings[ count( $short_codes ) - 1 ] = $args['base_url'] . $strings[ count( $short_codes ) - 1 ];
+			if ( '' !== $url_prefix ) {
+				$strings[ count( $short_codes ) - 1 ] = $url_prefix . $strings[ count( $short_codes ) - 1 ];
 			}
 
 			// Skip if the generated URL matches the current request URI
