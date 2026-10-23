@@ -211,7 +211,7 @@ For manual installation:
 
 - Fixed MPG placeholders staying raw in Slim SEO titles and descriptions.
 - Fixed generated pages timing out on large datasets
-- Enhanced security. Thanks to Ngọc Phong for the responsible disclosure.
+- Enhanced security. Thanks to pnn219 and haidz04kma for the responsible disclosure.
 - Updated dependencies
 
 
